@@ -92,7 +92,7 @@ class Environment:
                                          0, p_v_max, p_h_max, dt, p_safe) for _ in range(self.n_protectors)]
         self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': [], 'all_protector_xs': [], 'all_protector_ys': []}
         self.covered_target_num = []
-        self.step_i = 0  # 新增：统一的步计数器
+        self.step_i = 0  # 步计数器
 
     def reset(self, config):
         # self.__reset(t_v_max=config["target"]["v_max"],
@@ -149,7 +149,7 @@ class Environment:
             prot.update_position(actions[i])
             prot.clamp_inside(self.x_max, self.y_max)
 
-        # === 新增：UAV 碰到保护者手臂后被弹开 ===
+        # 碰撞弹开效果：UAV 碰到保护者手臂后被物理推离
         kb = config.get('protector', {}).get('knockback', 0.0)
         arm_th = config.get('protector', {}).get('arm_thickness', 0.0)
         if kb > 0 and arm_th > 0:
@@ -208,9 +208,8 @@ class Environment:
                         uav.y += uy * push
                         uav.x = np.clip(uav.x, 0, self.x_max)
                         uav.y = np.clip(uav.y, 0, self.y_max)
-        # === 新增逻辑结束 ===
 
-        # === 新增：捕捉检测（在观测与记录轨迹之前执行）===
+        # 目标捕获检测
         for t_idx, target in enumerate(self.target_list):
             if getattr(target, 'captured', False):
                 continue
@@ -220,16 +219,14 @@ class Environment:
                 dy = uav.y - target.y
                 if np.hypot(dx, dy) <= cap_r:
                     target.captured = True
-                    target.captured_step = self.step_i  # 使用统一步计数器
-                    # 可选：日志验证
-                    # print(f"[Capture] Target {t_idx} captured at step {self.step_i}")
+                    target.captured_step = self.step_i
                     break
-        # === 捕捉检测结束 ===
 
-        # observation and communication
-        uav.observe_target(self.target_list)
-        uav.observe_protector(self.protector_list)
-        uav.observe_uav(self.uav_list)
+        # UAV 观测与通信
+        for uav in self.uav_list:
+            uav.observe_target(self.target_list)
+            uav.observe_protector(self.protector_list)
+            uav.observe_uav(self.uav_list)
 
         (rewards,
          target_tracking_reward,

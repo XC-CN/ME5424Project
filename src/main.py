@@ -49,7 +49,9 @@ def add_args_to_config(config, args):
 
 def main(args):
     # 获取方法所用的参数
-    config = get_config(os.path.join("configs", args.method + ".yaml"))
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(script_dir, "configs", args.method + ".yaml")
+    config = get_config(config_path)
     add_args_to_config(config, args)
     print_config(config)
     print_args(args)
