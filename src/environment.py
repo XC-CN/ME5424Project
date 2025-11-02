@@ -149,9 +149,10 @@ class Environment:
             prot.update_position(actions[i])
             prot.clamp_inside(self.x_max, self.y_max)
 
-        # 碰撞弹开效果：UAV 碰到保护者手臂后被物理推离
+        # 碰撞弹开效果：UAV 碰到保护者手臂后被改变朝向并锁定
         kb = config.get('protector', {}).get('knockback', 0.0)
         arm_th = config.get('protector', {}).get('arm_thickness', 0.0)
+        lock_duration = config.get('protector', {}).get('heading_lock_duration', 5)  # 默认锁定5步
         if kb > 0 and arm_th > 0:
             # 使用上一帧坐标估计保护者运动方向
             prev_idx = max(0, len(self.position['all_protector_xs']) - 1)
@@ -190,6 +191,7 @@ class Environment:
                 x1, y1 = cx - nx * L, cy - ny * L  # 后臂端点
                 x2, y2 = cx + nx * L, cy + ny * L  # 前臂端点
 
+                # uav与protector碰撞后反向并锁定朝向
                 for uav in self.uav_list:
                     # 到两条臂的最近点与距离
                     cfx, cfy, d_front = closest_point_on_segment(uav.x, uav.y, cx, cy, x2, y2)
@@ -200,14 +202,23 @@ class Environment:
                         cxn, cyn, dmin = crx, cry, d_rear
 
                     if dmin < arm_th and dmin > 1e-6:
-                        # 从最近点指向 UAV 的法向
-                        ux = (uav.x - cxn) / dmin
-                        uy = (uav.y - cyn) / dmin
-                        push = min(kb, arm_th - dmin)  # 不超过 knockback
-                        uav.x += ux * push
-                        uav.y += uy * push
-                        uav.x = np.clip(uav.x, 0, self.x_max)
-                        uav.y = np.clip(uav.y, 0, self.y_max)
+                        # 计算弹开方向（从碰撞点指向 UAV 的方向）
+                        dx = uav.x - cxn
+                        dy = uav.y - cyn
+                        # 计算弹开角度（UAV 将被弹向这个方向）
+                        knockback_angle = np.arctan2(dy, dx)
+                        
+                        # 根据碰撞强度和 knockback 参数调整锁定时间
+                        # 归一化碰撞距离 [0, arm_th]，距离越小强度越大
+                        collision_intensity = 1.0 - (dmin / arm_th)  # [0, 1]，0=轻微，1=严重
+                        # knockback 越大，锁定时间越长（knockback 作为强度系数）
+                        # 锁定时间范围：基础时间 * (0.5 + collision_intensity) * (1 + kb/1000)
+                        kb_factor = 1.0 + (kb / 1000.0)  # 归一化 knockback 影响
+                        actual_lock_duration = int(lock_duration * (0.5 + collision_intensity) * kb_factor)
+                        actual_lock_duration = max(1, actual_lock_duration)  # 至少锁定1步
+                        
+                        # 应用弹开效果：改变朝向并锁定
+                        uav.apply_knockback(knockback_angle, actual_lock_duration)
 
         # 目标捕获检测
         for t_idx, target in enumerate(self.target_list):

@@ -10,17 +10,18 @@ from utils.data_util import clip_and_normalize
 
 
 class UAV:
-    def __init__(self, x0, y0, h0, a_idx, v_max, h_max, na, dc, dp, dt):
+    def __init__(self, x0, y0, h0, a0, v_max, h_max, na, dc, dp, dt):
         """
         :param dt: float, 采样的时间间隔
         :param x0: float, 坐标
         :param y0: float, 坐标
         :param h0: float, 朝向
+        :param a0: float, 初始动作值（角度改变量，连续值）
         :param v_max: float, 最大线速度
         :param h_max: float, 最大角速度
-        :param na: int, 动作空间的维度
+        :param na: int, 动作空间的维度（保留用于兼容性，但不再使用）
         :param dc: float, 与无人机交流的最大距离
-        :param dp: float, 观测目标的最大距离
+        :param dp: float, 捕捉目标的最大距离
         """
         # the position, velocity and heading of this uav
         self.x = x0
@@ -30,13 +31,13 @@ class UAV:
 
         # the max heading angular rate and the action of this uav
         self.h_max = h_max
-        self.Na = na
+        self.Na = na  # 保留用于兼容性，但动作现在是连续的
 
-        # action
-        self.a = a_idx
+        # action: 现在存储连续的角度改变量（角速度）
+        self.a = a0
 
         # the maximum communication distance and maximum perception distance
-        self.dc = dc
+        # self.dc = dc
         self.dp = dp
 
         # time interval
@@ -50,6 +51,10 @@ class UAV:
         # reward
         self.raw_reward = 0
         self.reward = 0
+        
+        # 朝向锁定状态（用于碰撞弹开效果）
+        self.lock = 0  # 剩余锁定时间（单位：步数）
+        self.captured_targets_count = 0  # 本步捕获的目标数量
 
     def __distance(self, target) -> float:
         """
@@ -73,7 +78,7 @@ class UAV:
 
     def discrete_action(self, a_idx: int) -> float:
         """
-        from the action space index to the real difference
+        from the action space index to the real difference (保留用于兼容性)
         :param a_idx: {0,1,...,Na - 1}
         :return: action : scalar 即角度改变量
         """
@@ -81,23 +86,42 @@ class UAV:
         na = a_idx + 1  # 从 1 开始索引
         return (2 * na - self.Na - 1) * self.h_max / (self.Na - 1)
 
-    def update_position(self, action: 'int') -> (float, float, float):
+    def update_position(self, action: 'float') -> (float, float, float):
         """
-        receive the index from action space, then update the current position
-        :param action: {0,1,...,Na - 1}
-        :return:
+        接收连续动作值，更新当前位置
+        :param action: float, 角度改变量（角速度），范围应在 [-h_max, h_max]
+        :return: (x, y, h) 更新后的位置和朝向
         """
-        self.a = action
-        a = self.discrete_action(action)  # 有可能把这行放到其他位置
+        # 将动作限制在有效范围内
+        a = np.clip(action, -self.h_max, self.h_max)
+        self.a = a
 
         dx = self.dt * self.v_max * cos(self.h)  # x 方向位移
         dy = self.dt * self.v_max * sin(self.h)  # y 方向位移
         self.x += dx
         self.y += dy
-        self.h += self.dt * a  # 更新朝向角度
+        
+        # 如果处于朝向锁定状态，忽略动作的朝向改变
+        if self.lock > 0:
+            self.lock -= 1  # 减少锁定时间
+            # 锁定期间不更新朝向，保持当前朝向继续运动
+        else:
+            # 正常更新朝向角度
+            self.h += self.dt * a
+        
         self.h = (self.h + pi) % (2 * pi) - pi  # 确保朝向角度在 [-pi, pi) 范围内
 
         return self.x, self.y, self.h  # 返回agent的位置和朝向(heading/theta)
+    
+    def apply_knockback(self, knockback_angle: float, lock_duration: int = 0):
+        """
+        应用弹开效果：改变朝向并锁定一段时间
+        :param knockback_angle: float, 弹开的角度（弧度）
+        :param lock_duration: int, 锁定持续时间（步数），锁定期间无法改变朝向
+        """
+        self.h = knockback_angle
+        self.h = (self.h + pi) % (2 * pi) - pi  # 确保朝向角度在 [-pi, pi) 范围内
+        self.lock = max(self.lock, lock_duration)  # 已锁定的情况下碰到新的protector
 
     def observe_target(self, targets_list: List['TARGET'], relative=True):
         """
@@ -159,25 +183,31 @@ class UAV:
             dist = self.__distance(uav)
             if dist <= self.dc and uav != self:
                 # add (x, y, vx, vy, a) information
+                # 将动作值归一化到 [-1, 1] 范围
+                uav_normalized_action = uav.a / uav.h_max if uav.h_max > 0 else 0.0
+                self_normalized_action = self.a / self.h_max if self.h_max > 0 else 0.0
                 if relative:
                     self.uav_communication.append(((uav.x - self.x) / self.dc,
                                                    (uav.y - self.y) / self.dc,
                                                    cos(uav.h) - cos(self.h),
                                                    sin(uav.h) - sin(self.h),
-                                                   (uav.a - self.a) / self.Na))
+                                                   uav_normalized_action - self_normalized_action))
                 else:
                     self.uav_communication.append((uav.x / self.dc,
                                                    uav.y / self.dc,
                                                    cos(uav.h),
                                                    sin(uav.h),
-                                                   uav.a / self.Na))
+                                                   uav_normalized_action))
 
     def __get_all_local_state(self) -> (List[Tuple[float, float, float, float, float]],
                                         List[Tuple[float, float, float, float]], Tuple[float, float, float]):
         """
-        :return: [(x, y, vx, by, na),...] for uav, [(x, y, vx, vy)] for targets, (x, y, na) for itself
+        :return: [(x, y, vx, vy, a),...] for uav, [(x, y, vx, vy)] for targets, (x, y, a) for itself
+        注意：现在 a 是连续的动作值，归一化到 [-1, 1] 范围
         """
-        return self.uav_communication, self.target_observation, (self.x / self.dc, self.y / self.dc, self.a / self.Na)
+        # 将动作值归一化到 [-1, 1] 范围（基于 h_max）
+        normalized_action = self.a / self.h_max if self.h_max > 0 else 0.0
+        return self.uav_communication, self.target_observation, (self.x / self.dc, self.y / self.dc, normalized_action)
 
     def __get_local_state_by_weighted_mean(self) -> 'np.ndarray':
         """
@@ -197,7 +227,7 @@ class UAV:
             average_communication = np.mean(communication_weighted, axis=0)
         else:
             # average_communication = np.zeros(4 + self.Na)  # empty communication
-            average_communication = -np.ones(4 + 1)  # empty communication  # TODO -1合法吗
+            average_communication = -np.ones(4 + 1)  # empty communication (x, y, vx, vy, a)
 
         if observation:
             d_observation = []  # store the distance from each target to itself
@@ -222,20 +252,59 @@ class UAV:
         # using weighted mean method:
         return self.__get_local_state_by_weighted_mean()
 
-    def __calculate_multi_target_tracking_reward(self, uav_list) -> float:
+    def __calculate_multi_target_tracking_reward(self, target_list) -> float:
         """
-        calculate multi target tracking reward
-        :return: scalar [1, 2)
+        Calculates multi-target tracking reward.
+        Modified to give a very small reward for being close to targets,
+        considering a larger tracking radius than `self.dp` and limiting
+        the reward to only the closest few targets to prevent reward exploitation.
+        :return: scalar [0, small_reward_factor * max_rewarded_targets]
         """
         track_reward = 0
-        for other_uav in uav_list:
-            if other_uav != self:
-                distance = self.__distance(other_uav)
-                if distance <= self.dp:
-                    reward = 1 + (self.dp - distance) / self.dp
-                    # track_reward += clip_and_normalize(reward, 1, 2, 0)
-                    track_reward += reward  # 没有clip, 在调用时外部clip
+
+        # Define parameters for tracking reward
+        # The tracking radius is set to be larger than self.dp (perception/capture range).
+        # This allows for a reward for being in the vicinity, even if not within capture range.
+        tracking_radius = 2.5 * self.dp  # Example: 2.5 times the perception distance
+
+        # Limit the number of closest targets for which a tracking reward is given.
+        # This prevents a UAV from accumulating excessive rewards by being in the middle of many targets.
+        max_rewarded_targets = 3  # Reward only the 3 closest targets within tracking_radius
+
+        # Define a small factor for the reward magnitude.
+        # This ensures the tracking reward remains small compared to capture rewards.
+        small_reward_factor = 0.1
+
+        # Calculate distances to all targets and filter those within the tracking radius
+        distances_to_targets = []
+        for target in target_list:
+            distance = self.__distance(target)
+            if distance <= tracking_radius:
+                distances_to_targets.append((distance, target))
+
+        # Sort targets by distance (closest first)
+        distances_to_targets.sort(key=lambda x: x[0])
+
+        # Calculate reward only for the closest 'max_rewarded_targets'
+        for i, (distance, _) in enumerate(distances_to_targets):
+            if i >= max_rewarded_targets:
+                break  # Stop after processing the specified number of targets
+
+            # Reward is scaled down and decreases linearly with distance.
+            # Max reward (small_reward_factor) is given at distance 0, and 0 reward at tracking_radius.
+            reward = small_reward_factor * (tracking_radius - distance) / tracking_radius
+            track_reward += reward
+
         return track_reward
+
+    def __calculate_target_capture_reward(self) -> float:
+        """
+        calculate target capture reward
+        :return: scalar [0, m_targets]
+        """
+        capture_reward = self.captured_targets_count
+        self.captured_targets_count = 0
+        return capture_reward
 
     def __calculate_duplicate_tracking_punishment(self, uav_list: List['UAV'], radio=2) -> float:
         """
@@ -388,9 +457,9 @@ class UAV:
         best_score = float('-inf')
         best_angle = 0.0
 
-        # 随机扰动：以epsilon的概率选择随机目标
+        # 随机扰动：以epsilon的概率选择随机动作
         if random.random() < self.epsilon:
-            return np.random.randint(0, self.Na)
+            return np.random.uniform(-self.h_max, self.h_max)
         else:
             for target in target_list:
                 target_x, target_y = target.x, target.y
@@ -419,9 +488,7 @@ class UAV:
         if random.random() < self.continue_tracing:
             best_angle = 0
             
-        # 将期望的角度差转换为离散动作索引
+        # 将期望的角度差转换为连续动作值（角速度）
+        # best_angle 是期望的角度差，需要转换为角速度
         a = np.clip(best_angle / self.dt, -self.h_max, self.h_max)
-        k = (self.Na - 1) * a / self.h_max
-        a_idx = int(np.round((k + self.Na - 1) / 2))
-        a_idx = max(0, min(self.Na - 1, a_idx))
-        return a_idx
+        return a

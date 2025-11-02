@@ -31,8 +31,9 @@ protector:
   h_max: 6         # 与 UAV 一致的角速度档转弧度
   dt: 0.1
   safe_radius: 200.0  # 与 UAV 进入这个会被惩罚
-  knockback: 200.0     # 弹开强度（最大推离距离）
+  knockback: 200.0     # 弹开强度系数（影响锁定时间长度，值越大锁定越久）
   arm_thickness: 100.0 # 手臂碰撞厚度（判定范围）
+  heading_lock_duration: 5  # 基础锁定时间（步数），碰撞后 UAV 朝向会被锁定无法改变
 
 target:
   v_max: 5
