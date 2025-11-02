@@ -1,5 +1,5 @@
 exp_name: MAAC-R
-result_dir: ../results/MAAC-R
+result_dir: results/MAAC-R
 # 第一个cuda device的编号, -1代表cpu
 first_device: 0
 # cuda device的数量, 使用cpu时无效
@@ -7,9 +7,9 @@ gpus: 1
 seed: 42
 cooperative: 0.3
 environment:
-  n_uav: 3
+  n_uav: 1
   m_targets: 10
-  n_protectors: 3
+  n_protectors: 1
   x_max: 2000 # 地图x轴最大范围
   y_max: 2000 # 地图y轴最大范围
   na: 12  # 离散化动作空间维数
@@ -26,7 +26,7 @@ uav:
   omega: 0.5
 
 protector:
-  n_protectors: 3
+  n_protectors: 1
   v_max: 5
   h_max: 6         # 与 UAV 一致的角速度档转弧度
   dt: 0.1
