@@ -551,20 +551,8 @@ protector:
   knockback: 200.0        # 💥 弹开强度（最大推离距离）
   arm_thickness: 100.0    # 🔧 手臂碰撞厚度（判定范围）
 ```
-
-### 🧪 测试碰撞效果
-
-运行测试脚本验证功能：
-
-```bash
-# 测试碰撞检测
-python test_knockback.py
-
-# 生成可视化演示
-python demo_knockback.py
-```
-
 ### 📊 参数调优建议
+
 
 | 参数 | 推荐范围 | 效果 |
 |------|----------|------|
@@ -579,11 +567,7 @@ python demo_knockback.py
 - 💥 老鹰轨迹在碰撞时突然改变方向
 - 📍 老鹰被推离母鸡的防御区域
 
-### 📖 详细文档
 
-完整实现说明请查看：[KNOCKBACK_GUIDE.md](KNOCKBACK_GUIDE.md)
-
----
 
 ## 🎮 智能体介绍
 
@@ -678,3 +662,4 @@ python demo_knockback.py
 Made with ❤️ by ME5424 Team
 
 </div>
+
