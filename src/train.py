@@ -376,11 +376,11 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
             else:
                 avg_pmi_loss = 0.0
 
-                if (episode + 1) % frequency == 0:
-                    postfix = {
-                        'episode': f'{episode + 1}',
-                        'uav_return': f'{np.mean(return_value.return_list[-frequency:]):.3f}'
-                    }
+            if (episode + 1) % frequency == 0:
+                postfix = {
+                    'episode': f'{episode + 1}',
+                    'uav_return': f'{np.mean(return_value.return_list[-frequency:]):.3f}'
+                }
                 for role in roles:
                     actor_loss_value, critic_loss_value = last_losses.get(role, (0.0, 0.0))
                     postfix[f'{role}_actor'] = f'{actor_loss_value:.4f}'
