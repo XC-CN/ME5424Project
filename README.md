@@ -47,8 +47,15 @@
 
 ```bash
 pip install -r requirements.txt
+# pip install: Python 包管理工具安装命令
+# -r requirements.txt: 从 requirements.txt 文件中读取依赖包列表并批量安装
+
 # 或者逐项安装
 pip install numpy scipy matplotlib pillow imageio torch torchvision torchaudio tqdm pyyaml tensorboard
+# pip install: 安装指定的 Python 包
+# numpy scipy matplotlib pillow imageio: 数值计算、科学计算、绘图、图像处理等库
+# torch torchvision torchaudio: PyTorch 深度学习框架及相关组件
+# tqdm pyyaml tensorboard: 进度条、YAML 配置解析、训练可视化工具
 ```
 
 ---
@@ -59,6 +66,11 @@ pip install numpy scipy matplotlib pillow imageio torch torchvision torchaudio t
 
 ```bash
 python src/main.py --phase <模式> --method <算法> [其它参数]
+# python: Python 解释器
+# src/main.py: 主程序入口脚本路径
+# --phase <模式>: 必填参数，指定运行模式（train/evaluate/run）
+# --method <算法>: 必填参数，指定算法配置（MAAC-R/MAAC/MAAC-G/C-METHOD）
+# [其它参数]: 可选参数，如 -e（轮数）、-s（步数）、-f（保存频率）等
 ```
 
 若出现 `OMP: Error #15` 等提示，可先设置 `KMP_DUPLICATE_LIB_OK=TRUE` 再运行。
@@ -81,14 +93,17 @@ python src/main.py --phase <模式> --method <算法> [其它参数]
 
 激活conda环境：
 
-```
-conda activate ME5424Project
+```bash
+conda activate ME5424Project  # 激活名为 ME5424Project 的 conda 虚拟环境
 ```
 
 #### 1️⃣ 演示模式（无需训练、权重）
 
 ```bash
 python src/main.py --phase run --method MAAC-R -s 300
+# --phase run: 指定运行模式为演示模式（使用启发式策略，无需训练）
+# --method MAAC-R: 选择 MAAC-R 算法配置文件
+# -s 300: 设置每轮仿真步数为 300 步
 ```
 
 - 使用内置启发式策略快速播放场景，适用于初次体验或演示。
@@ -97,7 +112,12 @@ python src/main.py --phase run --method MAAC-R -s 300
 #### 2️⃣ 训练模式（自动保存最新模型）
 
 ```bash
-python src.main.py --phase train --method MAAC-R -e 50 -s 300 -f 20
+python src/main.py --phase train --method MAAC-R -e 50 -s 300 -f 20
+# --phase train: 指定运行模式为训练模式（使用神经网络进行学习）
+# --method MAAC-R: 选择 MAAC-R 算法配置文件
+# -e 50: 设置训练轮数（episodes）为 50 轮
+# -s 300: 设置每轮仿真步数为 300 步
+# -f 20: 设置保存频率为每 20 轮保存一次模型和日志
 ```
 
 - 训练 50 局、每局 300 步，每 20 局保存一次模型与日志。
@@ -110,19 +130,31 @@ python src.main.py --phase train --method MAAC-R -e 50 -s 300 -f 20
 #### 3️⃣ 评估模式（默认加载最近训练结果）
 
 ```bash
-python src.main.py --phase evaluate --method MAAC-R -s 500
+python src/main.py --phase evaluate --method MAAC-R -s 500
+# --phase evaluate: 指定运行模式为评估模式（加载已训练权重进行测试）
+# --method MAAC-R: 选择 MAAC-R 算法配置文件
+# -s 500: 设置每轮仿真步数为 500 步
 ```
 
 - 不指定权重路径时，会自动寻找 `results/MAAC-R/` 下最近一次训练输出的最新权重进行评估。
 - 如需复现特定检查点，可显式指定：
   ```bash
-  python src.main.py --phase evaluate --method MAAC-R -s 500 \
+  python src/main.py --phase evaluate --method MAAC-R -s 500 \
          --actor_path results/MAAC-R/.../actor_100.pth \
          --critic_path results/MAAC-R/.../critic_100.pth \
          --protector_actor_path results/MAAC-R/.../protector_actor_weights_100.pth \
          --protector_critic_path results/MAAC-R/.../protector_critic_weights_100.pth \
          --target_actor_path results/MAAC-R/.../target_actor_weights_100.pth \
          --target_critic_path results/MAAC-R/.../target_critic_weights_100.pth
+  # --phase evaluate: 评估模式
+  # --method MAAC-R: 使用 MAAC-R 配置
+  # -s 500: 仿真步数 500 步
+  # --actor_path: 指定老鹰 Actor 网络权重文件路径
+  # --critic_path: 指定老鹰 Critic 网络权重文件路径
+  # --protector_actor_path: 指定母鸡 Actor 网络权重文件路径
+  # --protector_critic_path: 指定母鸡 Critic 网络权重文件路径
+  # --target_actor_path: 指定小鸡 Actor 网络权重文件路径
+  # --target_critic_path: 指定小鸡 Critic 网络权重文件路径
   ```
 - 评估会再次输出动画与指标，可与训练阶段对比。
 
@@ -130,8 +162,11 @@ python src.main.py --phase evaluate --method MAAC-R -s 500
 
 - **结果目录**：`results/MAAC-R/{experiment}/` 包含权重、日志、动画、轨迹与各类 CSV 指标。
 - **日志可视化**：
+
   ```bash
   tensorboard --logdir results/MAAC-R/{experiment}/logs
+  # tensorboard: 启动 TensorBoard 可视化工具
+  # --logdir: 指定日志文件所在目录路径
   ```
 
   查看老鹰/母鸡/小鸡三类智能体的奖励、损失、覆盖率等曲线。

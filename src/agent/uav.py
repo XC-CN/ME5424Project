@@ -1,4 +1,5 @@
 import random
+from math import cos, sin, sqrt, exp, pi, e, atan2, hypot
 import numpy as np
 from typing import List, Tuple, Optional
 from models.PMINet import PMINetwork
@@ -11,15 +12,15 @@ from utils.data_util import clip_and_normalize
 class UAV:
     def __init__(self, x0, y0, h0, a_idx, v_max, h_max, na, dc, dp, dt):
         """
-        :param dt: float, 闂備焦褰冨ú锕傛偋闁秵鍎嶉柛鏇ㄥ墯椤ρ囨⒒閸屾稒灏︽俊顐㈡健濮?
-        :param x0: float, 闂佺鍕闁?
-        :param y0: float, 闂佺鍕闁?
-        :param h0: float, 闂佸搫鐗婄换鍌炲箖?
-        :param v_max: float, 闂佸搫鐗冮崑鎾愁熆閸棗鎳庡▓鐘绘⒑椤愩倕鏋庨悗?
-        :param h_max: float, 闂佸搫鐗冮崑鎾愁熆閸棗妫锟犳⒑椤愩倕鏋庨悗?
-        :param na: int, 闂佸憡鏌ｉ崝瀣礊閺冨倻鐭氭繛宸簼閿涚喖鏌ｉ妸銉ヮ伀婵烇綆鍠楅幆?
-        :param dc: float, 婵炴垶鎸哥€涒晛螞閵堝棛顩查柣鎴炆戠花姘瑰┃鍨偓鏍矈閿曞倹鍎嶉柛鏇ㄥ墯娴犳ê顭块崼鍡楁閻涒晝绱?
-        :param dp: float, 闁荤喐鐟ラ崐鍦矈閹绢喗鍎庢い鏃傛櫕閸ㄥジ鏌ｉ妸銉ヮ仾婵炴捁鍩栧鍕樁缂佹劖绋撶划?
+        :param dt: float, 闂傚倷鐒﹁ぐ鍐洪敃鍌涘亱闂侇剙绉甸崕宥夋煕閺囥劌澧い蟻鍥ㄢ拻闁稿本绋掔亸锔戒繆椤愩垺鍋ユ慨?
+        :param x0: float, 闂備胶顫嬮崟顐㈩潔闂?
+        :param y0: float, 闂備胶顫嬮崟顐㈩潔闂?
+        :param h0: float, 闂備礁鎼悧濠勬崲閸岀偛绠?
+        :param v_max: float, 闂備礁鎼悧鍐磻閹炬剚鐔嗛柛顐㈡閹冲骸鈻撻悩缁樷拺妞ゆ劑鍊曢弸搴ㄦ倵?
+        :param h_max: float, 闂備礁鎼悧鍐磻閹炬剚鐔嗛柛顐㈡濡厼顭囬敓鐘斥拺妞ゆ劑鍊曢弸搴ㄦ倵?
+        :param na: int, 闂備礁鎲￠弻锝夊礉鐎ｎ剛绀婇柡鍐ㄥ€婚惌姘箾瀹割喕绨奸柨娑氬枛閺岋綁濡搁妷銉紑濠电儑缍嗛崰妤呭箚?
+        :param dc: float, 濠电偞鍨堕幐鍝モ偓娑掓櫅铻為柕鍫濇椤╂煡鏌ｉ幋鐐嗘垹鑺卞顑炵懓鈹冮崹顔瑰亾閺嶎偆鐭堥柨鏇炲€归崕宥夋煕閺囥劌澧ù鐘趁…鍧楀醇閸℃顥犻柣娑掓櫇缁?
+        :param dp: float, 闂佽崵鍠愰悷銉╁磹閸︻厾鐭堥柟缁㈠枟閸庡孩銇勯弮鍌涙珪闁搞劌銈搁弻锝夊Ω閵夈儺浠惧┑鐐存崄閸╂牕顕ラ崟顕呮▉缂備焦鍔栫粙鎾跺垝?
         """
         # the position, velocity and heading of this uav
         self.x = x0
@@ -41,7 +42,7 @@ class UAV:
         # time interval
         self.dt = dt
 
-        # world bounds (闂佹眹鍨兼禍顒勭嵁閸℃ɑ娅犻柛鎰╁妽闊剟鏌涢幒鎾剁畵妞ゎ偅鍔欏畷鐘诲冀閵婏富妲柣鐘辩婢т粙鎮?
+        # world bounds (闂備焦鐪归崹鍏肩椤掑嫮宓侀柛鈩兩戝▍鐘绘煕閹扳晛濡介棅顒夊墴閺屾盯骞掗幘鍓佺暤濡炪値鍋呴崝娆忕暦閻樿鍐€闁靛瀵屽Σ顖炴煟閻樿京顦﹀褌绮欓幃?
         self.world_bounds: Optional[Tuple[float, float]] = None
 
         # set of local information
@@ -114,15 +115,15 @@ class UAV:
         """
         from the action space index to the real difference
         :param a_idx: {0,1,...,Na - 1}
-        :return: action : scalar 闂佸憡顨呴悿鍥綖濡や焦鍎熼柨鏃囧Г閺嗩參鏌涘▎鎰惰€块柛?
+        :return: action : scalar 闂備礁鎲￠〃鍛存偪閸ヮ剨缍栨俊銈勭劍閸庣喖鏌ㄩ弮鍥撻柡鍡╁弮閺屾稑鈻庨幇鎯扳偓鍧楁煕?
         """
         # from action space to the real world action
-        na = a_idx + 1  # 婵?1 閻庢鍠掗崑鎾斥攽椤旂⒈鍎戦柛灞诲妼椤?
+        na = a_idx + 1  # 濠?1 闁诲孩顔栭崰鎺楀磻閹炬枼鏀芥い鏃傗拡閸庢垿鏌涚仦璇插妞?
         return (2 * na - self.Na - 1) * self.h_max / (self.Na - 1)
 
-        self.h = (self.h + pi) % (2 * pi) - pi  # 缂佺虎鍙庨崰鏇犳崲濮樿泛瀚夋繝闈涙閸婂鎮峰▎鎰瑨閻庤濞婂畷?[-pi, pi) 闂佽偐鍘ч崯顐⒚洪崸妤€绀?
+        self.h = (self.h + pi) % (2 * pi) - pi  # 缂備胶铏庨崣搴ㄥ窗閺囩姵宕叉慨妯挎硾鐎氬绻濋棃娑欘棡闁稿﹤顭烽幃宄扳枎閹邦剛鐟ㄩ柣搴ゎ潐婵炲﹤鐣?[-pi, pi) 闂備浇鍋愰崢褔宕鈷氭椽宕稿Δ鈧粈?
 
-        return self.x, self.y, self.h  # 闁哄鏅滈弻銊ッ洪張绯秂nt闂佹眹鍔岀€氼亞绱為崨顖滅＞妞ゆ柨鍚嬬€氭煡鏌￠崼鐔虹畵闁?heading/theta)
+        return self.x, self.y, self.h  # 闂佸搫顦弲婊堝蓟閵娿儍娲嫉缁nt闂備焦鐪归崝宀€鈧凹浜炵槐鐐哄川椤栨粎锛炲銈嗘煥閸氬鈧碍鐓￠弻锟犲醇閻旇櫣鐣甸梺?heading/theta)
 
     def observe_target(self, targets_list: List['Target'], relative=True):
         """
@@ -132,7 +133,7 @@ class UAV:
         :return: None
         """
         self.target_observation = []  # Reset observed targets
-        # 閻庡湱顭堝璺虹暦閻斿吋鍤斿瀣缁愭鏌″鍛煑缂佹顦靛畷妯侯吋閸偅钑夐柣鐔哥懃閸婂湱绮?
+        # 闁诲骸婀遍…鍫濐嚕鐠鸿櫣鏆﹂柣鏂垮悑閸ゆ柨顪冪€ｎ亜顒㈢紒鎰殜閺屸€愁吋閸涱喚鐓戠紓浣诡殔椤﹂潧鐣峰Ο渚悑闁割偒鍋呴拺澶愭煟閻斿摜鎳冮柛濠傛贡缁?
         for target in targets_list:
             if getattr(target, 'captured', False):
                 continue
@@ -222,7 +223,7 @@ class UAV:
             average_communication = np.mean(communication_weighted, axis=0)
         else:
             # average_communication = np.zeros(4 + self.Na)  # empty communication
-            average_communication = -np.ones(4 + 1)  # empty communication  # TODO -1闂佸憡鑹鹃悧濠勬兜閸洖瑙?
+            average_communication = -np.ones(4 + 1)  # empty communication  # TODO -1闂備礁鎲￠懝楣冩偋婵犲嫭鍏滈柛顐ｆ礀鐟?
 
         if observation:
             d_observation = []  # store the distance from each target to itself
@@ -234,7 +235,7 @@ class UAV:
             observation_weighted = observation / np.array(d_observation)[:, np.newaxis]
             average_observation = np.mean(observation_weighted, axis=0)
         else:
-            average_observation = -np.ones(4)  # empty observation  # TODO -1闂佸憡鑹鹃悧濠勬兜閸洖瑙?
+            average_observation = -np.ones(4)  # empty observation  # TODO -1闂備礁鎲￠懝楣冩偋婵犲嫭鍏滈柛顐ｆ礀鐟?
 
         sb = np.array(sb)
         result = np.hstack((average_communication, average_observation, sb))
@@ -259,14 +260,14 @@ class UAV:
                 if distance <= self.dp:
                     reward = 1 + (self.dp - distance) / self.dp
                     # track_reward += clip_and_normalize(reward, 1, 2, 0)
-                    track_reward += reward  # 濠电偛澶囬崜婵嗭耿娑旑湶ip, 闂侀潻璐熼崝蹇涙儍閻斿吋鍋ㄩ柕濠忛檮椤ρ冾熆閼哥數澧甸柛搴ｂ挅lip
+                    track_reward += reward  # 婵犵數鍋涙径鍥礈濠靛棴鑰垮☉鏃戞苟ip, 闂備線娼荤拹鐔煎礉韫囨稒鍎嶉柣鏂垮悑閸嬨劑鏌曟繝蹇涙妞は佸喚鐔嗛柤鍝ユ暩婢х敻鏌涙惔锝傛寘lip
         return track_reward
 
     def __calculate_duplicate_tracking_punishment(self, uav_list: List['UAV'], radio=2) -> float:
         """
         calculate duplicate tracking punishment
         :param uav_list: [class UAV]
-        :param radio: radio闂佹椿娼块崝宥咁焽閻㈢绠崇憸宥夊春濡ゅ懎绠氶柍鍝勫暟缁嬪牓鏌ｉ妸銉ヮ伂閻庡灚鐗犲畷? 闁烩剝甯掗幊搴ㄥ吹椤撶喎绶炴慨妯虹－缁犲ジ鏌熼棃娑毿ら柣锝咁煼瀹曟濡烽敃鈧崝锔剧磽?
+        :param radio: radio闂備焦妞垮鍧楀礉瀹ュ拋鐒介柣銏㈩焾缁犲磭鎲稿澶婃槬婵°倕鎳庣粻姘舵煃閸濆嫬鏆熺紒瀣墦閺岋綁濡搁妷銉紓闁诲骸鐏氶悧鐘茬暦? 闂佺儵鍓濈敮鎺楀箠鎼淬劌鍚规い鎾跺枎缁剁偞鎱ㄥΟ铏癸紞缂佺姴銈搁弻鐔兼濞戞銈夋煟閿濆拋鐓肩€规洘顨婃俊鐑芥晝閳ь剟宕濋敂鍓х＝?
         :return: scalar (-e/2, -1/2]
         """
         total_punishment = 0
@@ -276,7 +277,7 @@ class UAV:
                 if distance <= radio * self.dp:
                     punishment = -0.5 * exp((radio * self.dp - distance) / (radio * self.dp))
                     # total_punishment += clip_and_normalize(punishment, -e/2, -1/2, -1)
-                    total_punishment += punishment  # 濠电偛澶囬崜婵嗭耿娑旑湶ip, 闂侀潻璐熼崝蹇涙儍閻斿吋鍋ㄩ柕濠忛檮椤ρ冾熆閼哥數澧甸柛搴ｂ挅lip
+                    total_punishment += punishment  # 婵犵數鍋涙径鍥礈濠靛棴鑰垮☉鏃戞苟ip, 闂備線娼荤拹鐔煎礉韫囨稒鍎嶉柣鏂垮悑閸嬨劑鏌曟繝蹇涙妞は佸喚鐔嗛柤鍝ユ暩婢х敻鏌涙惔锝傛寘lip
         return total_punishment
 
     def __calculate_boundary_punishment(self, x_max: float, y_max: float) -> float:
@@ -297,7 +298,7 @@ class UAV:
                 boundary_punishment = 0
         else:
             boundary_punishment = -1/2
-        return boundary_punishment  # 濠电偛澶囬崜婵嗭耿娑旑湶ip, 闂侀潻璐熼崝蹇涙儍閻斿吋鍋ㄩ柕濠忛檮椤ρ冾熆閼哥數澧甸柛搴ｂ挅lip
+        return boundary_punishment  # 婵犵數鍋涙径鍥礈濠靛棴鑰垮☉鏃戞苟ip, 闂備線娼荤拹鐔煎礉韫囨稒鍎嶉柣鏂垮悑閸嬨劑鏌曟繝蹇涙妞は佸喚鐔嗛柤鍝ユ暩婢х敻鏌涙惔锝傛寘lip
         # return clip_and_normalize(boundary_punishment, -1/2, 0, -1)
 
     def calculate_raw_reward(self, uav_list: List['UAV'], target__list: List['Target'], protector_list: List['Protector'], x_max, y_max):
@@ -313,26 +314,26 @@ class UAV:
 
     def __calculate_protector_collision_punishment(self, protector_list: List['Protector']) -> float:
         """
-        缂備胶濮崑鎾绘煕濡や焦绀堟繛鍫熷灩閹瑰嫬鈹戦崼顐も偓鏌ユ⒒閸愩劎澧曢柍褜鍓欓崥瀣磿閻㈢數纾炬慨妯哄⒔缁?
-        - 闂?UAV 婵炴垶鎸哥花濂稿箲閵忋倕绠?Protector 闁荤姷鍎ょ换鍕€?< threshold 闂佸憡甯楅悷銈嗩殽閸ヮ剚鍋ㄩ柣鏃傤焾閸旓妇绱撻崘鈺冨暡缂佽鲸鐟ч幏褰掓偄鐏忎礁浜剧痪顓㈩棑缁€?
-        - 闁哄鏅滈弻銊ッ洪弽顓炵９闁绘挸楠哥徊鍧楁煕閺嶃劍銇濇俊?[-K, 0]闂佹寧绋戦悧濠傦耿椤撀颁汗闁瑰搫绉堕閬嶆煕閺嶃劎澹勭紒杈ㄥ哺閺佸秶浠﹂懞銉モ偓鐢电磽娓氬洤骞橀柡?clip_and_normalize 閻熸粎澧楃敮濠勭博閹绢喖绀岄柡宓啰鍘?[-1,0]
+        缂傚倷鑳舵慨顓㈠磻閹剧粯鐓曟俊銈勭劍缁€鍫熺箾閸喎鐏╅柟鐟板閳规垿宕奸銈傚亾閺屻儲鈷掗柛鎰╁妿婢ф洟鏌嶈閸撴瑩宕ョ€ｎ喖纾块柣銏㈡暩绾剧偓鎱ㄥΟ鍝勨挃缂?
+        - 闂?UAV 濠电偞鍨堕幐鍝ヨ姳婵傜绠查柕蹇嬪€曠粻?Protector 闂佽崵濮烽崕銈囨崲閸曨垪鈧?< threshold 闂備礁鎲＄敮妤呮偡閵堝棭娈介柛銉墯閸嬨劑鏌ｉ弮鍌ょ劸闁告棑濡囩槐鎾诲礃閳哄啫鏆＄紓浣介哺閻熝囧箯瑜版帗鍋勯悘蹇庣娴滃墽鐥銏╂缂佲偓?
+        - 闂佸搫顦弲婊堝蓟閵娿儍娲冀椤撶偟锛欓梺缁樻尭妤犲摜寰婇崸妤佺厱闁哄秲鍔嶉妵婵囦繆?[-K, 0]闂備焦瀵х粙鎴︽偋婵犲偊鑰挎い鎾€棰佹睏闂佺懓鎼粔鍫曨敂闁秵鐓曢柡宥冨妿婢瑰嫮绱掓潏銊ュ摵闁轰礁绉舵禒锕傛嚍閵夈儮鍋撻悽鐢电＝濞撴艾娲ら獮姗€鏌?clip_and_normalize 闁荤喐绮庢晶妤冩暜婵犲嫮鍗氶柟缁㈠枛缁€宀勬煛瀹擃喖鍟伴崢?[-1,0]
         """
-        # UAV 闂佺厧顨庢禍锝夋閳哄懎纭€濠电姴鍊荤粣鐐烘煥濞戞瀚扮憸鐗堢叀閺屽﹤顓奸崶鈺傜€梺鐟扮摠閻楃姷鍒掗婊勫?
+        # UAV 闂備胶鍘ч〃搴㈢閿濆顥婇柍鍝勬噹绾偓婵犵數濮撮崐鑽ょ玻閻愮儤鐓ユ繛鎴烆焾鐎氭壆鎲搁悧鍫㈠弨闁哄苯锕ら濂稿炊閳哄倻鈧參姊洪悷鎵憼闁绘濮烽崚鎺楊敍濠婂嫬顎?
         uav_radius = getattr(self, "radius", 0.5)
-        worst_pen = 0.0  # 闂佽鍨弲婵堢礊閹烘挾鈻旀繛宸簼婵粍鎱ㄥ┑鎾剁ɑ闁哄棛鍠栭弫? 闁荤偞绋忛崝搴ㄥΦ濮樿泛绫嶉柣妯哄暱閸旓妇绱撻崘鈺冨暡缂?
+        worst_pen = 0.0  # 闂備浇顕栭崹顏堝疾濠靛牏绀婇柟鐑樻尵閳绘梹绻涘顔荤凹濠殿喗绮嶉幈銊モ攽閹惧墎蓱闂佸搫妫涢崰鏍极? 闂佽崵鍋炵粙蹇涘礉鎼淬劌桅婵娉涚猾宥夋煟濡搫鏆遍柛鏃撳缁辨捇宕橀埡鍐ㄦ殹缂?
         for prot in protector_list:
-            # protector 闂備焦褰冮惉鑲┾偓鐟扮－閳ь剝顫夐懝楣冩儓濮椻偓楠炩偓?safe_r闂佹寧绋戦悧濠囧垂閵婏附濯撮悹鎭掑妽閺?prot.safe_r闂?
+            # protector 闂傚倷鐒﹁ぐ鍐儔閼测斁鍋撻悷鎵紞闁逞屽墲椤鎳濇ィ鍐╁創婵せ鍋撴鐐╁亾?safe_r闂備焦瀵х粙鎴︽偋婵犲洤鍨傞柕濠忛檮婵挳鎮归幁鎺戝闁?prot.safe_r闂?
             prot_safe = getattr(prot, "safe_r", None)
             if prot_safe is None:
-                # 闂佹椿娼块崝鎴犲垝椤栨粍濯奸柕鍫濇閻?prot.radius
+                # 闂備焦妞垮鍧楀礉閹寸姴鍨濇い鏍ㄧ矋婵ジ鏌曢崼婵囶棞闁?prot.radius
                 prot_safe = getattr(prot, "radius", 0.5)
-            threshold = prot_safe + uav_radius  # 闁荤喐鐟ュΛ鏃傛嫻閻斿搫鏋堥柣妤€鐗婄€?闁荤姭鍋撻柨鏃囨閻忓﹪鏌涘Δ鈧敃銈囨?
+            threshold = prot_safe + uav_radius  # 闂佽崵鍠愰悷銉ノ涢弮鍌涘闁绘柨鎼弸鍫ユ煟濡も偓閻楀﹦鈧?闂佽崵濮崑鎾绘煥閺冨洦顥夐柣蹇擄躬閺屾稑螖閳ь剟鏁冮妶鍥偨?
             dx = prot.x - self.x
             dy = prot.y - self.y
             dist = hypot(dx, dy)
             if dist < threshold:
-                # 闂佽鍨弲婵堢礊閹烘绠板璺烘捣閻涒晝绱掗崒婊呭笡闁搞劍鑹捐闁哄倸澧芥导鎰版煥濞戞瑥鍝烘繛纰卞墮椤曘儱螖閸曨厜銊╁级閳哄倸鐏﹂柛搴ｆ暩缁辨柨顫濆畷鍥嗐劌顭块崼鍡楃Ф缁€鍕偣閹邦喖娅愮紒?
-                # 闂佸搫鐗滄禍婊呯礊婵犲啰鈻旈柍褜鍓熷畷鐘诲冀閵娿儱濮︾紓鍌氬暞閻旑剛妲愬┑鍥╃懝閻庯綆浜跺ú銈夋煥?- (threshold - dist)  -> 婵炲濮撮鍕姳?(-threshold, 0]
+                # 闂備浇顕栭崹顏堝疾濠靛牏绀婇柟鐑橆殔缁犳澘顭跨捄鐑樻崳闁绘稈鏅濈槐鎺楀磼濠婂懎绗￠梺鎼炲妽閼规崘顣鹃梺鍝勫€告晶鑺ュ閹扮増鐓ユ繛鎴炵懃閸濈儤绻涚喊鍗炲妞ゆ洏鍎辫灃闁告洦鍘滈妸鈺佺骇闁冲搫鍊搁悘锕傛煕鎼达絾鏆╃紒杈ㄦ煥椤繂鐣烽崶鍡愬妼椤潡宕奸崱妤冃ょ紒鈧崟顖涘仯闁归偊鍠栧▍鎰磼?
+                # 闂備礁鎼悧婊勭濠婂懐绀婂┑鐘插暟閳绘棃鏌嶈閸撶喎鐣烽悩璇插唨闁靛鍎辨慨锔剧磽閸屾艾鏆為柣鏃戝墰濡叉劕鈹戦崶鈺冩嚌闁诲函缍嗘禍璺好洪妶澶嬬叆?- (threshold - dist)  -> 濠电偛顕慨鎾敄閸曨叀濮?(-threshold, 0]
                 pen = -(threshold - dist)
                 if pen < worst_pen:
                     worst_pen = pen
@@ -346,7 +347,7 @@ class UAV:
         :param a: float, proportion of selfish and sharing
         :return:
         """
-        if a == 0:  # 闂佸湱绮崝鏇熸櫠閻樿绀嗛柕鍫濇閻掍粙鏌ㄥ☉妯肩劮濠碘槅鍙冮幆鍥ㄦ媴缁涘鎮佺紓浣哄У椤ㄥ牆鈻撻幋鐐茬窞鐎广儱妫欑徊浠嬪箹?
+        if a == 0:  # 闂備礁婀辩划顖炲礉閺囩喐娅犻柣妯款嚙缁€鍡涙煏閸繃顥為柣鎺嶇矙閺屻劌鈽夊Ο鑲╁姰婵犵妲呴崣鍐箚閸ャ劍濯寸紒娑橆儏閹胶绱撴担鍝勑ｆい銊ョ墕閳绘捇骞嬮悙鑼獮閻庡箍鍎卞Λ娆戝緤娴犲绠?
             return self.raw_reward
 
         neighbor_rewards = []
@@ -376,14 +377,14 @@ class UAV:
         :param a: float, proportion of selfish and sharing
         :return:
         """
-        if a == 0:  # 闂佸湱绮崝鏇熸櫠閻樿绀嗛柕鍫濇閻掍粙鏌ㄥ☉妯肩劮濠碘槅鍙冮幆鍥ㄦ媴缁涘鎮佺紓浣哄У椤ㄥ牆鈻撻幋鐐茬窞鐎广儱妫欑徊浠嬪箹?
+        if a == 0:  # 闂備礁婀辩划顖炲礉閺囩喐娅犻柣妯款嚙缁€鍡涙煏閸繃顥為柣鎺嶇矙閺屻劌鈽夊Ο鑲╁姰婵犵妲呴崣鍐箚閸ャ劍濯寸紒娑橆儏閹胶绱撴担鍝勑ｆい銊ョ墕閳绘捇骞嬮悙鑼獮閻庡箍鍎卞Λ娆戝緤娴犲绠?
             return self.raw_reward
 
         neighbor_rewards = []
         for other_uav in uav_list:
             if other_uav != self and self.__distance(other_uav) <= self.dp:
                 neighbor_rewards.append(other_uav.raw_reward)
-        # 濠电偛澶囬崜婵嗭耿娓氣偓瀹曟繈鎮╅幓鎺戞辈PMI缂傚倸鍟崹鍦垝?
+        # 婵犵數鍋涙径鍥礈濠靛棴鑰垮〒姘ｅ亾鐎规洘绻堥幃鈺呭箵閹烘垶杈圥MI缂傚倸鍊搁崯顖炲垂閸︻厼鍨?
         reward = (1 - a) * self.raw_reward + a * sum(neighbor_rewards) / len(neighbor_rewards) \
             if len(neighbor_rewards) else 0
         return reward
@@ -404,7 +405,7 @@ class UAV:
         def distance(x1, y1, x2, y2):
             return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-        # 婵犻潧鍊归悧鏇熸叏閹惰棄妞介悘鐐村劤閸旓妇绱撻崘鈺冾暡婵炵厧鐗撻弻?
+        # 濠电娀娼ч崐褰掓偋閺囩喐鍙忛柟鎯版濡炰粙鎮橀悙鏉戝姢闁告棑濡囩槐鎾诲礃閳哄喚鏆″┑鐐靛帶閻楁捇寮?
         target_reward_weight = 1.0
         repetition_penalty_weight = 0.8
         self.epsilon = 0.25
@@ -413,17 +414,17 @@ class UAV:
         best_score = float('-inf')
         best_angle = 0.0
 
-        # 闂傚倸鎳庣换鎴濃攦閳ь剟鏌熼崹顐ｇ凡濠殿喒鏅犻弫宥咁潩椤愶紕闉峞psilon闂佹眹鍔岀€氼參銆呰閹娊宕堕钘変壕濠㈣泛顑呴銉╂⒒閸涱厾绠叉繝褉鍋撻梺鐑╂櫓閸犳鎮?
+        # 闂傚倸鍊搁幊搴ｆ崲閹存績鏀﹂柍褜鍓熼弻鐔煎垂椤愶絿鍑℃繝娈垮枓閺呯娀寮鍜佹僵妞ゆ劧绱曢棄宄瀙silon闂備焦鐪归崝宀€鈧凹鍙冮妴鍛邦樄闁诡喗濞婂畷鍫曨敄閽樺澹曟繝銏ｆ硾椤戝懘顢旈妷鈺傗拻闁告侗鍘剧粻鍙夌節瑜夐崑鎾绘⒑閻戔晜娅撻柛鐘愁殜閹?
         if random.random() < self.epsilon:
             return np.random.randint(0, self.Na)
         else:
             for target in target_list:
                 target_x, target_y = target.x, target.y
 
-                # 閻熸粎澧楅幐鍛婃櫠閻樿绫嶉柣妯块哺閻粙鏌￠崼婵囨儓闁糕晛鐭傞幆鍕敊閻ｅ苯鐏遍梺姹囧妼鐎氼垳绮ｅ☉姘辩焿?
+                # 闁荤喐绮庢晶妤呭箰閸涘﹥娅犻柣妯款嚙缁秹鏌ｅΟ鍧楀摵闁活亙绮欓弻锟犲醇濠靛洦鍎撻梺绯曟櫅閻倿骞嗛崟顖ｆ晩闁伙絽鑻悘閬嶆⒑濮瑰洤濡奸悗姘煎灣缁絽鈽夊杈╃効?
                 dist_to_target = distance(self.x, self.y, target_x, target_y)
 
-                # 闂備焦褰冪粔鎾囬崣澶嬩氦闁稿﹦鍠栭崵瀣煟閵娿儱顏柛搴ｆ暩缁辨柨顫濋崜褏顦梺鍏兼緲閸熷啿顬婃繝姘闁哄牏鏁搁柧鍌炴煛閸愵亜小婵懓顦靛鐢稿传閸曨剝鍚梻浣瑰絻缁夋挳藝閸欏浜ら柛濠勫枛閸ゅ鏌涘Δ鈧敃銈囨閻愬搫绀冮柛娑卞枟绗戦梺鍛婄啲缁犳垵锕㈤鍛氦闁稿﹦鍠栭崵瀣煕濮橆剙顨欑紒鏃€鎸抽幆鍕敊閻ｅ苯鐏?
+                # 闂傚倷鐒﹁ぐ鍐矓閹绢啟鍥矗婢跺姘﹂梺绋匡功閸犳牠宕电€ｎ喗鐓熼柕濞垮劚椤忣亪鏌涙惔锝嗘毄缂佽鲸鏌ㄩ～婵嬪礈瑜忛ˇ顕€姊洪崗鍏肩凡闁哥喎鍟块‖濠冪節濮橆剛顦ч梺鍝勭墢閺佹悂鏌ч崒鐐寸厸闁告劦浜滃皬濠殿喚鎳撻ˇ闈涱嚕閻㈢浼犻柛鏇ㄥ墲閸氼偊姊绘担鐟扮祷缂佸鎸宠棟闁告瑥顦版禍銈夋煕婵犲嫬鏋涢柛銈咁儔閺屾稑螖閳ь剟鏁冮妶鍥偨闁绘劕鎼粈鍐煕濞戝崬鏋熺粭鎴︽⒑閸涘﹦鍟茬紒鐘冲灥閿曘垽顢旈崨顔绘唉闂佺锕﹂崰鏍吹鐎ｎ喗鐓曟慨姗嗗墮椤ㄦ瑧绱掗弮鈧幐鎶藉箚閸曨垼鏁婇柣锝呰嫰閻?
                 repetition_penalty = 0.0
                 for uav in uav_list:
                     uav_x, uav_y = uav.x, uav.y
@@ -432,19 +433,19 @@ class UAV:
                         if dist_to_target_from_other_uav < self.dc:
                             repetition_penalty += repetition_penalty_weight
 
-                # 闁荤姳绶ょ槐鏇㈡偩閺勫繈浜归柟鎯у暱椤ゅ懘鏌ｉ埡濠傛灍闁绘牭缍侀幆鍐礋椤愩倗绠掗梺?
+                # 闂佽崵濮崇欢銈囨閺囥垺鍋╅柡鍕箞娴滃綊鏌熼幆褍鏆辨い銈呮嚇閺岋綁鍩℃繝鍌涚亶闂佺粯鐗紞渚€骞嗛崘顔肩妞ゆ劑鍊楃粻鎺楁⒑?
                 score = target_reward_weight / dist_to_target - repetition_penalty
 
-                # 闂佸搫绉烽～澶婄暤娴ｅ壊鍤楁俊銈傚亾闁搞劌閰ｉ弻鍛緞鐎ｎ亶浠撮梺鍝勭墐閸嬫挸霉閸忕⒈鐒芥繛韫嵆瀵?
+                # 闂備礁鎼粔鐑斤綖婢跺﹦鏆ゅù锝呭閸ゆ淇婇妶鍌氫壕闂佹悶鍔岄柊锝夊蓟閸涱喖绶為悗锝庝憾娴犳挳姊洪崫鍕闁稿鎸搁湁闁稿繒鈷堥悞鑺ョ箾闊厼宓嗙€?
                 if score > best_score:
                     best_score = score
                     best_angle = np.arctan2(target_y - self.y, target_x - self.x) - self.h
 
-        # 婵炲濯▍鎼妌tinue_tracing闂佹眹鍔岀€氼參銆呰閹娊宕堕敂鍓ь啍闂佸綊鏅插鎺旂箔閸屾稓鈻旈柍褜鍓氱粙澶愵敂閸曨倣妤€霉?
+        # 濠电偛顕刊顓炩枍閹煎tinue_tracing闂備焦鐪归崝宀€鈧凹鍙冮妴鍛邦樄闁诡喗濞婂畷鍫曟晜閸撗屽晬闂備礁缍婇弲鎻掝渻閹烘梻绠旈柛灞剧〒閳绘棃鏌嶈閸撴氨绮欐径鎰垫晜闁告洦鍊ｅΔ鈧湁?
         if random.random() < self.continue_tracing:
             best_angle = 0
             
-        # 闁诲繐绻愬Λ娆忥耿閿熺姴瀚夋繛鎴炵閻ｉ亶鎮峰▎鎰瑨閻庣懓鍟块蹇涱敊閹稿海銈梺纭咁嚃濠⑩偓閻犳劗鍠撶划瀣磼濡粯鐤囬梺鍛婃煟閸斿绱為弮鍌涱潟闁靛繒濮风粚?
+        # 闂佽绻愮换鎰涘▎蹇ヨ€块柨鐔哄Т鐎氬绻涢幋鐐殿暡闁伙綁浜堕幃宄扳枎閹邦剛鐟ㄩ柣搴ｆ嚀閸熷潡顢欒箛娑辨晩闁圭娴烽妶顕€姊虹涵鍜佸殐婵犫懇鍋撻柣鐘冲姉閸犳挾鍒掔€ｎ剛纾兼俊顖滅帛閻ゅ洭姊洪崨濠冪厽闁告柨顑囩槐鐐哄籍閸屾侗娼熼梺闈涚箳婵绮?
         a = np.clip(best_angle / self.dt, -self.h_max, self.h_max)
         k = (self.Na - 1) * a / self.h_max
         a_idx = int(np.round((k + self.Na - 1) / 2))
