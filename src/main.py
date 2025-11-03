@@ -64,16 +64,36 @@ def main(args):
                       y_max=config["environment"]["y_max"],
                       na=config["environment"]["na"])
     if args.method == "C-METHOD":
-        agent = None
+        uav_agent = None
+        protector_agent = None
     else:
-        agent = ActorCritic(state_dim=12,
-                            hidden_dim=config["actor_critic"]["hidden_dim"],
-                            action_dim=config["environment"]["na"],
-                            actor_lr=float(config["actor_critic"]["actor_lr"]),
-                            critic_lr=float(config["actor_critic"]["critic_lr"]),
-                            gamma=float(config["actor_critic"]["gamma"]),
-                            device=config["devices"][0])  # 只用第一个device
-        agent.load(args.actor_path, args.critic_path)
+        # 计算动作边界（角速度范围）
+        from math import pi
+        uav_h_max = pi / float(config["uav"]["h_max"])
+        protector_h_max = pi / float(config["protector"]["h_max"])
+        
+        # UAV agent: state_dim = 12 (uav: 5 + target: 4 + self: 3)
+        # 对于连续动作，action_dim=1（只有角速度一个维度），action_bound=(-h_max, h_max)
+        uav_agent = ActorCritic(state_dim=12,
+                                hidden_dim=config["actor_critic"]["hidden_dim"],
+                                action_dim=1,  # 连续动作维度：角速度
+                                actor_lr=float(config["actor_critic"]["actor_lr"]),
+                                critic_lr=float(config["actor_critic"]["critic_lr"]),
+                                gamma=float(config["actor_critic"]["gamma"]),
+                                device=config["devices"][0],
+                                action_bound=(-uav_h_max, uav_h_max))  # 动作边界
+        # Protector agent: state_dim = 15 (uav_obs: 4 + target_obs: 4 + prot_obs: 4 + self: 3)
+        protector_agent = ActorCritic(state_dim=15,
+                                      hidden_dim=config["actor_critic"]["hidden_dim"],
+                                      action_dim=1,  # 连续动作维度：角速度
+                                      actor_lr=float(config["actor_critic"]["actor_lr"]),
+                                      critic_lr=float(config["actor_critic"]["critic_lr"]),
+                                      gamma=float(config["actor_critic"]["gamma"]),
+                                      device=config["devices"][0],
+                                      action_bound=(-protector_h_max, protector_h_max))  # 动作边界
+        if args.actor_path and args.critic_path:
+            uav_agent.load(args.actor_path, args.critic_path)
+        # TODO: 如果需要加载protector agent的权重，可以添加新的参数
 
     # 初始化 pmi
     if args.method == "MAAC" or args.method == "MAAC-G" or args.method == "C-METHOD":
@@ -90,7 +110,8 @@ def main(args):
     if args.phase == "train":
         return_list = train(config=config,
                             env=env,
-                            agent=agent,
+                            uav_agent=uav_agent,
+                            protector_agent=protector_agent,
                             pmi=pmi,
                             num_episodes=args.num_episodes,
                             num_steps=args.num_steps,
@@ -98,7 +119,8 @@ def main(args):
     elif args.phase == "evaluate":
         return_list = evaluate(config=config,
                                env=env,
-                               agent=agent,
+                               uav_agent=uav_agent,
+                               protector_agent=protector_agent,
                                pmi=pmi,
                                num_steps=args.num_steps)
     elif args.phase == "run":

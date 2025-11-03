@@ -5,7 +5,7 @@ from typing import List, Tuple
 
 
 class PROTECTOR:
-    def __init__(self, x0: float, y0: float, h0: float, a0: float, v_max: float, h_max: float, dt, safe_radius: float, dc: float, dp: float):
+    def __init__(self, x0: float, y0: float, h0: float, a0: float, v_max: float, h_max: float, dt, safe_radius: float, dc: float, dp: float, use_global_info=False, x_max=None, y_max=None):
         """
         :param x0: float, 初始 x 坐标
         :param y0: float, 初始 y 坐标
@@ -17,6 +17,9 @@ class PROTECTOR:
         :param safe_radius: float, 安全半径（手臂长度）
         :param dc: float, 与其他保护者交流的最大距离
         :param dp: float, 观测 UAV 和目标的最大距离
+        :param use_global_info: bool, 是否使用全局信息（忽略距离限制）
+        :param x_max: float, 地图x轴最大尺寸（用于全局信息归一化）
+        :param y_max: float, 地图y轴最大尺寸（用于全局信息归一化）
         """
         self.x, self.y = x0, y0
         self.h = h0
@@ -27,27 +30,59 @@ class PROTECTOR:
         
         # 动作：现在存储连续的角度改变量（角速度）
         self.a = a0
+        # Na 用于离散动作转换（从配置中获取，需要外部设置）
+        self.Na = None  # 将在环境初始化时设置
         
         # 通信和观测距离
         self.dc = dc
         self.dp = dp
         
+        # 是否使用全局信息（忽略观测范围限制）
+        self.use_global_info = use_global_info
+        # 地图尺寸（用于全局信息归一化）
+        self.x_max = x_max if x_max is not None else dc * 10  # 默认值
+        self.y_max = y_max if y_max is not None else dp * 10  # 默认值
+        
         # 观测信息
         self.target_observation = []
         self.uav_observation = []
-        self.protector_communication = []
+        self.protector_observation = []  # 使用protector_observation而不是protector_communication
         
         # 奖励
         self.raw_reward = 0
         self.reward = 0
 
-    def update_position(self, action_id=None):
-        """随机小角速 + 匀速前进（可用于简单仿真）"""
-        self.act_id = 0 if action_id is None else action_id
-        a = random.uniform(-self.h_max, self.h_max)
-        self.x += self.dt * self.v_max * cos(self.h)
-        self.y += self.dt * self.v_max * sin(self.h)
-        self.h += a * self.dt
+    def discrete_action(self, a_idx: int) -> float:
+        """
+        from the action space index to the real difference (保留用于兼容性)
+        :param a_idx: {0,1,...,Na - 1}
+        :return: action : scalar 即角度改变量
+        """
+        if self.Na is None or self.Na <= 1:
+            # 如果没有设置 Na 或无效值，返回随机动作
+            return random.uniform(-self.h_max, self.h_max)
+        # from action space to the real world action
+        na = a_idx + 1  # 从 1 开始索引
+        return (2 * na - self.Na - 1) * self.h_max / (self.Na - 1)
+    
+    def update_position(self, action: 'float') -> (float, float, float):
+        """
+        接收连续动作值，更新当前位置
+        :param action: float, 角度改变量（角速度），范围应在 [-h_max, h_max]
+        :return: (x, y, h) 更新后的位置和朝向
+        """
+        # 将动作限制在有效范围内
+        a = np.clip(action, -self.h_max, self.h_max)
+        self.a = a
+
+        dx = self.dt * self.v_max * cos(self.h)  # x 方向位移
+        dy = self.dt * self.v_max * sin(self.h)  # y 方向位移
+        self.x += dx
+        self.y += dy
+        self.h += self.dt * a
+        self.h = (self.h + pi) % (2 * pi) - pi  # 确保朝向角度在 [-pi, pi) 范围内
+
+        return self.x, self.y, self.h  # 返回protector的位置和朝向(heading/theta)
 
     def clamp_inside(self, x_max, y_max):
         """边界夹紧 + 调头"""
@@ -74,75 +109,100 @@ class PROTECTOR:
 
     def observe_target(self, targets_list: List['TARGET'], relative=True):
         """
-        Observing target with a radius within dp
-        :param relative: relative to uav itself
-        :param targets_list: [class UAV]
+        Observing targets with optional global information
+        :param relative: relative to protector itself
+        :param targets_list: [class TARGET]
         :return: None
         """
         self.target_observation = []  # Reset observed targets
         # 已捕获目标不再被观测
+        # 根据 use_global_info 选择归一化因子
+        norm_factor = max(self.x_max, self.y_max) if self.use_global_info else self.dp
+        
         for target in targets_list:
             if getattr(target, 'captured', False):
                 continue
-            dist = self.__distance(target)
-            if dist <= self.dp:
-                if relative:
-                    self.target_observation.append(((target.x - self.x) / self.dp,
-                                                    (target.y - self.y) / self.dp,
+            
+            # 根据 use_global_info 决定是否使用距离限制
+            if not self.use_global_info:
+                dist = self.__distance(target)
+                if dist > self.dp:
+                    continue  # 只观测范围内的目标
+            
+            # 使用适当的归一化因子（全局信息用地图尺寸，局部信息用dp）
+            if relative:
+                self.target_observation.append(((target.x - self.x) / norm_factor,
+                                                    (target.y - self.y) / norm_factor,
                                                     cos(target.h) * target.v_max / self.v_max - cos(self.h),
                                                     sin(target.h) * target.v_max / self.v_max - sin(self.h)))
-                else:
-                    self.target_observation.append((target.x / self.dp,
-                                                    target.y / self.dp,
+            else:
+                self.target_observation.append((target.x / norm_factor,
+                                                    target.y / norm_factor,
                                                     cos(target.h) * target.v_max / self.v_max,
                                                     sin(target.h) * target.v_max / self.v_max))
 
     def observe_protector(self, protectors_list: List['PROTECTOR'], relative=True):
         """
-        Observing other protectors within dp
+        Observing protectors with optional global information
         :param relative: relative to protector itself
         :param protectors_list: [class PROTECTOR]
         :return: None
         """
         self.protector_observation = []  # Reset observed protectors
+        # 根据 use_global_info 选择归一化因子
+        norm_factor = max(self.x_max, self.y_max) if self.use_global_info else self.dp
+        
         for protector in protectors_list:
             if protector != self:
-                dist = self.__distance(protector)
-                if dist <= self.dp:
-                    # add (x, y, vx, vy) information
-                    if relative:
-                        self.protector_observation.append(((protector.x - self.x) / self.dp,
-                                                            (protector.y - self.y) / self.dp,
-                                                            cos(protector.h) * protector.v_max / self.v_max - cos(self.h),
-                                                            sin(protector.h) * protector.v_max / self.v_max - sin(self.h)))
-                    else:
-                        self.protector_observation.append((protector.x / self.dp,
-                                                            protector.y / self.dp,
-                                                            cos(protector.h) * protector.v_max / self.v_max,
-                                                            sin(protector.h) * protector.v_max / self.v_max))
+                # 根据 use_global_info 决定是否使用距离限制
+                if not self.use_global_info:
+                    dist = self.__distance(protector)
+                    if dist > self.dp:
+                        continue  # 只观测范围内的protector
+                
+                # 使用适当的归一化因子（全局信息用地图尺寸，局部信息用dp）
+                # add (x, y, vx, vy) information
+                if relative:
+                    self.protector_observation.append(((protector.x - self.x) / norm_factor,
+                                                        (protector.y - self.y) / norm_factor,
+                                                        cos(protector.h) * protector.v_max / self.v_max - cos(self.h),
+                                                        sin(protector.h) * protector.v_max / self.v_max - sin(self.h)))
+                else:
+                    self.protector_observation.append((protector.x / norm_factor,
+                                                        protector.y / norm_factor,
+                                                        cos(protector.h) * protector.v_max / self.v_max,
+                                                        sin(protector.h) * protector.v_max / self.v_max))
 
     def observe_uav(self, uav_list: List['UAV'], relative=True):  # observation
         """
-        Observing UAVs with a radius within dp
+        Observing UAVs with optional global information
         :param relative: relative to protector itself
         :param uav_list: [class UAV]
         :return: None
         """
         self.uav_observation = []  # Reset observed UAVs
+        # 根据 use_global_info 选择归一化因子
+        norm_factor = max(self.x_max, self.y_max) if self.use_global_info else self.dp
+        
         for uav in uav_list:
-            dist = self.__distance(uav)
-            if dist <= self.dp:
-                # add (x, y, vx, vy) information
-                if relative:
-                    self.uav_observation.append(((uav.x - self.x) / self.dp,
-                                                    (uav.y - self.y) / self.dp,
-                                                    cos(uav.h) * uav.v_max / self.v_max - cos(self.h),
-                                                    sin(uav.h) * uav.v_max / self.v_max - sin(self.h)))
-                else:
-                    self.uav_observation.append((uav.x / self.dp,
-                                                    uav.y / self.dp,
-                                                    cos(uav.h) * uav.v_max / self.v_max,
-                                                    sin(uav.h) * uav.v_max / self.v_max))
+            # 根据 use_global_info 决定是否使用距离限制
+            if not self.use_global_info:
+                dist = self.__distance(uav)
+                if dist > self.dp:
+                    continue  # 只观测范围内的UAV
+            
+            # 使用适当的归一化因子（全局信息用地图尺寸，局部信息用dp）
+            # add (x, y, vx, vy) information
+            if relative:
+                self.uav_observation.append(((uav.x - self.x) / norm_factor,
+                                                (uav.y - self.y) / norm_factor,
+                                                cos(uav.h) * uav.v_max / self.v_max - cos(self.h),
+                                                sin(uav.h) * uav.v_max / self.v_max - sin(self.h)))
+            else:
+                self.uav_observation.append((uav.x / norm_factor,
+                                                uav.y / norm_factor,
+                                                cos(uav.h) * uav.v_max / self.v_max,
+                                                sin(uav.h) * uav.v_max / self.v_max))
 
     def __get_all_local_state(self) -> (List[Tuple[float, float, float, float]],
                                         List[Tuple[float, float, float, float]], 
@@ -154,21 +214,31 @@ class PROTECTOR:
         """
         # 将动作值归一化到 [-1, 1] 范围（基于 h_max）
         normalized_action = self.a / self.h_max if self.h_max > 0 else 0.0
-        return self.uav_observation, self.target_observation, self.protector_observation, (self.x / self.dc, self.y / self.dc, normalized_action)
+        # 根据 use_global_info 选择归一化因子（自身位置归一化）
+        norm_factor = max(self.x_max, self.y_max) if self.use_global_info else self.dc
+        return self.uav_observation, self.target_observation, self.protector_observation, (self.x / norm_factor, self.y / norm_factor, normalized_action)
 
     def __get_local_state_by_weighted_mean(self) -> 'np.ndarray':
         """
         :return: return weighted state: ndarray
         """
         uav_obs, target_obs, prot_obs, sb = self.__get_all_local_state()
+        # 根据 use_global_info 选择归一化因子（用于距离计算）
+        norm_factor = max(self.x_max, self.y_max) if self.use_global_info else self.dp
 
         # 处理UAV观测
         if uav_obs:
             d_uav = []
             for x, y, vx, vy in uav_obs:
-                d_uav.append(min(hypot(x * self.dp, y * self.dp), 1))
+                # x, y 已经是归一化后的相对坐标
+                if self.use_global_info:
+                    d_uav.append(min(hypot(x * norm_factor, y * norm_factor) / norm_factor, 1))
+                else:
+                    d_uav.append(min(hypot(x * self.dp, y * self.dp) / self.dp, 1))
             uav_obs = np.array(uav_obs)
-            uav_weighted = uav_obs / np.array(d_uav)[:, np.newaxis]
+            d_uav = np.array(d_uav)
+            d_uav = np.clip(d_uav, 1e-6, 1)  # 避免除零
+            uav_weighted = uav_obs / d_uav[:, np.newaxis]
             average_uav = np.mean(uav_weighted, axis=0)
         else:
             average_uav = -np.ones(4)  # empty UAV observation (x, y, vx, vy)
@@ -177,9 +247,15 @@ class PROTECTOR:
         if target_obs:
             d_target = []
             for x, y, vx, vy in target_obs:
-                d_target.append(min(hypot(x * self.dp, y * self.dp), 1))
+                # x, y 已经是归一化后的相对坐标
+                if self.use_global_info:
+                    d_target.append(min(hypot(x * norm_factor, y * norm_factor) / norm_factor, 1))
+                else:
+                    d_target.append(min(hypot(x * self.dp, y * self.dp) / self.dp, 1))
             target_obs = np.array(target_obs)
-            target_weighted = target_obs / np.array(d_target)[:, np.newaxis]
+            d_target = np.array(d_target)
+            d_target = np.clip(d_target, 1e-6, 1)  # 避免除零
+            target_weighted = target_obs / d_target[:, np.newaxis]
             average_target = np.mean(target_weighted, axis=0)
         else:
             average_target = -np.ones(4)  # empty target observation
@@ -188,9 +264,15 @@ class PROTECTOR:
         if prot_obs:
             d_prot = []
             for x, y, vx, vy in prot_obs:
-                d_prot.append(min(hypot(x * self.dp, y * self.dp), 1))
+                # x, y 已经是归一化后的相对坐标
+                if self.use_global_info:
+                    d_prot.append(min(hypot(x * norm_factor, y * norm_factor) / norm_factor, 1))
+                else:
+                    d_prot.append(min(hypot(x * self.dp, y * self.dp) / self.dp, 1))
             prot_obs = np.array(prot_obs)
-            prot_weighted = prot_obs / np.array(d_prot)[:, np.newaxis]
+            d_prot = np.array(d_prot)
+            d_prot = np.clip(d_prot, 1e-6, 1)  # 避免除零
+            prot_weighted = prot_obs / d_prot[:, np.newaxis]
             average_prot = np.mean(prot_weighted, axis=0)
         else:
             average_prot = -np.ones(4)  # empty protector observation
@@ -420,38 +502,82 @@ class PROTECTOR:
         return interception_reward
 
 
-    def __calculate_cooperative_reward_by_pmi(self, protector_list: List['PROTECTOR'], pmi_net, a) -> float:
+    def __calculate_cooperative_reward_by_pmi(self, protector_list: List['PROTECTOR'], uav_list: List['UAV'], 
+                                               pmi_net, a_cooperation=0.5, a_adversarial=0.3) -> float:
         """
-        使用PMI网络计算合作奖励
-        :param pmi_net: PMI网络
-        :param protector_list: [class PROTECTOR]
-        :param a: float, 自私与共享的比例
+        使用PMI网络计算合作奖励和对抗奖励
+        :param pmi_net: PMI网络（支持双输出模式）
+        :param protector_list: [class PROTECTOR] 友方列表
+        :param uav_list: [class UAV] 敌方列表
+        :param a_cooperation: float, 友方合作的比例（自私 vs 共享）
+        :param a_adversarial: float, 对抗敌方的比例（自身奖励 vs 惩罚敌方）
         :return:
         """
-        if a == 0:  # 提前判断，节省计算的复杂度
-            return self.raw_reward
-
         from scipy.special import softmax
         
-        neighbor_rewards = []
-        neighbor_dependencies = []
         la = self.get_local_state()
-
-        for other_prot in protector_list:
-            if other_prot != self and self.__distance(other_prot) <= self.dc:
-                neighbor_rewards.append(other_prot.raw_reward)
-                other_prot_la = other_prot.get_local_state()
-                _input = la * other_prot_la
-                neighbor_dependencies.append(pmi_net.inference(_input.squeeze()))
-
-        if len(neighbor_rewards):
-            neighbor_rewards = np.array(neighbor_rewards)
-            neighbor_dependencies = np.array(neighbor_dependencies).astype(np.float32)
-            softmax_values = softmax(neighbor_dependencies)
-            reward = (1 - a) * self.raw_reward + a * np.sum(neighbor_rewards * softmax_values).item()
+        base_reward = self.raw_reward
+        
+        # 1. 友方合作奖励（与其他protector共享奖励）
+        if a_cooperation > 0:
+            neighbor_protector_rewards = []
+            neighbor_cooperation_dependencies = []
+            
+            for other_prot in protector_list:
+                if other_prot != self and self.__distance(other_prot) <= self.dc:
+                    neighbor_protector_rewards.append(other_prot.raw_reward)
+                    other_prot_la = other_prot.get_local_state()
+                    _input = la * other_prot_la
+                    
+                    # 使用合作PMI
+                    cooperation_pmi = pmi_net.inference(_input.squeeze(), relation_type='cooperation')
+                    neighbor_cooperation_dependencies.append(cooperation_pmi)
+            
+            if len(neighbor_protector_rewards):
+                neighbor_protector_rewards = np.array(neighbor_protector_rewards)
+                neighbor_cooperation_dependencies = np.array(neighbor_cooperation_dependencies).astype(np.float32)
+                cooperation_weights = softmax(neighbor_cooperation_dependencies)
+                cooperation_reward = a_cooperation * np.sum(neighbor_protector_rewards * cooperation_weights).item()
+            else:
+                cooperation_reward = 0.0
         else:
-            reward = (1 - a) * self.raw_reward
-        return reward
+            cooperation_reward = 0.0
+        
+        # 2. 敌方对抗奖励（基于对抗PMI，惩罚敌方或增强自身）
+        if a_adversarial > 0:
+            uav_rewards = []
+            adversarial_dependencies = []
+            
+            for uav in uav_list:
+                dist_to_uav = self.__distance(uav)
+                if dist_to_uav <= self.dp:  # 在观测范围内
+                    uav_la = uav.get_local_state()
+                    _input = la * uav_la
+                    
+                    # 使用对抗PMI
+                    adversarial_pmi = pmi_net.inference(_input.squeeze(), relation_type='adversarial')
+                    adversarial_dependencies.append(adversarial_pmi)
+                    
+                    # 对抗奖励：敌方奖励越高，我们越要惩罚（负相关）
+                    # 或者：对抗PMI越高，表示对抗越激烈，我们应该获得更多奖励
+                    # 这里采用后者：对抗PMI高时，protector应该获得额外奖励
+                    uav_rewards.append(-uav.raw_reward)  # 敌方的负奖励作为我们的奖励
+            
+            if len(uav_rewards):
+                uav_rewards = np.array(uav_rewards)
+                adversarial_dependencies = np.array(adversarial_dependencies).astype(np.float32)
+                adversarial_weights = softmax(adversarial_dependencies)
+                # 对抗奖励：当对抗PMI高时，从敌方损失中获得奖励
+                adversarial_reward = a_adversarial * np.sum(uav_rewards * adversarial_weights).item()
+            else:
+                adversarial_reward = 0.0
+        else:
+            adversarial_reward = 0.0
+        
+        # 综合奖励：自身奖励 + 友方合作奖励 + 敌方对抗奖励
+        final_reward = (1 - a_cooperation - a_adversarial) * base_reward + cooperation_reward + adversarial_reward
+        
+        return final_reward
 
     def __calculate_cooperative_reward_by_mean(self, protector_list: List['PROTECTOR'], a) -> float:
         """
@@ -472,18 +598,26 @@ class PROTECTOR:
             if len(neighbor_rewards) else (1 - a) * self.raw_reward
         return reward
 
-    def calculate_cooperative_reward(self, protector_list: List['PROTECTOR'], pmi_net=None, a=0.5) -> float:
+    def calculate_cooperative_reward(self, protector_list: List['PROTECTOR'], uav_list: List['UAV'] = None,
+                                     pmi_net=None, a_cooperation=0.5, a_adversarial=0.0) -> float:
         """
-        计算合作奖励
-        :param protector_list: 保护者列表
-        :param pmi_net: PMI网络（可选）
-        :param a: 0: 完全自私, 1: 完全共享
+        计算合作奖励（包括友方合作和敌方对抗）
+        :param protector_list: 保护者列表（友方）
+        :param uav_list: UAV列表（敌方），可选
+        :param pmi_net: PMI网络（可选，支持双输出模式）
+        :param a_cooperation: 友方合作比例（0: 完全自私, 1: 完全共享）
+        :param a_adversarial: 敌方对抗比例（0: 不考虑敌方, >0: 对抗敌方）
         :return:
         """
+        if uav_list is None:
+            uav_list = []
+            
         if pmi_net:
-            return self.__calculate_cooperative_reward_by_pmi(protector_list, pmi_net, a)
+            return self.__calculate_cooperative_reward_by_pmi(protector_list, uav_list, pmi_net, 
+                                                             a_cooperation, a_adversarial)
         else:
-            return self.__calculate_cooperative_reward_by_mean(protector_list, a)
+            # 如果没有PMI网络，只使用均值方法进行友方合作
+            return self.__calculate_cooperative_reward_by_mean(protector_list, a_cooperation)
 
     def get_action_by_direction(self, target_list, uav_list):
         """

@@ -47,7 +47,7 @@ class Environment:
         # coverage rate of target
         self.covered_target_num = []
 
-    def __reset(self, t_v_max, t_h_max, p_v_max, p_h_max, p_safe, u_v_max, u_h_max, na, dc, dp, dt, init_x, init_y):
+    def __reset(self, t_v_max, t_h_max, p_v_max, p_h_max, p_safe, u_v_max, u_h_max, na, dc, dp, dt, init_x, init_y, protector_dc=None, protector_dp=None, use_global_info=False):
         """
         reset the location for all uav_s at (init_x, init_y)
         reset the store position to empty
@@ -58,25 +58,25 @@ class Environment:
                                  init_y[i],
                                  random.uniform(-pi, pi),
                                  random.randint(0, self.action_dim - 1),
-                                 u_v_max, u_h_max, na, dc, dp, dt) for i in range(self.n_uav)]
+                                 u_v_max, u_h_max, na, dc, dp, dt, use_global_info, self.x_max, self.y_max) for i in range(self.n_uav)]
         elif not isinstance(init_x, List) and not isinstance(init_y, List):
             self.uav_list = [UAV(init_x,
                                  init_y,
                                  random.uniform(-pi, pi),
                                  random.randint(0, self.action_dim - 1),
-                                 u_v_max, u_h_max, na, dc, dp, dt) for _ in range(self.n_uav)]
+                                 u_v_max, u_h_max, na, dc, dp, dt, use_global_info, self.x_max, self.y_max) for _ in range(self.n_uav)]
         elif isinstance(init_x, List):
             self.uav_list = [UAV(init_x[i],
                                  init_y,
                                  random.uniform(-pi, pi),
                                  random.randint(0, self.action_dim - 1),
-                                 u_v_max, u_h_max, na, dc, dp, dt) for i in range(self.n_uav)]
+                                 u_v_max, u_h_max, na, dc, dp, dt, use_global_info, self.x_max, self.y_max) for i in range(self.n_uav)]
         elif isinstance(init_y, List):
             self.uav_list = [UAV(init_x,
                                  init_y[i],
                                  random.uniform(-pi, pi),
                                  random.randint(0, self.action_dim - 1),
-                                 u_v_max, u_h_max, na, dc, dp, dt) for i in range(self.n_uav)]
+                                 u_v_max, u_h_max, na, dc, dp, dt, use_global_info, self.x_max, self.y_max) for i in range(self.n_uav)]
         else:
             print("wrong init position")
         # the initial position of the target is random, having randon headings
@@ -86,24 +86,26 @@ class Environment:
                                    random.uniform(-pi / 6, pi / 6),
                                    t_v_max, t_h_max, dt)
                             for _ in range(self.m_targets)]
+        # Use protector-specific dc and dp if provided, otherwise use default values
+        prot_dc = protector_dc if protector_dc is not None else dc
+        prot_dp = protector_dp if protector_dp is not None else dp
         self.protector_list = [PROTECTOR(random.uniform(0, self.x_max),
                                          random.uniform(0, self.y_max),
                                          random.uniform(-pi, pi),
-                                         0, p_v_max, p_h_max, dt, p_safe) for _ in range(self.n_protectors)]
+                                         0, p_v_max, p_h_max, dt, p_safe, prot_dc, prot_dp, use_global_info, self.x_max, self.y_max) for _ in range(self.n_protectors)]
+        # Set Na for protectors (action space dimension)
+        for protector in self.protector_list:
+            protector.Na = na
         self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': [], 'all_protector_xs': [], 'all_protector_ys': []}
         self.covered_target_num = []
         self.step_i = 0  # 步计数器
 
     def reset(self, config):
-        # self.__reset(t_v_max=config["target"]["v_max"],
-        #              t_h_max=pi / float(config["target"]["h_max"]),
-        #              u_v_max=config["uav"]["v_max"],
-        #              u_h_max=pi / float(config["uav"]["h_max"]),
-        #              na=config["environment"]["na"],
-        #              dc=config["uav"]["dc"],
-        #              dp=config["uav"]["dp"],
-        #              dt=config["uav"]["dt"],
-        #              init_x=config['environment']['x_max']/2, init_y=config['environment']['y_max']/2)
+        # Use protector dc and dp if available, otherwise use uav values
+        protector_dc = config.get("protector", {}).get("dc", config["uav"]["dc"])
+        protector_dp = config.get("protector", {}).get("dp", config["uav"]["dp"])
+        # 获取是否使用全局信息的配置（默认为False，即使用距离限制）
+        use_global_info = config.get("environment", {}).get("use_global_info", False)
         self.__reset(t_v_max=config["target"]["v_max"],
                      t_h_max=pi / float(config["target"]["h_max"]),
                      u_v_max=config["uav"]["v_max"],
@@ -115,7 +117,9 @@ class Environment:
                      dc=config["uav"]["dc"],
                      dp=config["uav"]["dp"],
                      dt=config["uav"]["dt"],
-                     init_x=config['environment']['x_max']/2, init_y=config['environment']['y_max']/2)
+                     init_x=config['environment']['x_max']/2, init_y=config['environment']['y_max']/2,
+                     protector_dc=protector_dc, protector_dp=protector_dp,
+                     use_global_info=use_global_info)
 
     def get_states(self) -> (List['np.ndarray']):
         """
@@ -127,13 +131,25 @@ class Environment:
         for uav in self.uav_list:
             uav_states.append(uav.get_local_state())
         return uav_states
+    
+    def get_protector_states(self) -> (List['np.ndarray']):
+        """
+        get the state of the protectors
+        :return: list of np array, each element is a 1-dim array with size of 15
+        """
+        protector_states = []
+        # collect the overall observation by each protector
+        for protector in self.protector_list:
+            protector_states.append(protector.get_local_state())
+        return protector_states
 
-    def step(self, config, pmi, actions):
+    def step(self, config, pmi, uav_actions, protector_actions):
         """
         state transfer functions
         :param config:
         :param pmi: PMI network
-        :param actions: {0,1,...,Na - 1}
+        :param uav_actions: List of actions for UAVs {0,1,...,Na - 1}
+        :param protector_actions: List of actions for Protectors {0,1,...,Na - 1}
         :return: states, rewards
         """
         # update the position of targets
@@ -143,10 +159,10 @@ class Environment:
                 target.update_position(self.x_max, self.y_max)
         # 更新 UAV
         for i, uav in enumerate(self.uav_list):
-            uav.update_position(actions[i])
+            uav.update_position(uav_actions[i])
         # 更新保护者
         for i, prot in enumerate(self.protector_list):
-            prot.update_position(actions[i])
+            prot.update_position(protector_actions[i])
             prot.clamp_inside(self.x_max, self.y_max)
 
         # 碰撞弹开效果：UAV 碰到保护者手臂后被改变朝向并锁定
@@ -238,12 +254,20 @@ class Environment:
             uav.observe_target(self.target_list)
             uav.observe_protector(self.protector_list)
             uav.observe_uav(self.uav_list)
+        
+        # Protector 观测
+        for protector in self.protector_list:
+            protector.observe_target(self.target_list)
+            protector.observe_uav(self.uav_list)
+            protector.observe_protector(self.protector_list)
 
         (rewards,
+         protector_rewards,
          target_tracking_reward,
          boundary_punishment,
          duplicate_tracking_punishment) = self.calculate_rewards(config=config, pmi=pmi)
         next_states = self.get_states()
+        next_protector_states = self.get_protector_states()
 
         covered_targets = self.calculate_covered_target()
         self.covered_target_num.append(covered_targets)
@@ -262,13 +286,14 @@ class Environment:
         self.step_i += 1
 
         reward = {
-            'rewards': rewards,
+            'rewards': rewards,  # UAV rewards
+            'protector_rewards': protector_rewards,  # Protector rewards
             'target_tracking_reward': target_tracking_reward,
             'boundary_punishment': boundary_punishment,
             'duplicate_tracking_punishment': duplicate_tracking_punishment
         }
 
-        return next_states, reward, covered_targets
+        return next_states, next_protector_states, reward, covered_targets
 
     def __get_all_uav_position(self) -> (List[float], List[float]):
         """
@@ -310,7 +335,7 @@ class Environment:
         return (self.position['all_uav_xs'], self.position['all_uav_ys'],
                 self.position['all_target_xs'], self.position['all_target_ys'])
 
-    def calculate_rewards(self, config, pmi) -> ([float], float, float, float):
+    def calculate_rewards(self, config, pmi) -> ([float], [float], float, float, float):
         # raw reward first
         target_tracking_rewards = []
         boundary_punishments = []
@@ -343,11 +368,58 @@ class Environment:
                               boundary_punishment + config["uav"]["gamma"] * duplicate_tracking_punishment + config["uav"]["omega"] * duplicate_tracking_punishment)
 
         rewards = []
+        # 计算UAV的合作奖励（UAV是友方，protector是敌方）
         for uav in self.uav_list:
-            reward = uav.calculate_cooperative_reward(self.uav_list, pmi, config['cooperative'])
+            # 如果config中有对抗参数，使用新的接口
+            if isinstance(config.get('cooperative'), dict):
+                a_cooperation = config['cooperative'].get('uav', {}).get('cooperation', 0.5)
+                a_adversarial = config['cooperative'].get('uav', {}).get('adversarial', 0.0)
+                reward = uav.calculate_cooperative_reward(self.uav_list, self.protector_list, pmi, 
+                                                          a_cooperation, a_adversarial)
+            else:
+                # 向后兼容：如果config['cooperative']是标量，只使用合作奖励
+                reward = uav.calculate_cooperative_reward(self.uav_list, self.protector_list, pmi, 
+                                                          config.get('cooperative', 0.5), 0.0)
             uav.reward = clip_and_normalize(reward, -1, 1)
             rewards.append(uav.reward)
-        return rewards, target_tracking_rewards, boundary_punishments, duplicate_tracking_punishments
+        
+        # 计算Protector的合作奖励（protector是友方，UAV是敌方）
+        for protector in self.protector_list:
+            # 计算protector的原始奖励
+            (protection_reward, boundary_punishment, overlapping_punishment, interception_reward) = \
+                protector.calculate_raw_reward(self.uav_list, self.target_list, self.protector_list, 
+                                                self.x_max, self.y_max)
+            
+            # 归一化各个奖励分量
+            protection_reward = clip_and_normalize(protection_reward, 0, 10, 0)  # 保护奖励通常是正数
+            boundary_punishment = clip_and_normalize(boundary_punishment, -1/2, 0, -1)
+            overlapping_punishment = clip_and_normalize(overlapping_punishment, -2, 0, -1)
+            interception_reward = clip_and_normalize(interception_reward, 0, 5, 0)  # 拦截奖励通常是正数
+            
+            # 计算protector的原始奖励（权重可以在config中配置）
+            protector.raw_reward = (config.get("protector", {}).get("alpha", 1.0) * protection_reward +
+                                   config.get("protector", {}).get("beta", 0.5) * boundary_punishment +
+                                   config.get("protector", {}).get("gamma", 0.3) * overlapping_punishment +
+                                   config.get("protector", {}).get("delta", 1.5) * interception_reward)
+            
+            # 如果config中有对抗参数，使用新的接口
+            if isinstance(config.get('cooperative'), dict):
+                a_cooperation = config['cooperative'].get('protector', {}).get('cooperation', 0.5)
+                a_adversarial = config['cooperative'].get('protector', {}).get('adversarial', 0.3)
+                reward = protector.calculate_cooperative_reward(self.protector_list, self.uav_list, pmi,
+                                                               a_cooperation, a_adversarial)
+            else:
+                # 向后兼容：只使用合作奖励
+                reward = protector.calculate_cooperative_reward(self.protector_list, self.uav_list, pmi,
+                                                               config.get('cooperative', 0.5), 0.0)
+            protector.reward = clip_and_normalize(reward, -1, 1)
+        
+        # 收集 Protector 的奖励
+        protector_rewards = []
+        for protector in self.protector_list:
+            protector_rewards.append(protector.reward)
+        
+        return rewards, protector_rewards, target_tracking_rewards, boundary_punishments, duplicate_tracking_punishments
 
     def save_position(self, save_dir, epoch_i):
         u_xy = np.array([self.position["all_uav_xs"],
