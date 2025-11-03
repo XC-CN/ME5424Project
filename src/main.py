@@ -2,6 +2,7 @@
 import argparse
 import logging
 import os
+from pathlib import Path
 
 from environment import Environment
 from models.actor_critic import ActorCritic
@@ -33,6 +34,71 @@ def print_args(args, name="args"):
     for arg in vars(args):
         print(f"| {arg:<11} : {getattr(args, arg)}")
     print("-----------------------------------------")
+
+
+def _latest_weight_file(directory: Path, prefix: str):
+    best_path = None
+    best_epoch = -1
+    for file in directory.glob(f"{prefix}_weights_*.pth"):
+        stem_parts = file.stem.split("_")
+        try:
+            epoch = int(stem_parts[-1])
+        except (IndexError, ValueError):
+            continue
+        if epoch > best_epoch:
+            best_epoch = epoch
+            best_path = file
+        elif epoch == best_epoch and best_path is not None:
+            if file.stat().st_mtime > best_path.stat().st_mtime:
+                best_path = file
+    return best_path
+
+
+def find_latest_checkpoints(result_dir: str, current_save_dir: str):
+    """
+    Locate the most recent experiment directory that contains complete actor/critic
+    checkpoints for all three agent roles.
+    """
+    base = Path(result_dir)
+    if not base.exists():
+        return {}, None
+
+    current_path = Path(current_save_dir).resolve()
+    candidates = []
+
+    for child in base.iterdir():
+        if not child.is_dir():
+            continue
+        if child.resolve() == current_path:
+            continue
+
+        actor_dir = child / "actor"
+        critic_dir = child / "critic"
+        if not actor_dir.exists() or not critic_dir.exists():
+            continue
+
+        role_paths = {}
+        missing = False
+        for role in ("uav", "protector", "target"):
+            actor_file = _latest_weight_file(actor_dir, f"{role}_actor")
+            critic_file = _latest_weight_file(critic_dir, f"{role}_critic")
+            if actor_file is None or critic_file is None:
+                missing = True
+                break
+            role_paths[role] = (actor_file, critic_file)
+
+        if missing or not role_paths:
+            continue
+
+        mtimes = [path.stat().st_mtime for pair in role_paths.values() for path in pair]
+        candidates.append((max(mtimes), role_paths, child))
+
+    if not candidates:
+        return {}, None
+
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    _, best_paths, source_dir = candidates[0]
+    return best_paths, source_dir
 
 
 def add_args_to_config(config, args):
@@ -146,6 +212,24 @@ def main(args):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, "configs", f"{args.method}.yaml")
     config = get_config(config_path)
+
+    if args.phase == "evaluate":
+        defaults, source_dir = find_latest_checkpoints(config["result_dir"], config["save_dir"])
+        if defaults:
+            if getattr(args, "actor_path", None) is None and "uav" in defaults:
+                args.actor_path = str(defaults["uav"][0])
+            if getattr(args, "critic_path", None) is None and "uav" in defaults:
+                args.critic_path = str(defaults["uav"][1])
+            if getattr(args, "protector_actor_path", None) is None and "protector" in defaults:
+                args.protector_actor_path = str(defaults["protector"][0])
+            if getattr(args, "protector_critic_path", None) is None and "protector" in defaults:
+                args.protector_critic_path = str(defaults["protector"][1])
+            if getattr(args, "target_actor_path", None) is None and "target" in defaults:
+                args.target_actor_path = str(defaults["target"][0])
+            if getattr(args, "target_critic_path", None) is None and "target" in defaults:
+                args.target_critic_path = str(defaults["target"][1])
+            if source_dir is not None:
+                config["default_checkpoint_dir"] = str(source_dir)
 
     add_args_to_config(config, args)
     print_config(config)

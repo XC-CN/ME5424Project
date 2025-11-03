@@ -10,6 +10,129 @@ import numpy as np
 text_obj = None
 
 
+class LiveRenderer:
+    def __init__(self, env, pause=0.05, trail_steps=60):
+        plt.ion()
+        self.env = env
+        self.pause = max(float(pause), 0.0)
+        self.trail_steps = max(int(trail_steps), 1)
+
+        self.fig, self.ax = plt.subplots(figsize=(6, 6))
+        self.ax.set_xlim(0, env.x_max)
+        self.ax.set_ylim(0, env.y_max)
+        self.ax.set_aspect('equal')
+        self.ax.set_title("评估仿真实时播放")
+
+        self.uav_scatter = self.ax.scatter([], [], s=70, c='#1f77b4', label='老鹰')
+        self.target_scatter = self.ax.scatter([], [], s=50, c='#ff7f0e', label='小鸡', alpha=0.9)
+        self.protector_scatter = self.ax.scatter([], [], s=60, c='#2ca02c', label='母鸡', alpha=0.9)
+
+        self.uav_trails = [
+            self.ax.plot([], [], color='#1f77b4', linewidth=1.2, alpha=0.4)[0]
+            for _ in env.uav_list
+        ]
+        self.target_trails = [
+            self.ax.plot([], [], color='#ff7f0e', linewidth=1.0, alpha=0.3)[0]
+            for _ in env.target_list
+        ]
+        self.protector_trails = [
+            self.ax.plot([], [], color='#2ca02c', linewidth=1.0, alpha=0.3)[0]
+            for _ in env.protector_list
+        ]
+
+        self.uav_ranges = [
+            patches.Circle((uav.x, uav.y), getattr(uav, 'dp', 0.0), facecolor='none',
+                           edgecolor='dodgerblue', alpha=0.4, linewidth=1.0)
+            for uav in env.uav_list
+        ]
+        for patch in self.uav_ranges:
+            self.ax.add_patch(patch)
+
+        self.coverage_text = self.ax.text(
+            0.02, 0.98, "", transform=self.ax.transAxes, fontsize=10,
+            verticalalignment='top', color='black'
+        )
+        self.ax.legend(loc='upper right')
+
+    @staticmethod
+    def _set_offsets(scatter, xs, ys):
+        if xs and ys:
+            scatter.set_offsets(np.column_stack([xs, ys]))
+        else:
+            scatter.set_offsets(np.empty((0, 2)))
+
+    @staticmethod
+    def _set_trail(line, xs, ys):
+        if xs and ys:
+            line.set_data(xs, ys)
+        else:
+            line.set_data([], [])
+
+    def _extract_positions(self, agents, hide_captured=False):
+        xs, ys = [], []
+        for agent in agents:
+            if hide_captured and getattr(agent, 'captured', False):
+                continue
+            xs.append(agent.x)
+            ys.append(agent.y)
+        return xs, ys
+
+    def _update_trails(self):
+        history_uav_x = self.env.position['all_uav_xs']
+        history_uav_y = self.env.position['all_uav_ys']
+        history_target_x = self.env.position['all_target_xs']
+        history_target_y = self.env.position['all_target_ys']
+        history_prot_x = self.env.position['all_protector_xs']
+        history_prot_y = self.env.position['all_protector_ys']
+
+        for idx, line in enumerate(self.uav_trails):
+            xs = [step[idx] for step in history_uav_x[-self.trail_steps:] if idx < len(step)]
+            ys = [step[idx] for step in history_uav_y[-self.trail_steps:] if idx < len(step)]
+            self._set_trail(line, xs, ys)
+
+        for idx, line in enumerate(self.target_trails):
+            xs = [step[idx] for step in history_target_x[-self.trail_steps:] if idx < len(step)]
+            ys = [step[idx] for step in history_target_y[-self.trail_steps:] if idx < len(step)]
+            self._set_trail(line, xs, ys)
+
+        for idx, line in enumerate(self.protector_trails):
+            xs = [step[idx] for step in history_prot_x[-self.trail_steps:] if idx < len(step)]
+            ys = [step[idx] for step in history_prot_y[-self.trail_steps:] if idx < len(step)]
+            self._set_trail(line, xs, ys)
+
+    def __call__(self, step, env=None):
+        env = env or self.env
+        xs, ys = self._extract_positions(env.uav_list)
+        self._set_offsets(self.uav_scatter, xs, ys)
+
+        tgt_xs, tgt_ys = self._extract_positions(env.target_list, hide_captured=True)
+        self._set_offsets(self.target_scatter, tgt_xs, tgt_ys)
+
+        prot_xs, prot_ys = self._extract_positions(env.protector_list)
+        self._set_offsets(self.protector_scatter, prot_xs, prot_ys)
+
+        for patch, uav in zip(self.uav_ranges, env.uav_list):
+            patch.center = (uav.x, uav.y)
+            patch.set_radius(getattr(uav, 'dp', patch.radius))
+
+        self._update_trails()
+
+        coverage = env.covered_target_num[-1] if env.covered_target_num else 0
+        rate = coverage / max(env.m_targets, 1) * 100.0
+        self.coverage_text.set_text(
+            f"Step: {step + 1}\n覆盖目标数: {coverage}\n覆盖率: {rate:.1f}%"
+        )
+
+        self.fig.canvas.draw_idle()
+        self.fig.canvas.flush_events()
+        if self.pause > 0.0:
+            plt.pause(self.pause)
+
+    def close(self):
+        plt.ioff()
+        plt.close(self.fig)
+
+
 def resize_image(image_path):
     img = Image.open(image_path).convert('RGB')
     # Resize the image to be divisible by 16
@@ -285,4 +408,3 @@ def draw_textured_animation(config, env, num_steps, ep_num, assets_dir="assets",
         frame_path = os.path.join(save_dir, f'tex_frame_{frame:04d}.png')
         if os.path.exists(frame_path):
             os.remove(frame_path)
-

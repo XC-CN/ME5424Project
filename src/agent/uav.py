@@ -48,7 +48,10 @@ class UAV:
         # set of local information
         # self.communication = []
         self.target_observation = []
+        self.protector_observation = []
         self.uav_communication = []
+        self._target_distances = []
+        self._protector_distances = []
 
         # reward
         self.raw_reward = 0
@@ -125,6 +128,13 @@ class UAV:
 
         return self.x, self.y, self.h  # 闂佸搫顦弲婊堝蓟閵娿儍娲嫉缁nt闂備焦鐪归崝宀€鈧凹浜炵槐鐐哄川椤栨粎锛炲銈嗘煥閸氬鈧碍鐓￠弻锟犲醇閻旇櫣鐣甸梺?heading/theta)
 
+    def _get_axis_scale(self) -> Tuple[float, float]:
+        if self.world_bounds is not None:
+            x_max, y_max = self.world_bounds
+            return max(x_max, 1.0), max(y_max, 1.0)
+        base = max(self.dp, 1.0)
+        return base, base
+
     def observe_target(self, targets_list: List['Target'], relative=True):
         """
         Observing target with a radius within dp
@@ -133,22 +143,29 @@ class UAV:
         :return: None
         """
         self.target_observation = []  # Reset observed targets
-        # 闁诲骸婀遍…鍫濐嚕鐠鸿櫣鏆﹂柣鏂垮悑閸ゆ柨顪冪€ｎ亜顒㈢紒鎰殜閺屸€愁吋閸涱喚鐓戠紓浣诡殔椤﹂潧鐣峰Ο渚悑闁割偒鍋呴拺澶愭煟閻斿摜鎳冮柛濠傛贡缁?
+        self._target_distances = []
+        x_scale, y_scale = self._get_axis_scale()
+        speed_scale = max(self.v_max, 1e-6)
+
         for target in targets_list:
             if getattr(target, 'captured', False):
                 continue
-            dist = self.__distance(target)
-            if dist <= self.dp:
-                if relative:
-                    self.target_observation.append(((target.x - self.x) / self.dp,
-                                                    (target.y - self.y) / self.dp,
-                                                    cos(target.h) * target.v_max / self.v_max - cos(self.h),
-                                                    sin(target.h) * target.v_max / self.v_max - sin(self.h)))
-                else:
-                    self.target_observation.append((target.x / self.dp,
-                                                    target.y / self.dp,
-                                                    cos(target.h) * target.v_max / self.v_max,
-                                                    sin(target.h) * target.v_max / self.v_max))
+
+            dist = max(self.__distance(target), 1e-6)
+            self._target_distances.append(dist)
+
+            if relative:
+                dx = (target.x - self.x) / x_scale
+                dy = (target.y - self.y) / y_scale
+                vx = cos(target.h) * target.v_max / speed_scale - cos(self.h)
+                vy = sin(target.h) * target.v_max / speed_scale - sin(self.h)
+            else:
+                dx = target.x / x_scale
+                dy = target.y / y_scale
+                vx = cos(target.h) * target.v_max / speed_scale
+                vy = sin(target.h) * target.v_max / speed_scale
+
+            self.target_observation.append((dx, dy, vx, vy))
                     
     def observe_protector(self, protectors_list: List['Protector'], relative=True):
         """
@@ -157,21 +174,27 @@ class UAV:
         :param targets_list: [class UAV]
         :return: None
         """
-        self.protector_observation = []  # Reset observed targets
+        self.protector_observation = []  # Reset observed protectors
+        self._protector_distances = []
+        x_scale, y_scale = self._get_axis_scale()
+        speed_scale = max(self.v_max, 1e-6)
+
         for protector in protectors_list:
-            dist = self.__distance(protector)
-            if dist <= self.dp:
-                # add (x, y, vx, vy) information
-                if relative:
-                    self.target_observation.append(((protector.x - self.x) / self.dp,
-                                                    (protector.y - self.y) / self.dp,
-                                                    cos(protector.h) * protector.v_max / self.v_max - cos(self.h),
-                                                    sin(protector.h) * protector.v_max / self.v_max - sin(self.h)))
-                else:
-                    self.target_observation.append((protector.x / self.dp,
-                                                    protector.y / self.dp,
-                                                    cos(protector.h) * protector.v_max / self.v_max,
-                                                    sin(protector.h) * protector.v_max / self.v_max))
+            dist = max(self.__distance(protector), 1e-6)
+            self._protector_distances.append(dist)
+
+            if relative:
+                dx = (protector.x - self.x) / x_scale
+                dy = (protector.y - self.y) / y_scale
+                vx = cos(protector.h) * protector.v_max / speed_scale - cos(self.h)
+                vy = sin(protector.h) * protector.v_max / speed_scale - sin(self.h)
+            else:
+                dx = protector.x / x_scale
+                dy = protector.y / y_scale
+                vx = cos(protector.h) * protector.v_max / speed_scale
+                vy = sin(protector.h) * protector.v_max / speed_scale
+
+            self.protector_observation.append((dx, dy, vx, vy))
 
     def observe_uav(self, uav_list: List['UAV'], relative=True):  # communication
         """
@@ -203,7 +226,8 @@ class UAV:
         """
         :return: [(x, y, vx, by, na),...] for uav, [(x, y, vx, vy)] for targets, (x, y, na) for itself
         """
-        return self.uav_communication, self.target_observation, (self.x / self.dc, self.y / self.dc, self.a / self.Na)
+        observation = self.target_observation + self.protector_observation
+        return self.uav_communication, observation, (self.x / self.dc, self.y / self.dc, self.a / self.Na)
 
     def __get_local_state_by_weighted_mean(self) -> 'np.ndarray':
         """
@@ -226,14 +250,14 @@ class UAV:
             average_communication = -np.ones(4 + 1)  # empty communication  # TODO -1闂備礁鎲￠懝楣冩偋婵犲嫭鍏滈柛顐ｆ礀鐟?
 
         if observation:
-            d_observation = []  # store the distance from each target to itself
-            for x, y, vx, vy in observation:
-                d_observation.append(min(self.distance(x, y, self.x, self.y), 1))
-
-            # regularization by the distance
-            observation = np.array(observation)
-            observation_weighted = observation / np.array(d_observation)[:, np.newaxis]
-            average_observation = np.mean(observation_weighted, axis=0)
+            distances = np.array(self._target_distances + self._protector_distances, dtype=np.float32)
+            if distances.size == 0:
+                average_observation = -np.ones(4)
+            else:
+                distances = np.maximum(distances, 1e-3)
+                observation = np.array(observation, dtype=np.float32)
+                observation_weighted = observation / distances[:, np.newaxis]
+                average_observation = np.mean(observation_weighted, axis=0)
         else:
             average_observation = -np.ones(4)  # empty observation  # TODO -1闂備礁鎲￠懝楣冩偋婵犲嫭鍏滈柛顐ｆ礀鐟?
 

@@ -2,7 +2,7 @@ import os.path
 from tqdm import tqdm
 import numpy as np
 import torch
-from utils.draw_util import draw_textured_animation
+from utils.draw_util import draw_textured_animation, LiveRenderer
 from torch.utils.tensorboard import SummaryWriter
 import random
 import collections
@@ -178,7 +178,7 @@ class PrioritizedReplayBuffer:
         return len(self.buffer)
 
 
-def operate_epoch(config, env, agents, pmi, num_steps):
+def operate_epoch(config, env, agents, pmi, num_steps, render_hook=None):
     roles = ['uav', 'protector', 'target']
     transition_dict = {
         role: {'states': [], 'actions': [], 'next_states': [], 'rewards': []}
@@ -225,6 +225,8 @@ def operate_epoch(config, env, agents, pmi, num_steps):
             role_actions['target']
         )
 
+        if render_hook is not None:
+            render_hook(step, env)
         for role in roles:
             transition_dict[role]['states'].extend(role_states[role])
             transition_dict[role]['actions'].extend(role_actions[role])
@@ -406,12 +408,30 @@ def evaluate(config, env, agents, pmi, num_steps):
     return_value = ReturnValueOfTrain()
 
     env.reset(config=config)
-    _, uav_metrics, protector_metrics, target_metrics, average_targets, max_targets = operate_epoch(
-        config, env, agents, pmi, num_steps)
+    eval_cfg = config.get("evaluate", {})
+    enable_live = eval_cfg.get("enable_live", True)
+    render_pause = eval_cfg.get("render_pause", 0.05)
+    trail_steps = eval_cfg.get("render_trail", 60)
+
+    renderer = LiveRenderer(env, pause=render_pause, trail_steps=trail_steps) if enable_live else None
+
+    try:
+        _, uav_metrics, protector_metrics, target_metrics, average_targets, max_targets = operate_epoch(
+            config,
+            env,
+            agents,
+            pmi,
+            num_steps,
+            render_hook=renderer if renderer is not None else None
+        )
+    finally:
+        if renderer is not None:
+            renderer.close()
 
     return_value.save_epoch(uav_metrics, protector_metrics, target_metrics, average_targets, max_targets)
 
-    draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=0)
+    if eval_cfg.get("save_animation", True):
+        draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=0)
     env.save_position(save_dir=config["save_dir"], epoch_i=0)
     env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
 

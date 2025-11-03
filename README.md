@@ -1,268 +1,97 @@
-﻿# 🦅 MARL Eagles-Chicks-Tracking
+# MAAC-R 多智能体鹰-鸡协同系统
 
-> 本项目基于多智能体强化学习（Multi-Agent Actor-Critic, MAAC），构建“老鹰-小鸡-母鸡”对抗场景。老鹰负责协同追捕，小鸡学习逃逸，母鸡负责保护，实现攻防博弈与策略协作。
+> 课程项目：将原始“单鹰”方案升级为“老鹰、母鸡、小鸡”三方智能体的对抗与协作训练平台，基于多智能体 Actor-Critic (MAAC)。
 
----
+## 项目概述
+- 老鹰（Eagle）负责主动捕获目标，策略由强化学习驱动。
+- 母鸡（Protector）学习挡在老鹰和小鸡之间，并保持护卫半径。
+- 小鸡（Target）学习规避老鹰并靠近最近的母鸡。
+- 训练过程中三方共享同一个物理环境，但拥有独立的观测、网络和经验池；所有智能体都会被地图边界强制约束。
 
-## 📚 文档导航
-
-- [功能概览](#功能概览)
-- [环境依赖](#环境依赖)
-- [运行指南](#运行指南)
-  - [命令参数详解](#命令参数详解)
-  - [常用命令示例与说明](#常用命令示例与说明)
-  - [训练输出与评估指引](#训练输出与评估指引)
-  - [多智能体训练说明](#多智能体训练说明)
-- [碰撞弹开效果](#碰撞弹开效果)
-- [智能体介绍](#智能体介绍)
-- [算法框架对比](#算法框架对比)
-- [使用技巧](#使用技巧)
-- [致谢与许可](#致谢与许可)
-- [联系方式](#联系方式)
-
----
-
-## 功能概览
-
-- 🤝 **多老鹰协同**：共享观测，离散动作控制抓捕。
-- 🐤 **小鸡捕获判定**：`capture_radius` 判断与覆盖率统计。
-- 🐔 **母鸡保护机制**：安全半径惩罚、物理弹开、阻挡奖励。
-- 🧠 **奖励体系**：支持 PMI、自利/全局奖励等多种协作方式。
-- 🎥 **可视化工具链**：动画渲染、轨迹导出、TensorBoard 日志。
-
----
-
-## 环境依赖
-
-| 组件                        | 说明                         |
-| --------------------------- | ---------------------------- |
-| Python                      | 3.9 及以上（推荐 3.10/3.11） |
-| PyTorch                     | 深度学习框架                 |
-| NumPy / SciPy               | 数值计算                     |
-| Matplotlib                  | 可视化绘图                   |
-| Pillow / imageio            | 图片、动画处理               |
-| tqdm / PyYAML / TensorBoard | 进度条、配置解析、训练日志   |
-
-安装方式：
+## 环境准备
+- 推荐 Python 3.9 及以上版本（3.10/3.11 表现最佳）。
+- 依赖：PyTorch、NumPy/SciPy、Matplotlib、Pillow、imageio、tqdm、PyYAML、TensorBoard。
 
 ```bash
 pip install -r requirements.txt
-# pip install: Python 包管理工具安装命令
-# -r requirements.txt: 从 requirements.txt 文件中读取依赖包列表并批量安装
-
-# 或者逐项安装
+# 若 requirements.txt 不完整，可手动安装常用依赖：
 pip install numpy scipy matplotlib pillow imageio torch torchvision torchaudio tqdm pyyaml tensorboard
-# pip install: 安装指定的 Python 包
-# numpy scipy matplotlib pillow imageio: 数值计算、科学计算、绘图、图像处理等库
-# torch torchvision torchaudio: PyTorch 深度学习框架及相关组件
-# tqdm pyyaml tensorboard: 进度条、YAML 配置解析、训练可视化工具
 ```
 
----
+## 核心特性
+- **三角色独立策略**：老鹰、母鸡、小鸡各自拥有 Actor-Critic 与经验回放池，避免策略冲突。
+- **奖励重构**：加入守护、阻挡、安全半径等细粒度奖励，精细引导行为。
+- **强制边界**：所有智能体位置会被实时裁剪在 `x_max × y_max` 地图内，防止出界。
+- **实时评估**：评估阶段自动弹出在线可视化窗口，可边仿真边观看结果。
+- **自动加载最新模型**：在评估阶段未显式传入权重路径时，会自动使用 `results/MAAC-R/` 中最近一次训练产物。
 
-## 运行指南
+## 快速上手
 
-所有命令默认在仓库根目录 `ME5424/` 下执行：
-
-```bash
-python src/main.py --phase <模式> --method <算法> [其它参数]
-# python: Python 解释器
-# src/main.py: 主程序入口脚本路径
-# --phase <模式>: 必填参数，指定运行模式（train/evaluate/run）
-# --method <算法>: 必填参数，指定算法配置（MAAC-R/MAAC/MAAC-G/C-METHOD）
-# [其它参数]: 可选参数，如 -e（轮数）、-s（步数）、-f（保存频率）等
-```
-
-若出现 `OMP: Error #15` 等提示，可先设置 `KMP_DUPLICATE_LIB_OK=TRUE` 再运行。
-
-### 命令参数详解
-
-| 参数                                                     | 说明                                                        | 是否必填 | 默认值     | 示例                                   |
-| -------------------------------------------------------- | ----------------------------------------------------------- | -------- | ---------- | -------------------------------------- |
-| `--phase`                                              | 运行模式：`train` / `evaluate` / `run`                | 必填     | `train`  | `--phase run`                        |
-| `-m`                                                   | 算法配置：`MAAC-R` / `MAAC` / `MAAC-G` / `C-METHOD` | 必填     | `MAAC-R` | `-m MAAC`                            |
-| `-e`                                                   | 训练轮数（仅训练）                                          | 可选     | `10000`  | `-e 50`                              |
-| `-s`                                                   | 每轮步数                                                    | 可选     | `200`    | `-s 300`                             |
-| `-f`                                                   | 保存频率（训练）                                            | 可选     | `100`    | `-f 20`                              |
-| `-a` / `-c`                                          | 老鹰 Actor / Critic 权重路径                                | 可选     | 最近权重   | `-a results/.../actor_100.pth`       |
-| `--protector_actor_path` / `--protector_critic_path` | 母鸡网络加载/保存路径                                       | 可选     | 最近权重   | `--protector_actor_path results/...` |
-| `--target_actor_path` / `--target_critic_path`       | 小鸡网络加载/保存路径                                       | 可选     | 最近权重   | `--target_actor_path results/...`    |
-| `-p`                                                   | PMI 网络权重路径                                            | 可选     | `None`   | `-p results/.../pmi_100.pth`         |
-
-### 常用命令示例与说明
-
-激活conda环境：
-
-```bash
-conda activate ME5424Project  # 激活名为 ME5424Project 的 conda 虚拟环境
-```
-
-#### 1️⃣ 演示模式（无需训练、权重）
-
+### 演示模式（无需训练、无需权重）
 ```bash
 python src/main.py --phase run --method MAAC-R -s 300
-# --phase run: 指定运行模式为演示模式（使用启发式策略，无需训练）
-# --method MAAC-R: 选择 MAAC-R 算法配置文件
-# -s 300: 设置每轮仿真步数为 300 步
 ```
+- `--phase run`：使用内置启发式策略快速演示。
+- `-s 300`：执行 300 步仿真。
+- 仿真过程默认离线渲染，结束后会在 `results/MAAC-R/<experiment>/animated/` 输出合成动画。
 
-- 使用内置启发式策略快速播放场景，适用于初次体验或演示。
-- 输出动画保存在 `results/MAAC-R/{experiment}/animated/`，可直接查看。
-
-#### 2️⃣ 训练模式（自动保存最新模型）
-
+### 训练模式（自动保存最新模型）
 ```bash
 python src/main.py --phase train --method MAAC-R -e 50 -s 300 -f 20
-# --phase train: 指定运行模式为训练模式（使用神经网络进行学习）
-# --method MAAC-R: 选择 MAAC-R 算法配置文件
-# -e 50: 设置训练轮数（episodes）为 50 轮
-# -s 300: 设置每轮仿真步数为 300 步
-# -f 20: 设置保存频率为每 20 轮保存一次模型和日志
 ```
+- `-e 50`：训练 50 局。
+- `-s 300`：每局最多 300 步。
+- `-f 20`：每 20 局保存一次 Actor/Critic/PMI 权重和日志。
+- 训练期间默认不弹出可视化窗口，如需观测可在 `configs/MAAC-R.yaml` 中将 `render_when_train` 设为 `true`。
+- 训练完成后，`results/MAAC-R/<experiment>/` 会包含：
+  - `actor/`、`critic/`、`pmi/`：按保存频率命名的模型快照（例如 `uav_actor_weights_20.pth`）。
+  - `logs/`：TensorBoard 训练曲线。
+  - `frames/`、`animated/`：关键帧与离线合成视频。
+  - `u_xy/`、`t_xy/`、`p_xy/` 与 `covered_target_num/`：轨迹和覆盖统计 CSV。
 
-- 训练 50 局、每局 300 步，每 20 局保存一次模型与日志。
-- 训练结束后，`results/MAAC-R/{experiment}/` 将包含：
-  - `actor/`、`critic/`、`pmi/`：按保存频率生成的权重快照；
-  - `logs/`：TensorBoard 日志，可实时观察奖励与损失；
-  - `frames/`、`animated/`：关键帧与合成视频；
-  - 各类 CSV 指标（例如 `return_list.csv`、`protector_return_list.csv`、`target_return_list.csv`）。
-
-#### 3️⃣ 评估模式（默认加载最近训练结果）
-
+### 评估模式（默认加载最新训练结果并实时播放）
 ```bash
-python src/main.py --phase evaluate --method MAAC-R -s 5000
-# --phase evaluate: 指定运行模式为评估模式（加载已训练权重进行测试）
-# --method MAAC-R: 选择 MAAC-R 算法配置文件
-# -s 500: 设置每轮仿真步数为 500 步
+python src/main.py --phase evaluate --method MAAC-R -s 500
 ```
+- 未显式传入 `--actor_path` / `--protector_actor_path` / `--target_actor_path` 时，程序会自动在 `results/MAAC-R/` 中查找最近一次训练并加载对应权重。
+- 评估阶段会弹出实时可视化窗口，支持拖动观察；结束后依旧会在 `animated/` 目录生成高质量视频。
+- 如需指定旧模型，可手动传入各角色的 `--*_actor_path` / `--*_critic_path`。
+- 若在服务器或无图形环境运行，可在 `configs/MAAC-R.yaml` 将 `evaluate.enable_live` 改为 `false` 关闭在线渲染。
 
-- 不指定权重路径时，会自动寻找 `results/MAAC-R/` 下最近一次训练输出的最新权重进行评估。
-- 如需复现特定检查点，可显式指定：
-  ```bash
-  python src/main.py --phase evaluate --method MAAC-R -s 500 \
-         --actor_path results/MAAC-R/.../actor_100.pth \
-         --critic_path results/MAAC-R/.../critic_100.pth \
-         --protector_actor_path results/MAAC-R/.../protector_actor_weights_100.pth \
-         --protector_critic_path results/MAAC-R/.../protector_critic_weights_100.pth \
-         --target_actor_path results/MAAC-R/.../target_actor_weights_100.pth \
-         --target_critic_path results/MAAC-R/.../target_critic_weights_100.pth
-  # --phase evaluate: 评估模式
-  # --method MAAC-R: 使用 MAAC-R 配置
-  # -s 500: 仿真步数 500 步
-  # --actor_path: 指定老鹰 Actor 网络权重文件路径
-  # --critic_path: 指定老鹰 Critic 网络权重文件路径
-  # --protector_actor_path: 指定母鸡 Actor 网络权重文件路径
-  # --protector_critic_path: 指定母鸡 Critic 网络权重文件路径
-  # --target_actor_path: 指定小鸡 Actor 网络权重文件路径
-  # --target_critic_path: 指定小鸡 Critic 网络权重文件路径
-  ```
-- 评估会再次输出动画与指标，可与训练阶段对比。
+## 常用参数说明
 
-### 训练输出与评估指引
+| 参数 | 说明 | 适用命令 |
+| --- | --- | --- |
+| `--phase {train,evaluate,run}` | 控制运行阶段：训练 / 评估 / 演示 | 全部 |
+| `--method` | 选择算法配置，示例使用 `MAAC-R` | 全部 |
+| `-e, --num_episodes` | 训练总局数 | `train` |
+| `-s, --num_steps` | 每局步数上限（评估/演示则为仿真步数） | 全部 |
+| `-f, --frequency` | 训练保存与日志间隔 | `train` |
+| `--actor_path`, `--critic_path` | 指定老鹰 Actor/Critic 权重 | `evaluate` |
+| `--protector_actor_path`, `--protector_critic_path` | 指定母鸡模型权重 | `evaluate` |
+| `--target_actor_path`, `--target_critic_path` | 指定小鸡模型权重 | `evaluate` |
+| `--pmi_path` | 指定 PMI 网络权重 | `train`, `evaluate` |
 
-- **结果目录**：`results/MAAC-R/{experiment}/` 包含权重、日志、动画、轨迹与各类 CSV 指标。
-- **日志可视化**：
+> 提示：评估阶段若仅想替换部分角色的权重，可以只传入对应参数；未填写的角色仍会自动加载最新快照。
 
-  ```bash
-  tensorboard --logdir results/MAAC-R/{experiment}/logs
-  # tensorboard: 启动 TensorBoard 可视化工具
-  # --logdir: 指定日志文件所在目录路径
-  ```
+## 训练产出与可视化
+- **TensorBoard**：执行 `tensorboard --logdir results/MAAC-R` 可查看奖励、损失等曲线。
+- **离线动画**：`animated/` 目录下的 MP4 为高分辨率渲染，可用于汇报展示。
+- **实时评估**：`evaluate.enable_live=true` 时，每一步都会更新窗口中的鹰/鸡轨迹、覆盖率文本和探测半径。
+- **数据导出**：`*_xy/` 和 `covered_target_num/` CSV 便于后续自定义分析。
 
-  查看老鹰/母鸡/小鸡三类智能体的奖励、损失、覆盖率等曲线。
-- **指标文件**：`*_return_list.csv`、`protector_block_reward_list.csv`、`target_capture_penalty_list.csv` 等，可用于绘制图表或对比实验。
+## 配置文件提示
+- 核心配置位于 `src/configs/MAAC-R.yaml`，关键字段：
+  - `environment.x_max / y_max`：地图边界；所有智能体都会在 `step` 内被裁剪到该范围。
+  - `protector.safe_radius`、`target.capture_radius` 等参数可调整奖励强度。
+  - `actor_critic`、`protector_actor_critic`、`target_actor_critic` 可分别设置学习率、隐藏层等超参数。
+  - 新增 `evaluate` 区段可控制在线评估：`enable_live`、`render_pause`（刷新间隔秒）、`render_trail`（轨迹保存长度）、`save_animation`（是否导出离线视频）。
 
-### 多智能体训练说明
+## 常见问题
+- **命令路径**：执行脚本时需使用斜杠路径，如 `python src/main.py ...`，不要写成 `src.main.py`。
+- **无图形界面**：在远程服务器或 CI 环境评估时，请将 `evaluate.enable_live` 设为 `false`，避免窗口初始化失败。
+- **模型未加载**：若 `results/MAAC-R/` 为空或缺少最新权重，评估会保持原始随机策略；此时请先完成至少一次训练或手动指定权重路径。
+- **出界行为**：新版默认启用边界裁剪，若发现仍有异常，可检查配置中的 `x_max/y_max` 是否过小，或在调试时打印智能体坐标。
+- **OMP 库冲突**：若出现 `OMP: Error #15` 提示，可在命令前导出环境变量 `KMP_DUPLICATE_LIB_OK=TRUE`，例如 `set KMP_DUPLICATE_LIB_OK=TRUE`（Windows PowerShell 用 `$env:KMP_DUPLICATE_LIB_OK='TRUE'`）。
 
-- `train` 阶段默认同时训练老鹰、母鸡、小鸡三套 Actor-Critic 网络。
-- CLI 新增参数可分别加载/保存母鸡、小鸡的 Actor、Critic。
-- `configs/MAAC-R.yaml` 增加了 `protector_actor_critic`、`target_actor_critic` 超参区块（包含动作空间、观测半径、奖励权重等），便于独立调参。
-- TensorBoard 日志与 CSV 指标会分别记录三类智能体的奖励、损失、覆盖率，便于分析协作与对抗效果。
-
----
-
-## 碰撞弹开效果
-
-当老鹰侵入母鸡防护臂时：
-
-1. 计算老鹰到手臂线段的最短距离；
-2. 距离小于 `arm_thickness` 即视为碰撞；
-3. 按 `knockback` 沿法线方向推离并限制在地图范围内；
-4. 刷新所有智能体的观测与奖励。
-
-配置示例：
-
-```yaml
-protector:
-  safe_radius: 200.0      # 防护臂长度
-  knockback: 200.0        # 弹开强度
-  arm_thickness: 100.0    # 碰撞判定厚度
-```
-
----
-
-## 智能体介绍
-
-### 🦅 老鹰（UAV - 追击者）
-
-- 速度：20 单位/步
-- 观测半径：200，通信半径：500
-- 动作空间：12 个离散转向动作
-- 任务：协同追踪小鸡，避免母鸡惩罚
-
-### 🐤 小鸡（Chick - 被追击者）
-
-- 速度：5
-- 捕获半径：120
-- 行为：可训练逃逸策略（默认随机）
-- 状态：被老鹰进入捕获半径即判定被捕
-
-### 🐔 母鸡（Protector - 防御者）
-
-- 速度：5
-- 安全半径：200
-- 弹开机制：老鹰入侵时触发惩罚与物理推离
-- 任务：保护小鸡、阻挡老鹰、降低被捕率
-
----
-
-## 算法框架对比
-
-| 方法             | 描述             | 协作机制    | 适用场景     | 推荐度     |
-| ---------------- | ---------------- | ----------- | ------------ | ---------- |
-| MAAC             | 老鹰自利策略     | ❌ 无协作   | 简单对抗     | ⭐⭐⭐     |
-| MAAC-G           | 全局奖励共享     | 🤝 平均分配 | 完全协作     | ⭐⭐⭐⭐   |
-| **MAAC-R** | PMI + 自适应奖励 | 🧠 智能分配 | 复杂协作对抗 | ⭐⭐⭐⭐⭐ |
-| C-METHOD         | 对比基线         | -           | 性能对照     | ⭐⭐       |
-
----
-
-## 使用技巧
-
-1. **先演示后训练**：建议先运行演示模式，再按短程训练观察曲线。
-2. **调参与扩展**：可调整智能体数量、奖励权重或替换自定义策略。
-3. **性能优化**：启用 GPU、增大 batch size、扩充经验池或多 GPU 并行以缩短训练时间。
-
----
-
-## 致谢与许可
-
-项目用于 **ME5424 Swarm Robotics and Aerial Robotics** 课程实验，欢迎在此基础上扩展更复杂的协作策略与物理交互。项目采用 MIT 许可证，详见 [LICENSE](LICENSE)。
-
----
-
-## 联系方式
-
-- 📧 Email: [your-email@example.com]
-- 🐛 Issue: [GitHub Issues](https://github.com/XC-CN/5424Project/issues)
-- 💬 Discussion: [GitHub Discussions](https://github.com/XC-CN/5424Project/discussions)
-
----
-
-<div align="center">
-
-**如果这个项目对您有帮助，请给我们一颗 Star！⭐**
-
-Made with ❤️ by ME5424 Team
-
-</div>
+祝顺利完成实验与汇报！
