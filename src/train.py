@@ -317,6 +317,8 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
 
     last_losses = {role: (0.0, 0.0) for role in roles}
 
+    render_train = config.get("render_when_train", False)
+
     with tqdm(total=num_episodes, desc='Episodes') as pbar:
         for episode in range(num_episodes):
             env.reset(config=config)
@@ -372,11 +374,11 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
             else:
                 avg_pmi_loss = 0.0
 
-            if (episode + 1) % frequency == 0:
-                postfix = {
-                    'episode': f'{episode + 1}',
-                    'uav_return': f'{np.mean(return_value.return_list[-frequency:]):.3f}'
-                }
+                if (episode + 1) % frequency == 0:
+                    postfix = {
+                        'episode': f'{episode + 1}',
+                        'uav_return': f'{np.mean(return_value.return_list[-frequency:]):.3f}'
+                    }
                 for role in roles:
                     actor_loss_value, critic_loss_value = last_losses.get(role, (0.0, 0.0))
                     postfix[f'{role}_actor'] = f'{actor_loss_value:.4f}'
@@ -385,7 +387,8 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
                     postfix['pmi_loss'] = f'{avg_pmi_loss:.4f}'
                 pbar.set_postfix(postfix)
 
-                draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=episode)
+                if render_train:
+                    draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=episode)
                 for role in roles:
                     agents[role].save(save_dir=config["save_dir"], epoch_i=episode + 1, tag=role)
                 if pmi:

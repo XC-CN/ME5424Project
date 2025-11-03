@@ -82,6 +82,9 @@ class Environment:
                                  u_v_max, u_h_max, na, dc, dp, dt) for i in range(self.n_uav)]
         else:
             print("wrong init position")
+        for uav in self.uav_list:
+            if hasattr(uav, "set_world_bounds"):
+                uav.set_world_bounds(self.x_max, self.y_max)
 
         target_action_dim = t_action_dim if t_action_dim is not None else na
         protector_action_dim = p_action_dim if p_action_dim is not None else na
@@ -138,7 +141,7 @@ class Environment:
 
         self.position = {'all_uav_xs': [], 'all_uav_ys': [], 'all_target_xs': [], 'all_target_ys': [], 'all_protector_xs': [], 'all_protector_ys': []}
         self.covered_target_num = []
-        self.step_i = 0  # 步计数器
+        self.step_i = 0  # 姝ヨ鏁板櫒
 
     def reset(self, config):
         # self.__reset(t_v_max=config["target"]["v_max"],
@@ -189,18 +192,18 @@ class Environment:
         :return: states, rewards
         """
         # update the position of targets
-        # 已捕获目标不再更新位置
+        # 宸叉崟鑾风洰鏍囦笉鍐嶆洿鏂颁綅缃?
         for i, target in enumerate(self.target_list):
             if not getattr(target, 'captured', False):
                 t_action = None
                 if target_actions is not None and i < len(target_actions):
                     t_action = target_actions[i]
                 target.update_position(t_action)
-        # 更新 UAV
+        # 鏇存柊 UAV
         for i, uav in enumerate(self.uav_list):
             action = uav_actions[i] if uav_actions is not None and i < len(uav_actions) else None
             uav.update_position(action)
-        # 更新保护者
+        # 鏇存柊淇濇姢鑰?
         for i, prot in enumerate(self.protector_list):
             p_action = None
             if protector_actions is not None and i < len(protector_actions):
@@ -213,11 +216,11 @@ class Environment:
         for target in self.target_list:
             target.build_observation(self.uav_list, self.protector_list, self.target_list)
 
-        # 碰撞弹开效果：UAV 碰到保护者手臂后被物理推离
+        # 纰版挒寮瑰紑鏁堟灉锛歎AV 纰板埌淇濇姢鑰呮墜鑷傚悗琚墿鐞嗘帹绂?
         kb = config.get('protector', {}).get('knockback', 0.0)
         arm_th = config.get('protector', {}).get('arm_thickness', 0.0)
         if kb > 0 and arm_th > 0:
-            # 使用上一帧坐标估计保护者运动方向
+            # 浣跨敤涓婁竴甯у潗鏍囦及璁′繚鎶よ€呰繍鍔ㄦ柟鍚?
             prev_idx = max(0, len(self.position['all_protector_xs']) - 1)
             prev_xs = self.position['all_protector_xs'][prev_idx] if prev_idx < len(self.position['all_protector_xs']) else []
             prev_ys = self.position['all_protector_ys'][prev_idx] if prev_idx < len(self.position['all_protector_ys']) else []
@@ -242,20 +245,20 @@ class Environment:
                     vx = vy = 0.0
                     speed = 0.0
 
-                # 法向（垂直于运动方向）；静止时用朝向的法向
+                # 娉曞悜锛堝瀭鐩翠簬杩愬姩鏂瑰悜锛夛紱闈欐鏃剁敤鏈濆悜鐨勬硶鍚?
                 if speed > 1e-8:
                     nx, ny = -vy / speed, vx / speed
                 else:
                     h = getattr(prot, 'h', 0.0)
                     nx, ny = -np.sin(h), np.cos(h)
 
-                L = getattr(prot, 'safe_r', 0.0)  # 手臂半长度
-                # 两条臂的端点
-                x1, y1 = cx - nx * L, cy - ny * L  # 后臂端点
-                x2, y2 = cx + nx * L, cy + ny * L  # 前臂端点
+                L = getattr(prot, 'safe_r', 0.0)  # 鎵嬭噦鍗婇暱搴?
+                # 涓ゆ潯鑷傜殑绔偣
+                x1, y1 = cx - nx * L, cy - ny * L  # 鍚庤噦绔偣
+                x2, y2 = cx + nx * L, cy + ny * L  # 鍓嶈噦绔偣
 
                 for uav in self.uav_list:
-                    # 到两条臂的最近点与距离
+                    # 鍒颁袱鏉¤噦鐨勬渶杩戠偣涓庤窛绂?
                     cfx, cfy, d_front = closest_point_on_segment(uav.x, uav.y, cx, cy, x2, y2)
                     crx, cry, d_rear  = closest_point_on_segment(uav.x, uav.y, cx, cy, x1, y1)
                     if d_front < d_rear:
@@ -264,16 +267,16 @@ class Environment:
                         cxn, cyn, dmin = crx, cry, d_rear
 
                     if dmin < arm_th and dmin > 1e-6:
-                        # 从最近点指向 UAV 的法向
+                        # 浠庢渶杩戠偣鎸囧悜 UAV 鐨勬硶鍚?
                         ux = (uav.x - cxn) / dmin
                         uy = (uav.y - cyn) / dmin
-                        push = min(kb, arm_th - dmin)  # 不超过 knockback
+                        push = min(kb, arm_th - dmin)  # 涓嶈秴杩?knockback
                         uav.x += ux * push
                         uav.y += uy * push
                         uav.x = np.clip(uav.x, 0, self.x_max)
                         uav.y = np.clip(uav.y, 0, self.y_max)
 
-        # 目标捕获检测
+        # 鐩爣鎹曡幏妫€娴?
         for t_idx, target in enumerate(self.target_list):
             if getattr(target, 'captured', False):
                 continue
@@ -286,7 +289,7 @@ class Environment:
                     target.captured_step = self.step_i
                     break
 
-        # UAV 观测与通信
+        # UAV 瑙傛祴涓庨€氫俊
         for uav in self.uav_list:
             uav.observe_target(self.target_list)
             uav.observe_protector(self.protector_list)
@@ -311,7 +314,7 @@ class Environment:
         prot_xs, prot_ys = self.__get_all_protector_position()
         self.position['all_protector_xs'].append(prot_xs)
         self.position['all_protector_ys'].append(prot_ys)
-        # 步递增（统一时机）
+        # 姝ラ€掑锛堢粺涓€鏃舵満锛?
         self.step_i += 1
 
         reward = {
