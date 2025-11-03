@@ -177,15 +177,16 @@ class ActorCritic:
 
         return actor_loss, critic_loss, td_delta
 
-    def save(self, save_dir, epoch_i):
+    def save(self, save_dir, epoch_i, tag=None):
+        prefix = f"{tag}_" if tag else ""
         torch.save({
             'model_state_dict': self.actor.state_dict(),
             'optimizer_state_dict': self.actor_optimizer.state_dict()
-        }, os.path.join(save_dir, "actor", 'actor_weights_' + str(epoch_i) + '.pth'))
+        }, os.path.join(save_dir, "actor", f'{prefix}actor_weights_{epoch_i}.pth'))
         torch.save({
             'model_state_dict': self.critic.state_dict(),
             'optimizer_state_dict': self.critic_optimizer.state_dict()
-        }, os.path.join(save_dir, "critic", 'critic_weights_' + str(epoch_i) + '.pth'))
+        }, os.path.join(save_dir, "critic", f'{prefix}critic_weights_{epoch_i}.pth'))
 
     def load(self, actor_path, critic_path):
         if actor_path and os.path.exists(actor_path):

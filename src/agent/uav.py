@@ -3,8 +3,8 @@ import numpy as np
 from math import cos, sin, sqrt, exp, pi, e, atan2, hypot
 from typing import List, Tuple
 from models.PMINet import PMINetwork
-from agent.target import TARGET
-from agent.protector import PROTECTOR
+from agent.target import Target
+from agent.protector import Protector
 from scipy.special import softmax
 from utils.data_util import clip_and_normalize
 
@@ -54,7 +54,7 @@ class UAV:
     def __distance(self, target) -> float:
         """
         calculate the distance from uav to target
-        :param target: class UAV or class TARGET
+        :param target: class UAV or class Target
         :return: scalar
         """
         return sqrt((self.x - target.x) ** 2 + (self.y - target.y) ** 2)
@@ -99,7 +99,7 @@ class UAV:
 
         return self.x, self.y, self.h  # 返回agent的位置和朝向(heading/theta)
 
-    def observe_target(self, targets_list: List['TARGET'], relative=True):
+    def observe_target(self, targets_list: List['Target'], relative=True):
         """
         Observing target with a radius within dp
         :param relative: relative to uav itself
@@ -124,7 +124,7 @@ class UAV:
                                                     cos(target.h) * target.v_max / self.v_max,
                                                     sin(target.h) * target.v_max / self.v_max))
                     
-    def observe_protector(self, protectors_list: List['PROTECTOR'], relative=True):
+    def observe_protector(self, protectors_list: List['Protector'], relative=True):
         """
         Observing target with a radius within dp
         :param relative: relative to uav itself
@@ -275,7 +275,7 @@ class UAV:
         return boundary_punishment  # 没有clip, 在调用时外部clip
         # return clip_and_normalize(boundary_punishment, -1/2, 0, -1)
 
-    def calculate_raw_reward(self, uav_list: List['UAV'], target__list: List['TARGET'], protector_list: List['PROTECTOR'], x_max, y_max):
+    def calculate_raw_reward(self, uav_list: List['UAV'], target__list: List['Target'], protector_list: List['Protector'], x_max, y_max):
         """
         calculate three parts of the reward/punishment for this uav
         :return: float, float, float
@@ -286,7 +286,7 @@ class UAV:
         protector_punishment = self.__calculate_protector_collision_punishment(protector_list)
         return reward, boundary_punishment, punishment, protector_punishment
 
-    def __calculate_protector_collision_punishment(self, protector_list: List['PROTECTOR']) -> float:
+    def __calculate_protector_collision_punishment(self, protector_list: List['Protector']) -> float:
         """
         简单的距离阈值惩罚：
         - 若 UAV 与任意 Protector 距离 < threshold 则产生惩罚（负值）

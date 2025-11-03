@@ -1,5 +1,4 @@
 import os.path
-import csv
 from tqdm import tqdm
 import numpy as np
 import torch
@@ -11,29 +10,69 @@ import collections
 
 class ReturnValueOfTrain:
     def __init__(self):
+        # UAV metrics
         self.return_list = []
         self.target_tracking_return_list = []
         self.boundary_punishment_return_list = []
         self.duplicate_tracking_punishment_return_list = []
+        self.protector_collision_return_list = []
+
+        # Protector metrics
+        self.protector_return_list = []
+        self.protector_protect_reward_list = []
+        self.protector_block_reward_list = []
+        self.protector_failure_penalty_list = []
+
+        # Target metrics
+        self.target_return_list = []
+        self.target_safety_reward_list = []
+        self.target_danger_penalty_list = []
+        self.target_capture_penalty_list = []
+
+        # Coverage stats
         self.average_covered_targets_list = []
         self.max_covered_targets_list = []
 
     def item(self):
-        value_dict = {
+        return {
             'return_list': self.return_list,
             'target_tracking_return_list': self.target_tracking_return_list,
             'boundary_punishment_return_list': self.boundary_punishment_return_list,
             'duplicate_tracking_punishment_return_list': self.duplicate_tracking_punishment_return_list,
+            'protector_collision_return_list': self.protector_collision_return_list,
+            'protector_return_list': self.protector_return_list,
+            'protector_protect_reward_list': self.protector_protect_reward_list,
+            'protector_block_reward_list': self.protector_block_reward_list,
+            'protector_failure_penalty_list': self.protector_failure_penalty_list,
+            'target_return_list': self.target_return_list,
+            'target_safety_reward_list': self.target_safety_reward_list,
+            'target_danger_penalty_list': self.target_danger_penalty_list,
+            'target_capture_penalty_list': self.target_capture_penalty_list,
             'average_covered_targets_list': self.average_covered_targets_list,
             'max_covered_targets_list': self.max_covered_targets_list
         }
-        return value_dict
 
-    def save_epoch(self, reward, tt_return, bp_return, dtp_return, average_targets, max_targets):
-        self.return_list.append(reward)
-        self.target_tracking_return_list.append(tt_return)
-        self.boundary_punishment_return_list.append(bp_return)
-        self.duplicate_tracking_punishment_return_list.append(dtp_return)
+    def save_epoch(self, uav_metrics, protector_metrics, target_metrics, average_targets, max_targets):
+        # UAV metrics
+        self.return_list.append(uav_metrics.get('return', 0.0))
+        self.target_tracking_return_list.append(uav_metrics.get('target_tracking', 0.0))
+        self.boundary_punishment_return_list.append(uav_metrics.get('boundary', 0.0))
+        self.duplicate_tracking_punishment_return_list.append(uav_metrics.get('duplicate', 0.0))
+        self.protector_collision_return_list.append(uav_metrics.get('protector_collision', 0.0))
+
+        # Protector metrics
+        self.protector_return_list.append(protector_metrics.get('return', 0.0))
+        self.protector_protect_reward_list.append(protector_metrics.get('protect', 0.0))
+        self.protector_block_reward_list.append(protector_metrics.get('block', 0.0))
+        self.protector_failure_penalty_list.append(protector_metrics.get('failure', 0.0))
+
+        # Target metrics
+        self.target_return_list.append(target_metrics.get('return', 0.0))
+        self.target_safety_reward_list.append(target_metrics.get('safety', 0.0))
+        self.target_danger_penalty_list.append(target_metrics.get('danger', 0.0))
+        self.target_capture_penalty_list.append(target_metrics.get('capture', 0.0))
+
+        # Coverage stats
         self.average_covered_targets_list.append(average_targets)
         self.max_covered_targets_list.append(max_targets)
 
@@ -139,256 +178,319 @@ class PrioritizedReplayBuffer:
         return len(self.buffer)
 
 
-def operate_epoch(config, env, agent, pmi, num_steps, cwriter_state=None, cwriter_prob=None):
-    """
-    :param config:
-    :param env:
-    :param agent: 
-    :param pmi: 
-    :param num_steps: 
-    :param cwriter_state: 用于记录一个epoch内的state信息, 调试bug时使用
-    :param cwriter_prob:  用于记录一个epoch内的prob信息, 调试bug时使用
-    :return: 
-    """
-    transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': []}
-    episode_return = 0
-    episode_target_tracking_return = 0
-    episode_boundary_punishment_return = 0
-    episode_duplicate_tracking_punishment_return = 0
+def operate_epoch(config, env, agents, pmi, num_steps):
+    roles = ['uav', 'protector', 'target']
+    transition_dict = {
+        role: {'states': [], 'actions': [], 'next_states': [], 'rewards': []}
+        for role in roles
+    }
+
+    uav_acc = {'return': 0.0, 'target_tracking': 0.0, 'boundary': 0.0,
+               'duplicate': 0.0, 'protector_collision': 0.0}
+    protector_acc = {'return': 0.0, 'protect': 0.0, 'block': 0.0, 'failure': 0.0}
+    target_acc = {'return': 0.0, 'safety': 0.0, 'danger': 0.0, 'capture': 0.0}
     covered_targets_list = []
 
-    for i in range(num_steps):
-        config['step'] = i + 1
-        action_list = []
+    for step in range(num_steps):
+        config['step'] = step + 1
+        role_states = {role: [] for role in roles}
+        role_actions = {role: [] for role in roles}
 
-        # each uav makes choices first
+        # UAV decisions
         for uav in env.uav_list:
             state = uav.get_local_state()
-            if cwriter_state:
-                cwriter_state.writerow(state.tolist())
-            action, probs = agent.take_action(state)
-            if cwriter_prob:
-                cwriter_prob.writerow(probs.tolist())
-            transition_dict['states'].append(state)
-            action_list.append(action.item())
+            action, _ = agents['uav'].take_action(state)
+            role_states['uav'].append(state)
+            role_actions['uav'].append(int(action.item()))
 
-        # use action_list to update the environment
-        next_state_list, reward_list, covered_targets = env.step(config, pmi, action_list)  # action: List[int]
-        transition_dict['actions'].extend(action_list)
-        transition_dict['next_states'].extend(next_state_list)
-        transition_dict['rewards'].extend(reward_list['rewards'])
+        # Protector decisions
+        for protector in env.protector_list:
+            state = protector.get_local_state()
+            action, _ = agents['protector'].take_action(state)
+            role_states['protector'].append(state)
+            role_actions['protector'].append(int(action.item()))
 
-        episode_return += sum(reward_list['rewards'])
-        episode_target_tracking_return += sum(reward_list['target_tracking_reward'])
-        episode_boundary_punishment_return += sum(reward_list['boundary_punishment'])
-        episode_duplicate_tracking_punishment_return += sum(reward_list['duplicate_tracking_punishment'])
+        # Target decisions
+        for target in env.target_list:
+            state = target.get_local_state()
+            action, _ = agents['target'].take_action(state)
+            role_states['target'].append(state)
+            role_actions['target'].append(int(action.item()))
+
+        next_states, reward_dict, covered_targets = env.step(
+            config,
+            pmi,
+            role_actions['uav'],
+            role_actions['protector'],
+            role_actions['target']
+        )
+
+        for role in roles:
+            transition_dict[role]['states'].extend(role_states[role])
+            transition_dict[role]['actions'].extend(role_actions[role])
+            transition_dict[role]['rewards'].extend(reward_dict[role]['rewards'])
+            transition_dict[role]['next_states'].extend(next_states[role])
+
+        uav_acc['return'] += float(np.sum(reward_dict['uav']['rewards']))
+        uav_acc['target_tracking'] += float(np.sum(reward_dict['uav']['target_tracking']))
+        uav_acc['boundary'] += float(np.sum(reward_dict['uav']['boundary']))
+        uav_acc['duplicate'] += float(np.sum(reward_dict['uav']['duplicate']))
+        uav_acc['protector_collision'] += float(np.sum(reward_dict['uav']['protector_collision']))
+
+        protector_acc['return'] += float(np.sum(reward_dict['protector']['rewards']))
+        protector_acc['protect'] += float(np.sum(reward_dict['protector']['protect_reward']))
+        protector_acc['block'] += float(np.sum(reward_dict['protector']['block_reward']))
+        protector_acc['failure'] += float(np.sum(reward_dict['protector']['failure_penalty']))
+
+        target_acc['return'] += float(np.sum(reward_dict['target']['rewards']))
+        target_acc['safety'] += float(np.sum(reward_dict['target']['safety_reward']))
+        target_acc['danger'] += float(np.sum(reward_dict['target']['danger_penalty']))
+        target_acc['capture'] += float(np.sum(reward_dict['target']['capture_penalty']))
+
         covered_targets_list.append(covered_targets)
 
-    episode_return /= num_steps * env.n_uav
-    episode_target_tracking_return /= num_steps * env.n_uav
-    episode_boundary_punishment_return /= num_steps * env.n_uav
-    episode_duplicate_tracking_punishment_return /= num_steps * env.n_uav
-    average_covered_targets = np.mean(covered_targets_list)
-    max_covered_targets = np.max(covered_targets_list)
+    def average(total, count):
+        return total / count if count > 0 else 0.0
 
-    return (transition_dict, episode_return, episode_target_tracking_return,
-            episode_boundary_punishment_return, episode_duplicate_tracking_punishment_return,
-            average_covered_targets, max_covered_targets)
+    counts = {
+        'uav': max(env.n_uav, 1) * num_steps,
+        'protector': max(env.n_protectors, 1) * num_steps,
+        'target': max(env.m_targets, 1) * num_steps
+    }
+
+    uav_metrics = {
+        'return': average(uav_acc['return'], counts['uav']),
+        'target_tracking': average(uav_acc['target_tracking'], counts['uav']),
+        'boundary': average(uav_acc['boundary'], counts['uav']),
+        'duplicate': average(uav_acc['duplicate'], counts['uav']),
+        'protector_collision': average(uav_acc['protector_collision'], counts['uav'])
+    }
+    protector_metrics = {
+        'return': average(protector_acc['return'], counts['protector']),
+        'protect': average(protector_acc['protect'], counts['protector']),
+        'block': average(protector_acc['block'], counts['protector']),
+        'failure': average(protector_acc['failure'], counts['protector'])
+    }
+    target_metrics = {
+        'return': average(target_acc['return'], counts['target']),
+        'safety': average(target_acc['safety'], counts['target']),
+        'danger': average(target_acc['danger'], counts['target']),
+        'capture': average(target_acc['capture'], counts['target'])
+    }
+
+    average_covered_targets = float(np.mean(covered_targets_list)) if covered_targets_list else 0.0
+    max_covered_targets = float(np.max(covered_targets_list)) if covered_targets_list else 0.0
+
+    return transition_dict, uav_metrics, protector_metrics, target_metrics, average_covered_targets, max_covered_targets
 
 
-def train(config, env, agent, pmi, num_episodes, num_steps, frequency):
-    """
-    :param config:
-    :param pmi: pmi network
-    :param frequency: 打印消息的频率
-    :param num_steps: 每局进行的步数
-    :param env:
-    :param agent: # 因为所有的无人机共享权重训练, 所以共用一个agent
-    :param num_episodes: 局数
-    :return:
-    """
-    # initialize saving list
-    save_dir = os.path.join(config["save_dir"], "logs")
-    writer = SummaryWriter(log_dir=save_dir)  # 可以指定log存储的目录
+def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
+    roles = ['uav', 'protector', 'target']
+    missing_roles = [role for role in roles if agents.get(role) is None]
+    if missing_roles:
+        raise ValueError(f"Missing agents for roles: {missing_roles}")
+
+    log_dir = os.path.join(config["save_dir"], "logs")
+    writer = SummaryWriter(log_dir=log_dir)
     return_value = ReturnValueOfTrain()
-    # buffer = ReplayBuffer(config["actor_critic"]["buffer_size"])
-    buffer = PrioritizedReplayBuffer(config["actor_critic"]["buffer_size"])
-    if config["actor_critic"]["sample_size"] > 0:
-        sample_size = config["actor_critic"]["sample_size"]
-    else:
-        sample_size = config["environment"]["n_uav"] * num_steps
 
-    with open(os.path.join(save_dir, 'state.csv'), mode='w', newline='') as state_file, \
-            open(os.path.join(save_dir, 'prob.csv'), mode='w', newline='') as prob_file:
-        cwriter_state = csv.writer(state_file)
-        cwriter_prob = csv.writer(prob_file)
+    actor_cfg_map = {
+        'uav': config["actor_critic"],
+        'protector': config["protector_actor_critic"],
+        'target': config["target_actor_critic"]
+    }
+    role_counts = {
+        'uav': env.n_uav,
+        'protector': env.n_protectors,
+        'target': env.m_targets
+    }
 
-        cwriter_state.writerow(['state'])  # 写入state.csv的表头
-        cwriter_prob.writerow(['prob'])  # 写入prob.csv的表头
+    buffers = {}
+    sample_sizes = {}
+    for role in roles:
+        cfg = actor_cfg_map[role]
+        buffers[role] = PrioritizedReplayBuffer(cfg["buffer_size"])
+        if cfg.get("sample_size", 0) > 0:
+            sample_sizes[role] = cfg["sample_size"]
+        else:
+            sample_sizes[role] = max(role_counts[role], 1) * num_steps
 
-        with tqdm(total=num_episodes, desc='Episodes') as pbar:
-            for i in range(num_episodes):
-                # reset environment from config yaml file
-                env.reset(config=config)
+    last_losses = {role: (0.0, 0.0) for role in roles}
 
-                # episode start
-                # transition_dict, reward, tt_return, bp_return, \
-                #     dtp_return = operate_epoch(config, env, agent, pmi, num_steps, cwriter_state, cwriter_prob)
-                transition_dict, reward, tt_return, bp_return, \
-                    dtp_return, average_targets, max_targets = operate_epoch(config, env, agent, pmi, num_steps)
-                writer.add_scalar('reward', reward, i)
-                writer.add_scalar('target_tracking_return', tt_return, i)
-                writer.add_scalar('boundary_punishment', bp_return, i)
-                writer.add_scalar('duplicate_tracking_punishment', dtp_return, i)
-                writer.add_scalar('average_covered_targets', average_targets, i)
-                writer.add_scalar('max_covered_targets', max_targets, i)
+    with tqdm(total=num_episodes, desc='Episodes') as pbar:
+        for episode in range(num_episodes):
+            env.reset(config=config)
 
-                # saving return lists
-                return_value.save_epoch(reward, tt_return, bp_return, dtp_return, average_targets, max_targets)
+            transitions, uav_metrics, protector_metrics, target_metrics, average_targets, max_targets = operate_epoch(
+                config, env, agents, pmi, num_steps)
 
-                # sample from buffer
-                buffer.add(transition_dict)
-                # sample_dict = buffer.sample(sample_size)
-                sample_dict, indices, _ = buffer.sample(sample_size)
+            writer.add_scalar('uav/return', uav_metrics['return'], episode)
+            writer.add_scalar('uav/target_tracking', uav_metrics['target_tracking'], episode)
+            writer.add_scalar('uav/boundary', uav_metrics['boundary'], episode)
+            writer.add_scalar('uav/duplicate', uav_metrics['duplicate'], episode)
+            writer.add_scalar('uav/protector_collision', uav_metrics['protector_collision'], episode)
 
-                # update actor-critic network
-                actor_loss, critic_loss, td_errors = agent.update(sample_dict)
-                writer.add_scalar('actor_loss', actor_loss, i)
-                writer.add_scalar('critic_loss', critic_loss, i)
+            writer.add_scalar('protector/return', protector_metrics['return'], episode)
+            writer.add_scalar('protector/protect', protector_metrics['protect'], episode)
+            writer.add_scalar('protector/block', protector_metrics['block'], episode)
+            writer.add_scalar('protector/failure', protector_metrics['failure'], episode)
 
-                # update buffer
-                buffer.update_priorities(indices, td_errors.abs().detach().cpu().numpy())
+            writer.add_scalar('target/return', target_metrics['return'], episode)
+            writer.add_scalar('target/safety', target_metrics['safety'], episode)
+            writer.add_scalar('target/danger', target_metrics['danger'], episode)
+            writer.add_scalar('target/capture', target_metrics['capture'], episode)
 
-                # update pmi network
+            writer.add_scalar('coverage/average', average_targets, episode)
+            writer.add_scalar('coverage/max', max_targets, episode)
+
+            return_value.save_epoch(uav_metrics, protector_metrics, target_metrics, average_targets, max_targets)
+
+            uav_sample_dict = None
+            for role in roles:
+                buffers[role].add(transitions[role])
+                sample_dict, indices, _ = buffers[role].sample(sample_sizes[role])
+                if len(sample_dict['states']) == 0:
+                    continue
+
+                actor_loss, critic_loss, td_errors = agents[role].update(sample_dict)
+                actor_loss_value = float(actor_loss.detach().cpu().item() if torch.is_tensor(actor_loss) else actor_loss)
+                critic_loss_value = float(critic_loss.detach().cpu().item() if torch.is_tensor(critic_loss) else critic_loss)
+                writer.add_scalar(f'{role}/actor_loss', actor_loss_value, episode)
+                writer.add_scalar(f'{role}/critic_loss', critic_loss_value, episode)
+                last_losses[role] = (actor_loss_value, critic_loss_value)
+
+                if indices is not None and td_errors is not None:
+                    buffers[role].update_priorities(indices, td_errors.abs().detach().cpu().numpy())
+
+                if role == 'uav':
+                    uav_sample_dict = sample_dict
+
+            if pmi and uav_sample_dict and len(uav_sample_dict['states']) > 0:
+                state_tensor = torch.tensor(np.array(uav_sample_dict["states"]), dtype=torch.float32)
+                avg_pmi_loss = pmi.train_pmi(config, state_tensor, env.n_uav)
+                writer.add_scalar('pmi/avg_loss', avg_pmi_loss, episode)
+            else:
+                avg_pmi_loss = 0.0
+
+            if (episode + 1) % frequency == 0:
+                postfix = {
+                    'episode': f'{episode + 1}',
+                    'uav_return': f'{np.mean(return_value.return_list[-frequency:]):.3f}'
+                }
+                for role in roles:
+                    actor_loss_value, critic_loss_value = last_losses.get(role, (0.0, 0.0))
+                    postfix[f'{role}_actor'] = f'{actor_loss_value:.4f}'
+                    postfix[f'{role}_critic'] = f'{critic_loss_value:.4f}'
                 if pmi:
-                    avg_pmi_loss = pmi.train_pmi(config, torch.tensor(np.array(sample_dict["states"])), env.n_uav)
-                    writer.add_scalar('avg_pmi_loss', avg_pmi_loss, i)
+                    postfix['pmi_loss'] = f'{avg_pmi_loss:.4f}'
+                pbar.set_postfix(postfix)
 
-                # save & print
-                if (i + 1) % frequency == 0:
-                    # print some information
-                    if pmi:
-                        pbar.set_postfix({'episode': '%d' % (i + 1),
-                                          'return': '%.3f' % np.mean(return_value.return_list[-frequency:]),
-                                          'actor loss': '%f' % actor_loss,
-                                          'critic loss': '%f' % critic_loss,
-                                          'avg pmi loss': '%f' % avg_pmi_loss})
-                    else:
-                        pbar.set_postfix({'episode': '%d' % (i + 1),
-                                          'return': '%.3f' % np.mean(return_value.return_list[-frequency:]),
-                                          'actor loss': '%f' % actor_loss,
-                                          'critic loss': '%f' % critic_loss})
+                draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=episode)
+                for role in roles:
+                    agents[role].save(save_dir=config["save_dir"], epoch_i=episode + 1, tag=role)
+                if pmi:
+                    pmi.save(save_dir=config["save_dir"], epoch_i=episode + 1)
+                env.save_position(save_dir=config["save_dir"], epoch_i=episode + 1)
+                env.save_covered_num(save_dir=config["save_dir"], epoch_i=episode + 1)
 
-                    # save results and weights
-                    draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=i)
-                    agent.save(save_dir=config["save_dir"], epoch_i=i + 1)
-                    if pmi:
-                        pmi.save(save_dir=config["save_dir"], epoch_i=i + 1)
-                    env.save_position(save_dir=config["save_dir"], epoch_i=i + 1)
-                    env.save_covered_num(save_dir=config["save_dir"], epoch_i=i + 1)
-
-                # episode end
-                pbar.update(1)
+            pbar.update(1)
 
     writer.close()
-
     return return_value.item()
 
 
-def evaluate(config, env, agent, pmi, num_steps):
-    """
-    :param config:
-    :param pmi: pmi network
-    :param num_steps: 每局进行的步数
-    :param env:
-    :param agent: # 因为所有的无人机共享权重训练, 所以共用一个agent
-    :return:
-    """
-    # initialize saving list
+def evaluate(config, env, agents, pmi, num_steps):
     return_value = ReturnValueOfTrain()
 
-    # reset environment from config yaml file
     env.reset(config=config)
+    _, uav_metrics, protector_metrics, target_metrics, average_targets, max_targets = operate_epoch(
+        config, env, agents, pmi, num_steps)
 
-    # episode start
-    transition_dict, reward, tt_return, bp_return, dtp_return, average_targets, max_targets = operate_epoch(config, env, agent, pmi, num_steps)
+    return_value.save_epoch(uav_metrics, protector_metrics, target_metrics, average_targets, max_targets)
 
-    # saving return lists
-    return_value.save_epoch(reward, tt_return, bp_return, dtp_return, average_targets, max_targets)
-
-    # save results and weights
     draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=0)
     env.save_position(save_dir=config["save_dir"], epoch_i=0)
     env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
 
     return return_value.item()
 
+
 def run_epoch(config, pmi, env, num_steps):
-    """
-    :param config:
-    :param env:
-    :param num_steps:
-    :return:
-    """
-    transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': []}
-    episode_return = 0
-    episode_target_tracking_return = 0
-    episode_boundary_punishment_return = 0
-    episode_duplicate_tracking_punishment_return = 0
+    uav_acc = {'return': 0.0, 'target_tracking': 0.0, 'boundary': 0.0,
+               'duplicate': 0.0, 'protector_collision': 0.0}
+    protector_acc = {'return': 0.0, 'protect': 0.0, 'block': 0.0, 'failure': 0.0}
+    target_acc = {'return': 0.0, 'safety': 0.0, 'danger': 0.0, 'capture': 0.0}
     covered_targets_list = []
 
-    for _ in range(num_steps):
-        action_list = []
-        # uav_tracking_status = [0] * len(env.uav_list)
-
-        # # each uav makes choices first
-        # for uav in env.uav_list:
-        #     action, target_index = uav.get_action_by_direction(env.target_list, env.uav_list, uav_tracking_status)  # TODO
-        #     uav_tracking_status[target_index] = 1
-        #     action_list.append(action)
+    for step in range(num_steps):
+        config['step'] = step + 1
+        uav_actions = []
         for uav in env.uav_list:
-            action = uav.get_action_by_direction(env.target_list, env.uav_list)  # TODO
-            action_list.append(action)
+            action = uav.get_action_by_direction(env.target_list, env.uav_list)
+            uav_actions.append(int(action))
 
-        next_state_list, reward_list, covered_targets = env.step(config, pmi, action_list)  # TODO
+        _, reward_dict, covered_targets = env.step(config, pmi, uav_actions, None, None)
 
-        # use action_list to update the environment
-        transition_dict['actions'].extend(action_list)
-        transition_dict['rewards'].extend(reward_list['rewards'])
+        uav_acc['return'] += float(np.sum(reward_dict['uav']['rewards']))
+        uav_acc['target_tracking'] += float(np.sum(reward_dict['uav']['target_tracking']))
+        uav_acc['boundary'] += float(np.sum(reward_dict['uav']['boundary']))
+        uav_acc['duplicate'] += float(np.sum(reward_dict['uav']['duplicate']))
+        uav_acc['protector_collision'] += float(np.sum(reward_dict['uav']['protector_collision']))
 
-        episode_return += sum(reward_list['rewards'])
-        episode_target_tracking_return += sum(reward_list['target_tracking_reward'])
-        episode_boundary_punishment_return += sum(reward_list['boundary_punishment'])
-        episode_duplicate_tracking_punishment_return += sum(reward_list['duplicate_tracking_punishment'])
+        protector_acc['return'] += float(np.sum(reward_dict['protector']['rewards']))
+        protector_acc['protect'] += float(np.sum(reward_dict['protector']['protect_reward']))
+        protector_acc['block'] += float(np.sum(reward_dict['protector']['block_reward']))
+        protector_acc['failure'] += float(np.sum(reward_dict['protector']['failure_penalty']))
+
+        target_acc['return'] += float(np.sum(reward_dict['target']['rewards']))
+        target_acc['safety'] += float(np.sum(reward_dict['target']['safety_reward']))
+        target_acc['danger'] += float(np.sum(reward_dict['target']['danger_penalty']))
+        target_acc['capture'] += float(np.sum(reward_dict['target']['capture_penalty']))
+
         covered_targets_list.append(covered_targets)
 
-    average_covered_targets = np.mean(covered_targets_list)
-    max_covered_targets = np.max(covered_targets_list)
+    def average(total, count):
+        return total / count if count > 0 else 0.0
 
-    return (transition_dict, episode_return, episode_target_tracking_return,
-            episode_boundary_punishment_return, episode_duplicate_tracking_punishment_return,
-            average_covered_targets, max_covered_targets)
+    counts = {
+        'uav': max(env.n_uav, 1) * num_steps,
+        'protector': max(env.n_protectors, 1) * num_steps,
+        'target': max(env.m_targets, 1) * num_steps
+    }
+
+    uav_metrics = {
+        'return': average(uav_acc['return'], counts['uav']),
+        'target_tracking': average(uav_acc['target_tracking'], counts['uav']),
+        'boundary': average(uav_acc['boundary'], counts['uav']),
+        'duplicate': average(uav_acc['duplicate'], counts['uav']),
+        'protector_collision': average(uav_acc['protector_collision'], counts['uav'])
+    }
+    protector_metrics = {
+        'return': average(protector_acc['return'], counts['protector']),
+        'protect': average(protector_acc['protect'], counts['protector']),
+        'block': average(protector_acc['block'], counts['protector']),
+        'failure': average(protector_acc['failure'], counts['protector'])
+    }
+    target_metrics = {
+        'return': average(target_acc['return'], counts['target']),
+        'safety': average(target_acc['safety'], counts['target']),
+        'danger': average(target_acc['danger'], counts['target']),
+        'capture': average(target_acc['capture'], counts['target'])
+    }
+
+    average_covered_targets = float(np.mean(covered_targets_list)) if covered_targets_list else 0.0
+    max_covered_targets = float(np.max(covered_targets_list)) if covered_targets_list else 0.0
+
+    return uav_metrics, protector_metrics, target_metrics, average_covered_targets, max_covered_targets
+
 
 def run(config, env, pmi, num_steps):
-    """
-    :param config:
-    :param num_steps: 每局进行的步数
-    :param env:
-    :return:
-    """
-    # initialize saving list
     return_value = ReturnValueOfTrain()
 
-    # reset environment from config yaml file
     env.reset(config=config)
+    uav_metrics, protector_metrics, target_metrics, average_targets, max_targets = run_epoch(config, pmi, env, num_steps)
+    return_value.save_epoch(uav_metrics, protector_metrics, target_metrics, average_targets, max_targets)
 
-    # episode start
-    transition_dict, reward, tt_return, bp_return, dtp_return, average_targets, max_targets = run_epoch(config, pmi, env, num_steps)
-
-    # saving return lists
-    return_value.save_epoch(reward, tt_return, bp_return, dtp_return, average_targets, max_targets)
-
-    # save results and weights
     draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=0)
     env.save_position(save_dir=config["save_dir"], epoch_i=0)
     env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)

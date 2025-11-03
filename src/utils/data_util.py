@@ -10,37 +10,33 @@ def save_csv(config, return_list):
     """
     :param config:
     :param return_list:
-        return_list = {
-        'return_list': self.return_list,
-        'target_tracking_return_list' :target_tracking_return_list,
-        'boundary_punishment_return_list':boundary_punishment_return_list,
-        'duplicate_tracking_punishment_return_list':duplicate_tracking_punishment_return_list
-    }
-    :return:
+    :return: None
     """
-    with open(os.path.join(config["save_dir"], 'return_list.csv'), mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(['Reward'])  # 写入表头
-        for reward in return_list['return_list']:
-            writer.writerow([reward])
+    metric_map = {
+        'return_list.csv': ('Reward', return_list.get('return_list', [])),
+        'target_tracking_return_list.csv': ('target_tracking', return_list.get('target_tracking_return_list', [])),
+        'boundary_punishment_return_list.csv': ('boundary_punishment', return_list.get('boundary_punishment_return_list', [])),
+        'duplicate_tracking_punishment_return_list.csv': ('duplicate_tracking_punishment', return_list.get('duplicate_tracking_punishment_return_list', [])),
+        'protector_collision_return_list.csv': ('protector_collision', return_list.get('protector_collision_return_list', [])),
+        'protector_return_list.csv': ('protector_return', return_list.get('protector_return_list', [])),
+        'protector_protect_reward_list.csv': ('protector_protect', return_list.get('protector_protect_reward_list', [])),
+        'protector_block_reward_list.csv': ('protector_block', return_list.get('protector_block_reward_list', [])),
+        'protector_failure_penalty_list.csv': ('protector_failure', return_list.get('protector_failure_penalty_list', [])),
+        'target_return_list.csv': ('target_return', return_list.get('target_return_list', [])),
+        'target_safety_reward_list.csv': ('target_safety', return_list.get('target_safety_reward_list', [])),
+        'target_danger_penalty_list.csv': ('target_danger', return_list.get('target_danger_penalty_list', [])),
+        'target_capture_penalty_list.csv': ('target_capture', return_list.get('target_capture_penalty_list', [])),
+        'average_covered_targets_list.csv': ('average_covered_targets', return_list.get('average_covered_targets_list', [])),
+        'max_covered_targets_list.csv': ('max_covered_targets', return_list.get('max_covered_targets_list', [])),
+    }
 
-    with open(os.path.join(config["save_dir"], 'target_tracking_return_list.csv'), mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(['target_tracking'])  # 写入表头
-        for reward in return_list['target_tracking_return_list']:
-            writer.writerow([reward])
-
-    with open(os.path.join(config["save_dir"], 'boundary_punishment_return_list.csv'), mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(['boundary_punishment'])  # 写入表头
-        for reward in return_list['boundary_punishment_return_list']:
-            writer.writerow([reward])
-
-    with open(os.path.join(config["save_dir"], 'duplicate_tracking_punishment_return_list.csv'), mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(['duplicate_tracking_punishment'])  # 写入表头
-        for reward in return_list['duplicate_tracking_punishment_return_list']:
-            writer.writerow([reward])
+    for filename, (header, values) in metric_map.items():
+        file_path = os.path.join(config["save_dir"], filename)
+        with open(file_path, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([header])
+            for value in values:
+                writer.writerow([value])
 
 
 def clip_and_normalize(val, floor, ceil, choice=1):
