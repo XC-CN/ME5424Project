@@ -130,7 +130,7 @@ python src/main.py --phase train --method MAAC-R -e 50 -s 300 -f 20
 #### 3️⃣ 评估模式（默认加载最近训练结果）
 
 ```bash
-python src/main.py --phase evaluate --method MAAC-R -s 500
+python src/main.py --phase evaluate --method MAAC-R -s 5000
 # --phase evaluate: 指定运行模式为评估模式（加载已训练权重进行测试）
 # --method MAAC-R: 选择 MAAC-R 算法配置文件
 # -s 500: 设置每轮仿真步数为 500 步
