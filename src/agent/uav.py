@@ -456,6 +456,91 @@ class UAV:
         else:
             return self.__calculate_cooperative_reward_by_mean(uav_list, a)
 
+    def get_rule_based_action(
+        self,
+        targets: List['Target'],
+        protectors: List['Protector'],
+        uav_list: List['UAV'],
+        rule_params: dict,
+    ) -> int:
+        """
+        根据一套启发式规则挑选离散动作：
+        1. 选取最近且防守压力较小的目标；
+        2. 结合边界与母鸡规避修正期望航向；
+        3. 将期望航向转换为离散动作索引。
+        """
+        best_target = None
+        best_score = -float("inf")
+
+        for target in targets:
+            if getattr(target, "captured", False):
+                continue
+
+            dist_to_target = self.distance(self.x, self.y, target.x, target.y)
+            if dist_to_target < 1e-6:
+                continue
+
+            # 若母鸡距离目标更近，则认为防守严密，跳过
+            defended = any(
+                self.distance(protector.x, protector.y, target.x, target.y) < dist_to_target
+                for protector in protectors
+            )
+            if defended:
+                continue
+
+            # 避免多个 UAV 聚集追同一个目标
+            repetition_penalty = 0.0
+            for other in uav_list:
+                if other is self:
+                    continue
+                if self.distance(other.x, other.y, target.x, target.y) < self.dp:
+                    repetition_penalty += 0.8
+
+            score = 1.0 / dist_to_target - repetition_penalty
+            if score > best_score:
+                best_score = score
+                best_target = target
+
+        if best_target is None:
+            return self.Na // 2
+
+        desired_angle = atan2(best_target.y - self.y, best_target.x - self.x)
+
+        boundary_avoid_threshold = rule_params.get("boundary_avoid_threshold", 15.0)
+        boundary_avoid_strength = rule_params.get("boundary_avoid_strength", 0.8)
+        protector_avoid_threshold = rule_params.get("protector_avoid_threshold", 20.0)
+        protector_avoid_strength = rule_params.get("protector_avoid_strength", 1.0)
+
+        turn_bias = 0.0
+
+        if self.world_bounds:
+            x_max, y_max = self.world_bounds
+            if self.x < boundary_avoid_threshold:
+                turn_bias += boundary_avoid_strength
+            elif self.x > x_max - boundary_avoid_threshold:
+                turn_bias -= boundary_avoid_strength
+            if self.y < boundary_avoid_threshold:
+                turn_bias += boundary_avoid_strength
+            elif self.y > y_max - boundary_avoid_threshold:
+                turn_bias -= boundary_avoid_strength
+
+        for protector in protectors:
+            dist_to_protector = self.distance(self.x, self.y, protector.x, protector.y)
+            if dist_to_protector < protector_avoid_threshold:
+                angle_from_protector = atan2(self.y - protector.y, self.x - protector.x)
+                angle_diff = (angle_from_protector - desired_angle + pi) % (2 * pi) - pi
+                turn_bias -= protector_avoid_strength * (pi / 2) * np.sign(angle_diff)
+
+        final_angle_diff = (desired_angle - self.h + pi) % (2 * pi) - pi
+        final_angle_diff += turn_bias
+
+        angular_cmd = np.clip(final_angle_diff / self.dt, -self.h_max, self.h_max)
+        k = (self.Na - 1) * angular_cmd / self.h_max
+        a_idx = int(np.round((k + self.Na - 1) / 2))
+        a_idx = max(0, min(self.Na - 1, a_idx))
+
+        return a_idx
+
     def get_action_by_direction(self, target_list, uav_list):
         def distance(x1, y1, x2, y2):
             return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)

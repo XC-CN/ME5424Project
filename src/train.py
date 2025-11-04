@@ -199,11 +199,17 @@ def operate_epoch(config, env, agents, pmi, num_steps, render_hook=None):
         role_actions = {role: [] for role in roles}
 
         # UAV decisions
+        uav_control_method = config.get('uav', {}).get('control_method', 'rl')
         for uav in env.uav_list:
             state = uav.get_local_state()
-            action, _ = agents['uav'].take_action(state)
+            if uav_control_method == 'rule_based':
+                rule_params = config.get('uav', {}).get('rule_based_params', {})
+                action = uav.get_rule_based_action(env.target_list, env.protector_list, env.uav_list, rule_params)
+                role_actions['uav'].append(action)
+            else:
+                action, _ = agents['uav'].take_action(state)
+                role_actions['uav'].append(int(action.item()))
             role_states['uav'].append(state)
-            role_actions['uav'].append(int(action.item()))
 
         # Protector decisions
         for protector in env.protector_list:
@@ -382,7 +388,11 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
             return_value.save_epoch(uav_metrics, protector_metrics, target_metrics, average_targets, max_targets)
 
             uav_sample_dict = None
+            uav_control_method = config.get('uav', {}).get('control_method', 'rl')
             for role in roles:
+                if role == 'uav' and uav_control_method == 'rule_based':
+                    continue  # Skip learning for rule-based UAV
+
                 buffers[role].add(transitions[role])
                 sample_dict, indices, _ = buffers[role].sample(sample_sizes[role])
                 if len(sample_dict['states']) == 0:

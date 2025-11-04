@@ -23,6 +23,12 @@ uav:
   beta: 0.2
   gamma: 0.2
   omega: 0.5
+  control_method: "rule_based" # "rl" or "rule_based"
+  rule_based_params:
+    boundary_avoid_threshold: 15.0
+    boundary_avoid_strength: 0.8
+    protector_avoid_threshold: 20.0
+    protector_avoid_strength: 1.0
 protector:
   n_protectors: 1
   v_max: 5
