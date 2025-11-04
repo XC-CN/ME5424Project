@@ -6,7 +6,6 @@ first_device: 0
 gpus: 1
 seed: 42
 cooperative: 0.3
-render_when_train: false
 environment:
   n_uav: 1
   m_targets: 10
@@ -77,4 +76,5 @@ evaluate:
   enable_live: true
   render_pause: 0.05
   render_trail: 60
+  save_outputs: false
   save_animation: true

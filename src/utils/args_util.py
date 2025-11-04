@@ -27,6 +27,7 @@ def get_config(config_file, phase="train"):
     save_dir = os.path.join(config['result_dir'], exp_name)
     args_save_name = os.path.join(save_dir, 'args.yaml')
     config['save_dir'] = save_dir
+    config['phase'] = phase
 
     mkdir(config['result_dir'])
 

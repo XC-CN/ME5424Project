@@ -218,6 +218,8 @@ def main(args):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, "configs", f"{args.method}.yaml")
     config = get_config(config_path, phase=args.phase)
+    config["phase"] = args.phase
+    config["render_when_train"] = bool(args.render_when_train)
 
     if args.phase == "evaluate":
         defaults, source_dir = find_latest_checkpoints(config["result_dir"], config["save_dir"])
@@ -300,6 +302,7 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--num_episodes", type=int, default=10000, help="Number of training episodes to run.")
     parser.add_argument("-s", "--num_steps", type=int, default=200, help="Maximum steps per episode.")
     parser.add_argument("-f", "--frequency", type=int, default=100, help="Logging or evaluation frequency in episodes.")
+    parser.add_argument("--render_when_train", action='store_true', default=False, help='Enable live rendering during training.')
     parser.add_argument("-a", "--actor_path", type=str, default=None, help="Path to a pretrained actor checkpoint.")
     parser.add_argument("-c", "--critic_path", type=str, default=None, help="Path to a pretrained critic checkpoint.")
     parser.add_argument("-p", "--pmi_path", type=str, default=None, help="Path to a pretrained PMI network checkpoint.")

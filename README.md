@@ -50,7 +50,7 @@ python src/main.py --phase train --method MAAC-R -e 50 -s 300 -f 20
 - `-e 50`：训练 50 局。
 - `-s 300`：每局最多 300 步。
 - `-f 20`：每 20 局保存一次 Actor/Critic/PMI 权重和日志。
-- 训练期间默认不弹出可视化窗口，如需观测可在 `configs/MAAC-R.yaml` 中将 `render_when_train` 设为 `true`。
+- 训练期间默认不弹出可视化窗口。如需观测，可在命令后追加 `--render_when_train` 立即开启训练渲染。
 - 训练完成后，`results/MAAC-R/<experiment>/` 会包含：
   - `actor/`、`critic/`、`pmi/`：按保存频率命名的模型快照（例如 `uav_actor_weights_20.pth`）。
   - `logs/`：TensorBoard 训练曲线。
@@ -64,7 +64,7 @@ python src/main.py --phase evaluate --method MAAC-R -s 500
 ```
 
 - 未显式传入 `--actor_path` / `--protector_actor_path` / `--target_actor_path` 时，程序会自动在 `results/MAAC-R/` 中查找最近一次训练并加载对应权重。
-- 评估阶段会弹出实时可视化窗口，支持拖动观察；结束后依旧会在 `animated/` 目录生成高质量视频。
+- 评估阶段会弹出实时可视化窗口，支持拖动观察；默认不会在 `results/MAAC-R/<experiment>/` 下生成新文件，如需导出动画或统计数据，可在 `configs/MAAC-R.yaml` 的 `evaluate` 区段将 `save_outputs` 设为 `true`。
 - 如需指定旧模型，可手动传入各角色的 `--*_actor_path` / `--*_critic_path`。
 - 若在服务器或无图形环境运行，可在 `configs/MAAC-R.yaml` 将 `evaluate.enable_live` 改为 `false` 关闭在线渲染。
 
@@ -77,6 +77,7 @@ python src/main.py --phase evaluate --method MAAC-R -s 500
 | `-e, --num_episodes`                                  | 训练总局数                            | `train`               |
 | `-s, --num_steps`                                     | 每局步数上限（评估/演示则为仿真步数） | 全部                    |
 | `-f, --frequency`                                     | 训练保存与日志间隔                    | `train`               |
+| `--render_when_train`                                 | 训练时强制开启实时渲染窗口            | `train`               |
 | `--actor_path`, `--critic_path`                     | 指定老鹰 Actor/Critic 权重            | `evaluate`            |
 | `--protector_actor_path`, `--protector_critic_path` | 指定母鸡模型权重                      | `evaluate`            |
 | `--target_actor_path`, `--target_critic_path`       | 指定小鸡模型权重                      | `evaluate`            |
@@ -97,7 +98,7 @@ python src/main.py --phase evaluate --method MAAC-R -s 500
   - `environment.x_max / y_max`：地图边界；所有智能体都会在 `step` 内被裁剪到该范围。
   - `protector.safe_radius`、`target.capture_radius` 等参数可调整奖励强度。
   - `actor_critic`、`protector_actor_critic`、`target_actor_critic` 可分别设置学习率、隐藏层等超参数。
-  - 新增 `evaluate` 区段可控制在线评估：`enable_live`、`render_pause`（刷新间隔秒）、`render_trail`（轨迹保存长度）、`save_animation`（是否导出离线视频）。
+  - `evaluate` 区段可控制在线评估：`enable_live`、`render_pause`（刷新间隔秒）、`render_trail`（轨迹保存长度）、`save_animation`（是否导出离线视频）、`save_outputs`（是否写入 CSV/MP4）。
 - **新增物理交互参数** ✨：
   - `protector.knockback`：击退强度。
   - `protector.arm_thickness`：碰撞判定的手臂厚度。
