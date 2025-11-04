@@ -1,5 +1,5 @@
 import numpy as np
-from math import cos, sin, pi, atan2
+from math import cos, sin, pi, atan2, hypot
 from typing import List, Optional, Tuple
 
 
@@ -54,7 +54,14 @@ class Target:
             "safety_reward": 0.0,
             "danger_penalty": 0.0,
             "capture_penalty": 0.0,
+            "approach_bonus": 0.0,
+            "escape_bonus": 0.0,
+            "movement_penalty": 0.0,
         }
+        self.last_min_protector_dist: Optional[float] = None
+        self.last_min_uav_dist: Optional[float] = None
+        self.last_step_speed: float = 0.0
+        self.stagnant_steps: int = 0
 
     # ------------------------------------------------------------------
     def reset_capture(self) -> None:
@@ -81,6 +88,7 @@ class Target:
     def update_position(self, action: Optional[int]) -> Tuple[float, float, float]:
         if self.captured:
             return self.x, self.y, self.h
+        prev_x, prev_y = self.x, self.y
         if action is not None:
             self.action = int(action)
             heading_delta = self.discrete_action(self.action)
@@ -93,6 +101,7 @@ class Target:
         self.h += self.dt * heading_delta
         self.h = (self.h + pi) % (2 * pi) - pi
         self._clamp_inside()
+        self.last_step_speed = float(hypot(self.x - prev_x, self.y - prev_y))
         return self.x, self.y, self.h
 
     def _clamp_inside(self) -> None:

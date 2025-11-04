@@ -134,6 +134,17 @@ class Environment:
             protector.set_world_bounds(self.x_max, self.y_max)
             self.protector_list.append(protector)
 
+        for target in self.target_list:
+            target.last_min_protector_dist = None
+            target.last_min_uav_dist = None
+            target.last_step_speed = 0.0
+            target.stagnant_steps = 0
+        for protector in self.protector_list:
+            protector.last_min_target_dist = None
+            protector.last_min_uav_dist = None
+            protector.last_step_speed = 0.0
+            protector.stagnant_steps = 0
+
         for protector in self.protector_list:
             protector.build_observation(self.uav_list, self.target_list, self.protector_list)
         for target in self.target_list:
@@ -433,6 +444,11 @@ class Environment:
         p_beta = protector_cfg.get("beta", 1.0)
         p_gamma = protector_cfg.get("gamma", 10.0)
         default_safe_radius = protector_cfg.get("safe_radius", 0.0)
+        p_approach = protector_cfg.get("approach_bonus_weight", 0.0)
+        p_retreat = protector_cfg.get("retreat_bonus_weight", 0.0)
+        p_move_penalty = protector_cfg.get("movement_penalty_weight", 0.0)
+        p_min_speed = protector_cfg.get("movement_min_speed", 0.0)
+        p_stagnate_steps = int(protector_cfg.get("stagnate_steps", 5))
 
         failure_flag = any(target.captured for target in self.target_list)
 
@@ -440,6 +456,9 @@ class Environment:
         protector_block = []
         protector_failure = []
         protector_rewards = []
+        protector_approach_bonus = []
+        protector_retreat_bonus = []
+        protector_movement_penalty = []
 
         for protector in self.protector_list:
             protector.reset_reward()
@@ -449,42 +468,98 @@ class Environment:
             protect_score = 0.0
             block_score = 0.0
 
+            min_target_dist = None
             for target in self.target_list:
                 if target.captured:
                     continue
                 dist_pt = Protector.distance(protector.x, protector.y, target.x, target.y)
                 if safe_radius > 0 and dist_pt <= safe_radius:
                     protect_score += max(0.0, 1.0 - dist_pt / radius_norm)
+                if min_target_dist is None or dist_pt < min_target_dist:
+                    min_target_dist = dist_pt
 
                 for uav in self.uav_list:
                     block_score += self._blocking_score(protector, target, uav, safe_radius)
+
+            min_uav_dist = None
+            if self.uav_list:
+                min_uav_dist = min(
+                    Protector.distance(protector.x, protector.y, uav.x, uav.y)
+                    for uav in self.uav_list
+                )
+
+            approach_bonus = 0.0
+            if min_target_dist is not None:
+                if protector.last_min_target_dist is not None:
+                    delta = protector.last_min_target_dist - min_target_dist
+                    if delta > 0:
+                        approach_bonus = p_approach * delta
+                protector.last_min_target_dist = min_target_dist
+
+            retreat_bonus = 0.0
+            if min_uav_dist is not None:
+                if protector.last_min_uav_dist is not None:
+                    delta = min_uav_dist - protector.last_min_uav_dist
+                    if delta > 0:
+                        retreat_bonus = p_retreat * delta
+                protector.last_min_uav_dist = min_uav_dist
+
+            movement_penalty = 0.0
+            if p_min_speed > 0:
+                if protector.last_step_speed < p_min_speed:
+                    protector.stagnant_steps += 1
+                else:
+                    protector.stagnant_steps = 0
+                if protector.stagnant_steps >= p_stagnate_steps and p_move_penalty > 0:
+                    movement_penalty = -p_move_penalty
+            else:
+                protector.stagnant_steps = 0
 
             failure_penalty = -1.0 if failure_flag else 0.0
 
             protector.raw_reward["protect_reward"] = protect_score
             protector.raw_reward["block_reward"] = block_score
             protector.raw_reward["failure_penalty"] = failure_penalty
+            protector.raw_reward["approach_bonus"] = approach_bonus
+            protector.raw_reward["retreat_bonus"] = retreat_bonus
+            protector.raw_reward["movement_penalty"] = movement_penalty
 
-            total_protector_reward = (p_alpha * protect_score +
-                                      p_beta * block_score +
-                                      p_gamma * failure_penalty)
+            total_protector_reward = (
+                p_alpha * protect_score
+                + p_beta * block_score
+                + p_gamma * failure_penalty
+                + approach_bonus
+                + retreat_bonus
+                + movement_penalty
+            )
             protector.reward = total_protector_reward
 
             protector_protect.append(protect_score)
             protector_block.append(block_score)
             protector_failure.append(failure_penalty)
             protector_rewards.append(total_protector_reward)
+            protector_approach_bonus.append(approach_bonus)
+            protector_retreat_bonus.append(retreat_bonus)
+            protector_movement_penalty.append(movement_penalty)
 
         # ---------------- Target reward components ----------------
         target_cfg = config.get("target", {})
         t_alpha = target_cfg.get("alpha", 0.3)
         t_beta = target_cfg.get("beta", 0.5)
         t_gamma = target_cfg.get("gamma", 100.0)
+        t_approach = target_cfg.get("approach_bonus_weight", 0.0)
+        t_escape = target_cfg.get("escape_bonus_weight", 0.0)
+        t_move_penalty = target_cfg.get("movement_penalty_weight", 0.0)
+        t_min_speed = target_cfg.get("movement_min_speed", 0.0)
+        t_stagnate_steps = int(target_cfg.get("stagnate_steps", 5))
 
         target_safety = []
         target_danger = []
         target_capture = []
         target_rewards = []
+        target_approach_bonus = []
+        target_escape_bonus = []
+        target_movement_penalty = []
 
         max_safe_radius = max(
             (getattr(p, "safe_r", default_safe_radius) for p in self.protector_list),
@@ -497,6 +572,7 @@ class Environment:
 
             # safety reward relative to nearest protector
             safety_score = 0.0
+            min_dist_protector = None
             if self.protector_list:
                 min_dist_protector = min(
                     Protector.distance(protector.x, protector.y, target.x, target.y)
@@ -506,6 +582,7 @@ class Environment:
                     safety_score = max(0.0, 1.0 - min_dist_protector / safe_norm)
 
             danger_score = 0.0
+            min_dist_uav = None
             if self.uav_list:
                 min_dist_uav = min(
                     Target.distance(target.x, target.y, uav.x, uav.y)
@@ -513,21 +590,59 @@ class Environment:
                 )
                 danger_score = 1.0 / (min_dist_uav + 1.0)
 
+            approach_bonus = 0.0
+            if min_dist_protector is not None:
+                if target.last_min_protector_dist is not None:
+                    delta = target.last_min_protector_dist - min_dist_protector
+                    if delta > 0:
+                        approach_bonus = t_approach * delta
+                target.last_min_protector_dist = min_dist_protector
+
+            escape_bonus = 0.0
+            if min_dist_uav is not None:
+                if target.last_min_uav_dist is not None:
+                    delta = min_dist_uav - target.last_min_uav_dist
+                    if delta > 0:
+                        escape_bonus = t_escape * delta
+                target.last_min_uav_dist = min_dist_uav
+
+            movement_penalty = 0.0
+            if t_min_speed > 0:
+                if target.last_step_speed < t_min_speed:
+                    target.stagnant_steps += 1
+                else:
+                    target.stagnant_steps = 0
+                if target.stagnant_steps >= t_stagnate_steps and t_move_penalty > 0:
+                    movement_penalty = -t_move_penalty
+            else:
+                target.stagnant_steps = 0
+
             capture_penalty = -1.0 if target.captured else 0.0
 
             target.raw_reward["safety_reward"] = safety_score
             target.raw_reward["danger_penalty"] = -danger_score
             target.raw_reward["capture_penalty"] = capture_penalty
+            target.raw_reward["approach_bonus"] = approach_bonus
+            target.raw_reward["escape_bonus"] = escape_bonus
+            target.raw_reward["movement_penalty"] = movement_penalty
 
-            total_target_reward = (t_alpha * safety_score +
-                                   t_beta * target.raw_reward["danger_penalty"] +
-                                   t_gamma * capture_penalty)
+            total_target_reward = (
+                t_alpha * safety_score
+                + t_beta * target.raw_reward["danger_penalty"]
+                + t_gamma * capture_penalty
+                + approach_bonus
+                + escape_bonus
+                + movement_penalty
+            )
             target.reward = total_target_reward
 
             target_safety.append(safety_score)
             target_danger.append(target.raw_reward["danger_penalty"])
             target_capture.append(capture_penalty)
             target_rewards.append(total_target_reward)
+            target_approach_bonus.append(approach_bonus)
+            target_escape_bonus.append(escape_bonus)
+            target_movement_penalty.append(movement_penalty)
 
         reward_summary = {
             "uav": {
@@ -542,12 +657,18 @@ class Environment:
                 "protect_reward": protector_protect,
                 "block_reward": protector_block,
                 "failure_penalty": protector_failure,
+                "approach_bonus": protector_approach_bonus,
+                "retreat_bonus": protector_retreat_bonus,
+                "movement_penalty": protector_movement_penalty,
             },
             "target": {
                 "rewards": target_rewards,
                 "safety_reward": target_safety,
                 "danger_penalty": target_danger,
                 "capture_penalty": target_capture,
+                "approach_bonus": target_approach_bonus,
+                "escape_bonus": target_escape_bonus,
+                "movement_penalty": target_movement_penalty,
             }
         }
 

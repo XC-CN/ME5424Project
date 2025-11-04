@@ -22,12 +22,18 @@ class ReturnValueOfTrain:
         self.protector_protect_reward_list = []
         self.protector_block_reward_list = []
         self.protector_failure_penalty_list = []
+        self.protector_approach_bonus_list = []
+        self.protector_retreat_bonus_list = []
+        self.protector_movement_penalty_list = []
 
         # Target metrics
         self.target_return_list = []
         self.target_safety_reward_list = []
         self.target_danger_penalty_list = []
         self.target_capture_penalty_list = []
+        self.target_approach_bonus_list = []
+        self.target_escape_bonus_list = []
+        self.target_movement_penalty_list = []
 
         # Coverage stats
         self.average_covered_targets_list = []
@@ -44,10 +50,16 @@ class ReturnValueOfTrain:
             'protector_protect_reward_list': self.protector_protect_reward_list,
             'protector_block_reward_list': self.protector_block_reward_list,
             'protector_failure_penalty_list': self.protector_failure_penalty_list,
+            'protector_approach_bonus_list': self.protector_approach_bonus_list,
+            'protector_retreat_bonus_list': self.protector_retreat_bonus_list,
+            'protector_movement_penalty_list': self.protector_movement_penalty_list,
             'target_return_list': self.target_return_list,
             'target_safety_reward_list': self.target_safety_reward_list,
             'target_danger_penalty_list': self.target_danger_penalty_list,
             'target_capture_penalty_list': self.target_capture_penalty_list,
+            'target_approach_bonus_list': self.target_approach_bonus_list,
+            'target_escape_bonus_list': self.target_escape_bonus_list,
+            'target_movement_penalty_list': self.target_movement_penalty_list,
             'average_covered_targets_list': self.average_covered_targets_list,
             'max_covered_targets_list': self.max_covered_targets_list
         }
@@ -65,12 +77,18 @@ class ReturnValueOfTrain:
         self.protector_protect_reward_list.append(protector_metrics.get('protect', 0.0))
         self.protector_block_reward_list.append(protector_metrics.get('block', 0.0))
         self.protector_failure_penalty_list.append(protector_metrics.get('failure', 0.0))
+        self.protector_approach_bonus_list.append(protector_metrics.get('approach', 0.0))
+        self.protector_retreat_bonus_list.append(protector_metrics.get('retreat', 0.0))
+        self.protector_movement_penalty_list.append(protector_metrics.get('movement', 0.0))
 
         # Target metrics
         self.target_return_list.append(target_metrics.get('return', 0.0))
         self.target_safety_reward_list.append(target_metrics.get('safety', 0.0))
         self.target_danger_penalty_list.append(target_metrics.get('danger', 0.0))
         self.target_capture_penalty_list.append(target_metrics.get('capture', 0.0))
+        self.target_approach_bonus_list.append(target_metrics.get('approach', 0.0))
+        self.target_escape_bonus_list.append(target_metrics.get('escape', 0.0))
+        self.target_movement_penalty_list.append(target_metrics.get('movement', 0.0))
 
         # Coverage stats
         self.average_covered_targets_list.append(average_targets)
@@ -82,13 +100,13 @@ class ReplayBuffer:
         self.buffer = collections.deque(maxlen=capacity)
 
     def add(self, transition_dict):
-        # 从transition_dict中提取各个列表
+        # Extract state/action/reward/next_state sequences from the transition dict
         states = transition_dict['states']
         actions = transition_dict['actions']
         rewards = transition_dict['rewards']
         next_states = transition_dict['next_states']
 
-        # 将各个元素合并成元组，并添加到缓冲区中
+        # Package them into experience tuples and append to the buffer
         experiences = zip(states, actions, rewards, next_states)
         self.buffer.extend(experiences)
 
@@ -96,7 +114,7 @@ class ReplayBuffer:
         transitions = random.sample(self.buffer, min(batch_size, self.size()))
         states, actions, rewards, next_states = zip(*transitions)
 
-        # 构造返回的字典
+        # Build the dictionary that the learners expect
         sample_dict = {
             'states': states,
             'actions': actions,
@@ -187,8 +205,24 @@ def operate_epoch(config, env, agents, pmi, num_steps, render_hook=None):
 
     uav_acc = {'return': 0.0, 'target_tracking': 0.0, 'boundary': 0.0,
                'duplicate': 0.0, 'protector_collision': 0.0}
-    protector_acc = {'return': 0.0, 'protect': 0.0, 'block': 0.0, 'failure': 0.0}
-    target_acc = {'return': 0.0, 'safety': 0.0, 'danger': 0.0, 'capture': 0.0}
+    protector_acc = {
+        'return': 0.0,
+        'protect': 0.0,
+        'block': 0.0,
+        'failure': 0.0,
+        'approach': 0.0,
+        'retreat': 0.0,
+        'movement': 0.0,
+    }
+    target_acc = {
+        'return': 0.0,
+        'safety': 0.0,
+        'danger': 0.0,
+        'capture': 0.0,
+        'approach': 0.0,
+        'escape': 0.0,
+        'movement': 0.0,
+    }
     covered_targets_list = []
 
     steps_run = 0
@@ -251,11 +285,17 @@ def operate_epoch(config, env, agents, pmi, num_steps, render_hook=None):
         protector_acc['protect'] += float(np.sum(reward_dict['protector']['protect_reward']))
         protector_acc['block'] += float(np.sum(reward_dict['protector']['block_reward']))
         protector_acc['failure'] += float(np.sum(reward_dict['protector']['failure_penalty']))
+        protector_acc['approach'] += float(np.sum(reward_dict['protector']['approach_bonus']))
+        protector_acc['retreat'] += float(np.sum(reward_dict['protector']['retreat_bonus']))
+        protector_acc['movement'] += float(np.sum(reward_dict['protector']['movement_penalty']))
 
         target_acc['return'] += float(np.sum(reward_dict['target']['rewards']))
         target_acc['safety'] += float(np.sum(reward_dict['target']['safety_reward']))
         target_acc['danger'] += float(np.sum(reward_dict['target']['danger_penalty']))
         target_acc['capture'] += float(np.sum(reward_dict['target']['capture_penalty']))
+        target_acc['approach'] += float(np.sum(reward_dict['target']['approach_bonus']))
+        target_acc['escape'] += float(np.sum(reward_dict['target']['escape_bonus']))
+        target_acc['movement'] += float(np.sum(reward_dict['target']['movement_penalty']))
 
         covered_targets_list.append(covered_targets)
 
@@ -285,19 +325,32 @@ def operate_epoch(config, env, agents, pmi, num_steps, render_hook=None):
         'return': average(protector_acc['return'], counts['protector']),
         'protect': average(protector_acc['protect'], counts['protector']),
         'block': average(protector_acc['block'], counts['protector']),
-        'failure': average(protector_acc['failure'], counts['protector'])
+        'failure': average(protector_acc['failure'], counts['protector']),
+        'approach': average(protector_acc['approach'], counts['protector']),
+        'retreat': average(protector_acc['retreat'], counts['protector']),
+        'movement': average(protector_acc['movement'], counts['protector'])
     }
     target_metrics = {
         'return': average(target_acc['return'], counts['target']),
         'safety': average(target_acc['safety'], counts['target']),
         'danger': average(target_acc['danger'], counts['target']),
-        'capture': average(target_acc['capture'], counts['target'])
+        'capture': average(target_acc['capture'], counts['target']),
+        'approach': average(target_acc['approach'], counts['target']),
+        'escape': average(target_acc['escape'], counts['target']),
+        'movement': average(target_acc['movement'], counts['target'])
     }
-
     average_covered_targets = float(np.mean(covered_targets_list)) if covered_targets_list else 0.0
     max_covered_targets = float(np.max(covered_targets_list)) if covered_targets_list else 0.0
 
-    return transition_dict, uav_metrics, protector_metrics, target_metrics, average_covered_targets, max_covered_targets
+    return (
+        transition_dict,
+        uav_metrics,
+        protector_metrics,
+        target_metrics,
+        average_covered_targets,
+        max_covered_targets,
+    )
+
 
 
 def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
@@ -305,6 +358,9 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
     missing_roles = [role for role in roles if agents.get(role) is None]
     if missing_roles:
         raise ValueError(f"Missing agents for roles: {missing_roles}")
+
+    freq_value = frequency if frequency is not None else config.get("frequency", 1)
+    frequency = max(1, int(freq_value))
 
     log_dir = os.path.join(config["save_dir"], "logs")
     writer = SummaryWriter(log_dir=log_dir)
@@ -335,7 +391,6 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
 
     render_train = config.get("render_when_train", False)
     eval_cfg = config.get("evaluate", {})
-    render_pause = eval_cfg.get("render_pause", 0.05)
     render_trail = eval_cfg.get("render_trail", 60)
     render_fps = eval_cfg.get("video_fps", 10)
 
@@ -376,14 +431,29 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
             writer.add_scalar('protector/protect', protector_metrics['protect'], episode)
             writer.add_scalar('protector/block', protector_metrics['block'], episode)
             writer.add_scalar('protector/failure', protector_metrics['failure'], episode)
+            writer.add_scalar('protector/approach_bonus', protector_metrics['approach'], episode)
+            writer.add_scalar('protector/retreat_bonus', protector_metrics['retreat'], episode)
+            writer.add_scalar('protector/movement_penalty', protector_metrics['movement'], episode)
 
             writer.add_scalar('target/return', target_metrics['return'], episode)
             writer.add_scalar('target/safety', target_metrics['safety'], episode)
             writer.add_scalar('target/danger', target_metrics['danger'], episode)
             writer.add_scalar('target/capture', target_metrics['capture'], episode)
+            writer.add_scalar('target/approach_bonus', target_metrics['approach'], episode)
+            writer.add_scalar('target/escape_bonus', target_metrics['escape'], episode)
+            writer.add_scalar('target/movement_penalty', target_metrics['movement'], episode)
 
             writer.add_scalar('coverage/average', average_targets, episode)
             writer.add_scalar('coverage/max', max_targets, episode)
+
+            if (episode + 1) % frequency == 0 or episode == num_episodes - 1:
+                pbar.write(
+                    f"Episode {episode + 1}/{num_episodes} - "
+                    f"Protector(return={protector_metrics['return']:.3f}, approach={protector_metrics['approach']:.3f}, "
+                    f"retreat={protector_metrics['retreat']:.3f}, move={protector_metrics['movement']:.3f}) | "
+                    f"Target(return={target_metrics['return']:.3f}, approach={target_metrics['approach']:.3f}, "
+                    f"escape={target_metrics['escape']:.3f}, move={target_metrics['movement']:.3f})"
+                )
 
             return_value.save_epoch(uav_metrics, protector_metrics, target_metrics, average_targets, max_targets)
 
@@ -391,7 +461,7 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
             uav_control_method = config.get('uav', {}).get('control_method', 'rl')
             for role in roles:
                 if role == 'uav' and uav_control_method == 'rule_based':
-                    continue  # Skip learning for rule-based UAV
+                    continue
 
                 buffers[role].add(transitions[role])
                 sample_dict, indices, _ = buffers[role].sample(sample_sizes[role])
@@ -499,8 +569,8 @@ def evaluate(config, env, agents, pmi, num_steps):
 def run_epoch(config, pmi, env, num_steps, render_hook=None):
     uav_acc = {'return': 0.0, 'target_tracking': 0.0, 'boundary': 0.0,
                'duplicate': 0.0, 'protector_collision': 0.0}
-    protector_acc = {'return': 0.0, 'protect': 0.0, 'block': 0.0, 'failure': 0.0}
-    target_acc = {'return': 0.0, 'safety': 0.0, 'danger': 0.0, 'capture': 0.0}
+    protector_acc = {'return': 0.0, 'protect': 0.0, 'block': 0.0, 'failure': 0.0, 'approach': 0.0, 'retreat': 0.0, 'movement': 0.0}
+    target_acc = {'return': 0.0, 'safety': 0.0, 'danger': 0.0, 'capture': 0.0, 'approach': 0.0, 'escape': 0.0, 'movement': 0.0}
     covered_targets_list = []
 
     steps_run = 0
@@ -527,11 +597,18 @@ def run_epoch(config, pmi, env, num_steps, render_hook=None):
         protector_acc['protect'] += float(np.sum(reward_dict['protector']['protect_reward']))
         protector_acc['block'] += float(np.sum(reward_dict['protector']['block_reward']))
         protector_acc['failure'] += float(np.sum(reward_dict['protector']['failure_penalty']))
+        protector_acc['approach'] += float(np.sum(reward_dict['protector']['approach_bonus']))
+        protector_acc['retreat'] += float(np.sum(reward_dict['protector']['retreat_bonus']))
+        protector_acc['movement'] += float(np.sum(reward_dict['protector']['movement_penalty']))
 
         target_acc['return'] += float(np.sum(reward_dict['target']['rewards']))
         target_acc['safety'] += float(np.sum(reward_dict['target']['safety_reward']))
         target_acc['danger'] += float(np.sum(reward_dict['target']['danger_penalty']))
         target_acc['capture'] += float(np.sum(reward_dict['target']['capture_penalty']))
+        target_acc['approach'] += float(np.sum(reward_dict['target']['approach_bonus']))
+        target_acc['escape'] += float(np.sum(reward_dict['target']['escape_bonus']))
+        target_acc['movement'] += float(np.sum(reward_dict['target']['movement_penalty']))
+
 
         covered_targets_list.append(covered_targets)
 
@@ -561,13 +638,19 @@ def run_epoch(config, pmi, env, num_steps, render_hook=None):
         'return': average(protector_acc['return'], counts['protector']),
         'protect': average(protector_acc['protect'], counts['protector']),
         'block': average(protector_acc['block'], counts['protector']),
-        'failure': average(protector_acc['failure'], counts['protector'])
+        'failure': average(protector_acc['failure'], counts['protector']),
+        'approach': average(protector_acc['approach'], counts['protector']),
+        'retreat': average(protector_acc['retreat'], counts['protector']),
+        'movement': average(protector_acc['movement'], counts['protector'])
     }
     target_metrics = {
         'return': average(target_acc['return'], counts['target']),
         'safety': average(target_acc['safety'], counts['target']),
         'danger': average(target_acc['danger'], counts['target']),
-        'capture': average(target_acc['capture'], counts['target'])
+        'capture': average(target_acc['capture'], counts['target']),
+        'approach': average(target_acc['approach'], counts['target']),
+        'escape': average(target_acc['escape'], counts['target']),
+        'movement': average(target_acc['movement'], counts['target'])
     }
 
     average_covered_targets = float(np.mean(covered_targets_list)) if covered_targets_list else 0.0
@@ -619,5 +702,8 @@ def run(config, env, pmi, num_steps):
         env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
 
     return return_value.item()
+
+
+
 
 

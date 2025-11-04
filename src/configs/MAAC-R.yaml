@@ -43,6 +43,11 @@ protector:
   alpha: 0.5
   beta: 1.0
   gamma: 10.0
+  approach_bonus_weight: 0.5
+  retreat_bonus_weight: 0.3
+  movement_penalty_weight: 0.2
+  movement_min_speed: 0.5
+  stagnate_steps: 5
 target:
   v_max: 5
   h_max: 6  # 表示 pi / 6
@@ -52,6 +57,11 @@ target:
   alpha: 0.3
   beta: 0.5
   gamma: 100.0
+  approach_bonus_weight: 0.3
+  escape_bonus_weight: 0.4
+  movement_penalty_weight: 0.2
+  movement_min_speed: 0.3
+  stagnate_steps: 5
 actor_critic:
   buffer_size: 1000000
   sample_size: 0  # 表示每次采样的大小为每个epoch的step数

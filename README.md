@@ -50,12 +50,11 @@ python src/main.py --phase run --method MAAC-R -s 300
 ### 训练模式（自动保存最新模型）
 
 ```bash
-python src/main.py --phase train --method MAAC-R -e 50 -s 3000 
+python src/main.py --phase train --method MAAC-R -e 100 -s 1000
 ```
 
-- `-e 50`：训练 50 局。
-- `-s 300`：每局最多 300 步。
-- `-f 20`：每 20 局保存一次 Actor/Critic/PMI 权重和日志。
+- `-e 100`：训练 100 局（示例默认值，可按需调整）。
+- `-s 1000`：每局最多 1000 步，配合奖励塑形观察长期行为。
 - 训练期间默认不弹出可视化窗口。如需观测，可在命令后追加 `--render_when_train` 立即开启训练渲染。
 - 训练完成后，`results/MAAC-R/<experiment>/` 会包含：
   - `actor/`、`critic/`、`pmi/`：按保存频率命名的模型快照（例如 `uav_actor_weights_20.pth`）。

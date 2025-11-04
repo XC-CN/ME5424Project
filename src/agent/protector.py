@@ -1,5 +1,5 @@
 import numpy as np
-from math import pi, cos, sin, atan2
+from math import pi, cos, sin, atan2, hypot
 from typing import List, Optional, Tuple
 
 
@@ -51,7 +51,14 @@ class Protector:
             "protect_reward": 0.0,
             "block_reward": 0.0,
             "failure_penalty": 0.0,
+            "approach_bonus": 0.0,
+            "retreat_bonus": 0.0,
+            "movement_penalty": 0.0,
         }
+        self.last_min_target_dist: Optional[float] = None
+        self.last_min_uav_dist: Optional[float] = None
+        self.last_step_speed: float = 0.0
+        self.stagnant_steps: int = 0
 
     # ------------------------------------------------------------------
     # geometry helpers
@@ -68,6 +75,7 @@ class Protector:
         return (2 * na - self.Na - 1) * self.h_max / (self.Na - 1)
 
     def update_position(self, action: Optional[int]) -> Tuple[float, float, float]:
+        prev_x, prev_y = self.x, self.y
         if action is not None:
             self.action = int(action)
             heading_delta = self.discrete_action(self.action)
@@ -80,6 +88,7 @@ class Protector:
         self.h += self.dt * heading_delta
         self.h = (self.h + pi) % (2 * pi) - pi
         self._clamp_inside()
+        self.last_step_speed = float(hypot(self.x - prev_x, self.y - prev_y))
         return self.x, self.y, self.h
 
     def _clamp_inside(self) -> None:
