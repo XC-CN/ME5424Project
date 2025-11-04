@@ -433,8 +433,10 @@ def evaluate(config, env, agents, pmi, num_steps):
     enable_live = eval_cfg.get("enable_live", True)
     render_pause = eval_cfg.get("render_pause", 0.05)
     trail_steps = eval_cfg.get("render_trail", 60)
+    save_outputs = eval_cfg.get("save_outputs", False)
+
     video_path = None
-    if eval_cfg.get("save_animation", True):
+    if save_outputs and eval_cfg.get("save_animation", True):
         animated_dir = os.path.join(config["save_dir"], "animated")
         os.makedirs(animated_dir, exist_ok=True)
         video_path = os.path.join(animated_dir, "evaluation_episode_0.mp4")
@@ -466,10 +468,14 @@ def evaluate(config, env, agents, pmi, num_steps):
             renderer.close()
 
     return_value.save_epoch(uav_metrics, protector_metrics, target_metrics, average_targets, max_targets)
-    env.save_position(save_dir=config["save_dir"], epoch_i=0)
-    env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
+
+    if save_outputs:
+        env.save_position(save_dir=config["save_dir"], epoch_i=0)
+        env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
 
     return return_value.item()
+
+
 
 
 def run_epoch(config, pmi, env, num_steps, render_hook=None):
@@ -552,8 +558,10 @@ def run(config, env, pmi, num_steps):
     enable_live = eval_cfg.get("enable_live", True)
     render_pause = eval_cfg.get("render_pause", 0.05)
     trail_steps = eval_cfg.get("render_trail", 60)
+    save_outputs = eval_cfg.get("save_outputs", True)
+
     video_path = None
-    if eval_cfg.get("save_animation", True):
+    if save_outputs and eval_cfg.get("save_animation", True):
         animated_dir = os.path.join(config["save_dir"], "animated")
         os.makedirs(animated_dir, exist_ok=True)
         video_path = os.path.join(animated_dir, "run_episode_0.mp4")
@@ -579,7 +587,11 @@ def run(config, env, pmi, num_steps):
             renderer.close()
 
     return_value.save_epoch(uav_metrics, protector_metrics, target_metrics, average_targets, max_targets)
-    env.save_position(save_dir=config["save_dir"], epoch_i=0)
-    env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
+
+    if save_outputs:
+        env.save_position(save_dir=config["save_dir"], epoch_i=0)
+        env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
 
     return return_value.item()
+
+

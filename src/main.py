@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 import argparse
 import logging
 import os
@@ -182,6 +182,12 @@ def summarise_metrics(config, metrics):
     if not metrics:
         return
 
+    phase = config.get("phase")
+    if phase == "evaluate":
+        eval_cfg = config.get("evaluate", {})
+        if not eval_cfg.get("save_outputs", False):
+            return
+
     save_csv(config, metrics)
 
     curves = [
@@ -211,7 +217,7 @@ def summarise_metrics(config, metrics):
 def main(args):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, "configs", f"{args.method}.yaml")
-    config = get_config(config_path)
+    config = get_config(config_path, phase=args.phase)
 
     if args.phase == "evaluate":
         defaults, source_dir = find_latest_checkpoints(config["result_dir"], config["save_dir"])
