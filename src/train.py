@@ -1,8 +1,8 @@
-import os.path
+import os
 from tqdm import tqdm
 import numpy as np
 import torch
-from utils.draw_util import draw_textured_animation, LiveRenderer
+from utils.draw_util import LiveRenderer
 from torch.utils.tensorboard import SummaryWriter
 import random
 import collections
@@ -320,13 +320,37 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
     last_losses = {role: (0.0, 0.0) for role in roles}
 
     render_train = config.get("render_when_train", False)
+    eval_cfg = config.get("evaluate", {})
+    render_pause = eval_cfg.get("render_pause", 0.05)
+    render_trail = eval_cfg.get("render_trail", 60)
+    render_fps = eval_cfg.get("video_fps", 10)
 
     with tqdm(total=num_episodes, desc='Episodes') as pbar:
         for episode in range(num_episodes):
             env.reset(config=config)
 
-            transitions, uav_metrics, protector_metrics, target_metrics, average_targets, max_targets = operate_epoch(
-                config, env, agents, pmi, num_steps)
+            renderer = None
+            make_recording = render_train and ((episode + 1) % frequency == 0)
+            if make_recording:
+                animated_dir = os.path.join(config["save_dir"], "animated")
+                os.makedirs(animated_dir, exist_ok=True)
+                video_path = os.path.join(animated_dir, f"train_episode_{episode + 1}.mp4")
+                renderer = LiveRenderer(
+                    env,
+                    pause=0.0,
+                    trail_steps=render_trail,
+                    show=False,
+                    record=True,
+                    video_path=video_path,
+                    video_fps=render_fps,
+                )
+
+            try:
+                transitions, uav_metrics, protector_metrics, target_metrics, average_targets, max_targets = operate_epoch(
+                    config, env, agents, pmi, num_steps, render_hook=renderer if renderer is not None else None)
+            finally:
+                if renderer is not None:
+                    renderer.close()
 
             writer.add_scalar('uav/return', uav_metrics['return'], episode)
             writer.add_scalar('uav/target_tracking', uav_metrics['target_tracking'], episode)
@@ -388,9 +412,6 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
                 if pmi:
                     postfix['pmi_loss'] = f'{avg_pmi_loss:.4f}'
                 pbar.set_postfix(postfix)
-
-                if render_train:
-                    draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=episode)
                 for role in roles:
                     agents[role].save(save_dir=config["save_dir"], epoch_i=episode + 1, tag=role)
                 if pmi:
@@ -412,8 +433,24 @@ def evaluate(config, env, agents, pmi, num_steps):
     enable_live = eval_cfg.get("enable_live", True)
     render_pause = eval_cfg.get("render_pause", 0.05)
     trail_steps = eval_cfg.get("render_trail", 60)
+    video_path = None
+    if eval_cfg.get("save_animation", True):
+        animated_dir = os.path.join(config["save_dir"], "animated")
+        os.makedirs(animated_dir, exist_ok=True)
+        video_path = os.path.join(animated_dir, "evaluation_episode_0.mp4")
 
-    renderer = LiveRenderer(env, pause=render_pause, trail_steps=trail_steps) if enable_live else None
+    renderer = None
+    need_renderer = enable_live or video_path is not None
+    if need_renderer:
+        renderer = LiveRenderer(
+            env,
+            pause=render_pause if enable_live else 0.0,
+            trail_steps=trail_steps,
+            show=enable_live,
+            record=video_path is not None,
+            video_path=video_path,
+            video_fps=eval_cfg.get("video_fps", 10),
+        )
 
     try:
         _, uav_metrics, protector_metrics, target_metrics, average_targets, max_targets = operate_epoch(
@@ -429,16 +466,13 @@ def evaluate(config, env, agents, pmi, num_steps):
             renderer.close()
 
     return_value.save_epoch(uav_metrics, protector_metrics, target_metrics, average_targets, max_targets)
-
-    if eval_cfg.get("save_animation", True):
-        draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=0)
     env.save_position(save_dir=config["save_dir"], epoch_i=0)
     env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
 
     return return_value.item()
 
 
-def run_epoch(config, pmi, env, num_steps):
+def run_epoch(config, pmi, env, num_steps, render_hook=None):
     uav_acc = {'return': 0.0, 'target_tracking': 0.0, 'boundary': 0.0,
                'duplicate': 0.0, 'protector_collision': 0.0}
     protector_acc = {'return': 0.0, 'protect': 0.0, 'block': 0.0, 'failure': 0.0}
@@ -453,6 +487,9 @@ def run_epoch(config, pmi, env, num_steps):
             uav_actions.append(int(action))
 
         _, reward_dict, covered_targets = env.step(config, pmi, uav_actions, None, None)
+
+        if render_hook is not None:
+            render_hook(step, env)
 
         uav_acc['return'] += float(np.sum(reward_dict['uav']['rewards']))
         uav_acc['target_tracking'] += float(np.sum(reward_dict['uav']['target_tracking']))
@@ -511,10 +548,37 @@ def run(config, env, pmi, num_steps):
     return_value = ReturnValueOfTrain()
 
     env.reset(config=config)
-    uav_metrics, protector_metrics, target_metrics, average_targets, max_targets = run_epoch(config, pmi, env, num_steps)
-    return_value.save_epoch(uav_metrics, protector_metrics, target_metrics, average_targets, max_targets)
+    eval_cfg = config.get("evaluate", {})
+    enable_live = eval_cfg.get("enable_live", True)
+    render_pause = eval_cfg.get("render_pause", 0.05)
+    trail_steps = eval_cfg.get("render_trail", 60)
+    video_path = None
+    if eval_cfg.get("save_animation", True):
+        animated_dir = os.path.join(config["save_dir"], "animated")
+        os.makedirs(animated_dir, exist_ok=True)
+        video_path = os.path.join(animated_dir, "run_episode_0.mp4")
 
-    draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=0)
+    renderer = None
+    need_renderer = enable_live or video_path is not None
+    if need_renderer:
+        renderer = LiveRenderer(
+            env,
+            pause=render_pause if enable_live else 0.0,
+            trail_steps=trail_steps,
+            show=enable_live,
+            record=video_path is not None,
+            video_path=video_path,
+            video_fps=eval_cfg.get("video_fps", 10),
+        )
+
+    try:
+        uav_metrics, protector_metrics, target_metrics, average_targets, max_targets = run_epoch(
+            config, pmi, env, num_steps, render_hook=renderer if renderer is not None else None)
+    finally:
+        if renderer is not None:
+            renderer.close()
+
+    return_value.save_epoch(uav_metrics, protector_metrics, target_metrics, average_targets, max_targets)
     env.save_position(save_dir=config["save_dir"], epoch_i=0)
     env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
 
