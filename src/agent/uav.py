@@ -12,14 +12,14 @@ from utils.data_util import clip_and_normalize
 class UAV:
     def __init__(self, x0, y0, h0, a_idx, v_max, h_max, na, dc, dp, dt):
         """
-        :param dt: float, 闂傚倷鐒﹁ぐ鍐洪敃鍌涘亱闂侇剙绉甸崕宥夋煕閺囥劌澧い蟻鍥ㄢ拻闁稿本绋掔亸锔戒繆椤愩垺鍋ユ慨?
+        :param dt: float, 闂傚倷鐒﹁ぐ鍐洪敃鍌涘亱闂侇剙绉甸崕宥夋煕閺囥劌澧い蟻鍥ㄢ拻闁稿本绋掔亸锔戒繆椤愩垺鍋ユ�?
         :param x0: float, 闂備胶顫嬮崟顐㈩潔闂?
         :param y0: float, 闂備胶顫嬮崟顐㈩潔闂?
         :param h0: float, 闂備礁鎼悧濠勬崲閸岀偛绠?
-        :param v_max: float, 闂備礁鎼悧鍐磻閹炬剚鐔嗛柛顐㈡閹冲骸鈻撻悩缁樷拺妞ゆ劑鍊曢弸搴ㄦ倵?
-        :param h_max: float, 闂備礁鎼悧鍐磻閹炬剚鐔嗛柛顐㈡濡厼顭囬敓鐘斥拺妞ゆ劑鍊曢弸搴ㄦ倵?
-        :param na: int, 闂備礁鎲￠弻锝夊礉鐎ｎ剛绀婇柡鍐ㄥ€婚惌姘箾瀹割喕绨奸柨娑氬枛閺岋綁濡搁妷銉紑濠电儑缍嗛崰妤呭箚?
-        :param dc: float, 濠电偞鍨堕幐鍝モ偓娑掓櫅铻為柕鍫濇椤╂煡鏌ｉ幋鐐嗘垹鑺卞顑炵懓鈹冮崹顔瑰亾閺嶎偆鐭堥柨鏇炲€归崕宥夋煕閺囥劌澧ù鐘趁…鍧楀醇閸℃顥犻柣娑掓櫇缁?
+        :param v_max: float, 闂備礁鎼悧鍐磻閹炬剚鐔嗛柛顐㈡閹冲骸鈻撻悩缁樷拺妞ゆ劑鍊曢弸搴ㄦ�?
+        :param h_max: float, 闂備礁鎼悧鍐磻閹炬剚鐔嗛柛顐㈡濡厼顭囬敓鐘斥拺妞ゆ劑鍊曢弸搴ㄦ�?
+        :param na: int, 闂備礁鎲￠弻锝夊礉鐎ｎ剛绀婇柡鍐ㄥ€婚惌姘箾瀹割喕绨奸柨娑氬枛閺岋綁濡搁妷銉紑濠电儑缍嗛崰妤呭�?
+        :param dc: float, 濠电偞鍨堕幐鍝モ偓娑掓櫅铻為柕鍫濇椤╂煡鏌ｉ幋鐐嗘垹鑺卞顑炵懓鈹冮崹顔瑰亾閺嶎偆鐭堥柨鏇炲€归崕宥夋煕閺囥劌澧ù鐘趁…鍧楀醇閸℃顥犻柣娑掓櫇�?
         :param dp: float, 闂佽崵鍠愰悷銉╁磹閸︻厾鐭堥柟缁㈠枟閸庡孩銇勯弮鍌涙珪闁搞劌銈搁弻锝夊Ω閵夈儺浠惧┑鐐存崄閸╂牕顕ラ崟顕呮▉缂備焦鍔栫粙鎾跺垝?
         """
         # the position, velocity and heading of this uav
@@ -42,7 +42,7 @@ class UAV:
         # time interval
         self.dt = dt
 
-        # world bounds (闂備焦鐪归崹鍏肩椤掑嫮宓侀柛鈩兩戝▍鐘绘煕閹扳晛濡介棅顒夊墴閺屾盯骞掗幘鍓佺暤濡炪値鍋呴崝娆忕暦閻樿鍐€闁靛瀵屽Σ顖炴煟閻樿京顦﹀褌绮欓幃?
+        # world bounds (闂備焦鐪归崹鍏肩椤掑嫮宓侀柛鈩兩戝▍鐘绘煕閹扳晛濡介棅顒夊墴閺屾盯骞掗幘鍓佺暤濡炪値鍋呴崝娆忕暦閻樿鍐€闁靛瀵屽Σ顖炴煟閻樿京顦﹀褌绮欓�?
         self.world_bounds: Optional[Tuple[float, float]] = None
 
         # set of local information
@@ -56,6 +56,12 @@ class UAV:
         # reward
         self.raw_reward = 0
         self.reward = 0
+        # heading knockback lock (number of steps to keep heading unchanged)
+        self.lock = 0
+        # number of targets captured within the last environment step
+        self.captured_targets_count = 0
+        # latest applied heading delta in radians
+        self.heading_delta = 0.0
 
     def __distance(self, target) -> float:
         """
@@ -97,23 +103,33 @@ class UAV:
             self.y = y_max
             self.h = -self.h
 
-    def update_position(self, action: 'int') -> (float, float, float):
+    def update_position(self, action: Optional[int]) -> Tuple[float, float, float]:
         """
-        receive the index from action space, then update the current position
-        :param action: {0,1,...,Na - 1}
-        :return:
+        Receive an optional discrete action index and update the current position.
+        When the UAV is in a locked state (e.g. after knockback), the heading will
+        remain unchanged until the lock counter reaches zero.
         """
-        self.a = action
-        a = self.discrete_action(action)
+        if action is not None:
+            self.a = int(action)
+            self.heading_delta = self.discrete_action(self.a)
+        else:
+            self.heading_delta = float(np.random.uniform(-self.h_max, self.h_max))
+
         dx = self.dt * self.v_max * cos(self.h)
         dy = self.dt * self.v_max * sin(self.h)
         self.x += dx
         self.y += dy
-        self.h += self.dt * a
+
+        if self.lock > 0:
+            self.lock -= 1
+        else:
+            self.h += self.dt * self.heading_delta
+
         self.h = (self.h + pi) % (2 * pi) - pi
         if self.world_bounds is not None:
             self._clamp_inside()
         return self.x, self.y, self.h
+
     def discrete_action(self, a_idx: int) -> float:
         """
         from the action space index to the real difference
@@ -121,12 +137,18 @@ class UAV:
         :return: action : scalar 闂備礁鎲￠〃鍛存偪閸ヮ剨缍栨俊銈勭劍閸庣喖鏌ㄩ弮鍥撻柡鍡╁弮閺屾稑鈻庨幇鎯扳偓鍧楁煕?
         """
         # from action space to the real world action
-        na = a_idx + 1  # 濠?1 闁诲孩顔栭崰鎺楀磻閹炬枼鏀芥い鏃傗拡閸庢垿鏌涚仦璇插妞?
+        na = a_idx + 1  # �?1 闁诲孩顔栭崰鎺楀磻閹炬枼鏀芥い鏃傗拡閸庢垿鏌涚仦璇插�?
         return (2 * na - self.Na - 1) * self.h_max / (self.Na - 1)
 
-        self.h = (self.h + pi) % (2 * pi) - pi  # 缂備胶铏庨崣搴ㄥ窗閺囩姵宕叉慨妯挎硾鐎氬绻濋棃娑欘棡闁稿﹤顭烽幃宄扳枎閹邦剛鐟ㄩ柣搴ゎ潐婵炲﹤鐣?[-pi, pi) 闂備浇鍋愰崢褔宕鈷氭椽宕稿Δ鈧粈?
-
-        return self.x, self.y, self.h  # 闂佸搫顦弲婊堝蓟閵娿儍娲嫉缁nt闂備焦鐪归崝宀€鈧凹浜炵槐鐐哄川椤栨粎锛炲銈嗘煥閸氬鈧碍鐓￠弻锟犲醇閻旇櫣鐣甸梺?heading/theta)
+    def apply_knockback(self, knockback_angle: float, lock_duration: int = 0) -> None:
+        """
+        Immediately set the heading to the provided angle and lock it for a number of
+        subsequent integration steps so the UAV cannot steer until the lock expires.
+        """
+        self.h = (knockback_angle + pi) % (2 * pi) - pi
+        self.lock = max(self.lock, int(max(0, lock_duration)))
+        # Reset heading delta so observers do not read stale angular moves
+        self.heading_delta = 0.0
 
     def _get_axis_scale(self) -> Tuple[float, float]:
         if self.world_bounds is not None:
@@ -247,7 +269,7 @@ class UAV:
             average_communication = np.mean(communication_weighted, axis=0)
         else:
             # average_communication = np.zeros(4 + self.Na)  # empty communication
-            average_communication = -np.ones(4 + 1)  # empty communication  # TODO -1闂備礁鎲￠懝楣冩偋婵犲嫭鍏滈柛顐ｆ礀鐟?
+            average_communication = -np.ones(4 + 1)  # empty communication  # TODO -1闂備礁鎲￠懝楣冩偋婵犲嫭鍏滈柛顐ｆ礀�?
 
         if observation:
             distances = np.array(self._target_distances + self._protector_distances, dtype=np.float32)
@@ -259,7 +281,7 @@ class UAV:
                 observation_weighted = observation / distances[:, np.newaxis]
                 average_observation = np.mean(observation_weighted, axis=0)
         else:
-            average_observation = -np.ones(4)  # empty observation  # TODO -1闂備礁鎲￠懝楣冩偋婵犲嫭鍏滈柛顐ｆ礀鐟?
+            average_observation = -np.ones(4)  # empty observation  # TODO -1闂備礁鎲￠懝楣冩偋婵犲嫭鍏滈柛顐ｆ礀�?
 
         sb = np.array(sb)
         result = np.hstack((average_communication, average_observation, sb))
@@ -287,11 +309,19 @@ class UAV:
                     track_reward += reward  # 婵犵數鍋涙径鍥礈濠靛棴鑰垮☉鏃戞苟ip, 闂備線娼荤拹鐔煎礉韫囨稒鍎嶉柣鏂垮悑閸嬨劑鏌曟繝蹇涙妞は佸喚鐔嗛柤鍝ユ暩婢х敻鏌涙惔锝傛寘lip
         return track_reward
 
+    def __calculate_target_capture_reward(self) -> float:
+        """
+        Reward accumulated targets captured in the last environment step.
+        """
+        capture_reward = float(self.captured_targets_count)
+        self.captured_targets_count = 0
+        return capture_reward
+
     def __calculate_duplicate_tracking_punishment(self, uav_list: List['UAV'], radio=2) -> float:
         """
         calculate duplicate tracking punishment
         :param uav_list: [class UAV]
-        :param radio: radio闂備焦妞垮鍧楀礉瀹ュ拋鐒介柣銏㈩焾缁犲磭鎲稿澶婃槬婵°倕鎳庣粻姘舵煃閸濆嫬鏆熺紒瀣墦閺岋綁濡搁妷銉紓闁诲骸鐏氶悧鐘茬暦? 闂佺儵鍓濈敮鎺楀箠鎼淬劌鍚规い鎾跺枎缁剁偞鎱ㄥΟ铏癸紞缂佺姴銈搁弻鐔兼濞戞銈夋煟閿濆拋鐓肩€规洘顨婃俊鐑芥晝閳ь剟宕濋敂鍓х＝?
+        :param radio: radio闂備焦妞垮鍧楀礉瀹ュ拋鐒介柣銏㈩焾缁犲磭鎲稿澶婃槬婵°倕鎳庣粻姘舵煃閸濆嫬鏆熺紒瀣墦閺岋綁濡搁妷銉紓闁诲骸鐏氶悧鐘茬�? 闂佺儵鍓濈敮鎺楀箠鎼淬劌鍚规い鎾跺枎缁剁偞鎱ㄥΟ铏癸紞缂佺姴銈搁弻鐔兼濞戞銈夋煟閿濆拋鐓肩€规洘顨婃俊鐑芥晝閳ь剟宕濋敂鍓х＝?
         :return: scalar (-e/2, -1/2]
         """
         total_punishment = 0
@@ -330,7 +360,8 @@ class UAV:
         calculate three parts of the reward/punishment for this uav
         :return: float, float, float
         """
-        reward = self.__calculate_multi_target_tracking_reward(target__list)
+        reward = (self.__calculate_multi_target_tracking_reward(target__list) +
+                  self.__calculate_target_capture_reward())
         boundary_punishment = self.__calculate_boundary_punishment(x_max, y_max)
         punishment = self.__calculate_duplicate_tracking_punishment(uav_list)
         protector_punishment = self.__calculate_protector_collision_punishment(protector_list)
@@ -339,14 +370,14 @@ class UAV:
     def __calculate_protector_collision_punishment(self, protector_list: List['Protector']) -> float:
         """
         缂傚倷鑳舵慨顓㈠磻閹剧粯鐓曟俊銈勭劍缁€鍫熺箾閸喎鐏╅柟鐟板閳规垿宕奸銈傚亾閺屻儲鈷掗柛鎰╁妿婢ф洟鏌嶈閸撴瑩宕ョ€ｎ喖纾块柣銏㈡暩绾剧偓鎱ㄥΟ鍝勨挃缂?
-        - 闂?UAV 濠电偞鍨堕幐鍝ヨ姳婵傜绠查柕蹇嬪€曠粻?Protector 闂佽崵濮烽崕銈囨崲閸曨垪鈧?< threshold 闂備礁鎲＄敮妤呮偡閵堝棭娈介柛銉墯閸嬨劑鏌ｉ弮鍌ょ劸闁告棑濡囩槐鎾诲礃閳哄啫鏆＄紓浣介哺閻熝囧箯瑜版帗鍋勯悘蹇庣娴滃墽鐥銏╂缂佲偓?
-        - 闂佸搫顦弲婊堝蓟閵娿儍娲冀椤撶偟锛欓梺缁樻尭妤犲摜寰婇崸妤佺厱闁哄秲鍔嶉妵婵囦繆?[-K, 0]闂備焦瀵х粙鎴︽偋婵犲偊鑰挎い鎾€棰佹睏闂佺懓鎼粔鍫曨敂闁秵鐓曢柡宥冨妿婢瑰嫮绱掓潏銊ュ摵闁轰礁绉舵禒锕傛嚍閵夈儮鍋撻悽鐢电＝濞撴艾娲ら獮姗€鏌?clip_and_normalize 闁荤喐绮庢晶妤冩暜婵犲嫮鍗氶柟缁㈠枛缁€宀勬煛瀹擃喖鍟伴崢?[-1,0]
+        - �?UAV 濠电偞鍨堕幐鍝ヨ姳婵傜绠查柕蹇嬪€曠粻?Protector 闂佽崵濮烽崕銈囨崲閸曨垪�?< threshold 闂備礁鎲＄敮妤呮偡閵堝棭娈介柛銉墯閸嬨劑鏌ｉ弮鍌ょ劸闁告棑濡囩槐鎾诲礃閳哄啫鏆＄紓浣介哺閻熝囧箯瑜版帗鍋勯悘蹇庣娴滃墽鐥銏╂缂佲偓?
+        - 闂佸搫顦弲婊堝蓟閵娿儍娲冀椤撶偟锛欓梺缁樻尭妤犲摜寰婇崸妤佺厱闁哄秲鍔嶉妵婵囦�?[-K, 0]闂備焦瀵х粙鎴︽偋婵犲偊鑰挎い鎾€棰佹睏闂佺懓鎼粔鍫曨敂闁秵鐓曢柡宥冨妿婢瑰嫮绱掓潏銊ュ摵闁轰礁绉舵禒锕傛嚍閵夈儮鍋撻悽鐢电＝濞撴艾娲ら獮姗€�?clip_and_normalize 闁荤喐绮庢晶妤冩暜婵犲嫮鍗氶柟缁㈠枛缁€宀勬煛瀹擃喖鍟伴崢?[-1,0]
         """
-        # UAV 闂備胶鍘ч〃搴㈢閿濆顥婇柍鍝勬噹绾偓婵犵數濮撮崐鑽ょ玻閻愮儤鐓ユ繛鎴烆焾鐎氭壆鎲搁悧鍫㈠弨闁哄苯锕ら濂稿炊閳哄倻鈧參姊洪悷鎵憼闁绘濮烽崚鎺楊敍濠婂嫬顎?
+        # UAV 闂備胶鍘ч〃搴㈢閿濆顥婇柍鍝勬噹绾偓婵犵數濮撮崐鑽ょ玻閻愮儤鐓ユ繛鎴烆焾鐎氭壆鎲搁悧鍫㈠弨闁哄苯锕ら濂稿炊閳哄倻鈧參姊洪悷鎵憼闁绘濮烽崚鎺楊敍濠婂嫬�?
         uav_radius = getattr(self, "radius", 0.5)
-        worst_pen = 0.0  # 闂備浇顕栭崹顏堝疾濠靛牏绀婇柟鐑樻尵閳绘梹绻涘顔荤凹濠殿喗绮嶉幈銊モ攽閹惧墎蓱闂佸搫妫涢崰鏍极? 闂佽崵鍋炵粙蹇涘礉鎼淬劌桅婵娉涚猾宥夋煟濡搫鏆遍柛鏃撳缁辨捇宕橀埡鍐ㄦ殹缂?
+        worst_pen = 0.0  # 闂備浇顕栭崹顏堝疾濠靛牏绀婇柟鐑樻尵閳绘梹绻涘顔荤凹濠殿喗绮嶉幈銊モ攽閹惧墎蓱闂佸搫妫涢崰鏍极? 闂佽崵鍋炵粙蹇涘礉鎼淬劌桅婵娉涚猾宥夋煟濡搫鏆遍柛鏃撳缁辨捇宕橀埡鍐ㄦ殹�?
         for prot in protector_list:
-            # protector 闂傚倷鐒﹁ぐ鍐儔閼测斁鍋撻悷鎵紞闁逞屽墲椤鎳濇ィ鍐╁創婵せ鍋撴鐐╁亾?safe_r闂備焦瀵х粙鎴︽偋婵犲洤鍨傞柕濠忛檮婵挳鎮归幁鎺戝闁?prot.safe_r闂?
+            # protector 闂傚倷鐒﹁ぐ鍐儔閼测斁鍋撻悷鎵紞闁逞屽墲椤鎳濇ィ鍐╁創婵せ鍋撴鐐╁�?safe_r闂備焦瀵х粙鎴︽偋婵犲洤鍨傞柕濠忛檮婵挳鎮归幁鎺戝闁?prot.safe_r�?
             prot_safe = getattr(prot, "safe_r", None)
             if prot_safe is None:
                 # 闂備焦妞垮鍧楀礉閹寸姴鍨濇い鏍ㄧ矋婵ジ鏌曢崼婵囶棞闁?prot.radius
@@ -356,8 +387,8 @@ class UAV:
             dy = prot.y - self.y
             dist = hypot(dx, dy)
             if dist < threshold:
-                # 闂備浇顕栭崹顏堝疾濠靛牏绀婇柟鐑橆殔缁犳澘顭跨捄鐑樻崳闁绘稈鏅濈槐鎺楀磼濠婂懎绗￠梺鎼炲妽閼规崘顣鹃梺鍝勫€告晶鑺ュ閹扮増鐓ユ繛鎴炵懃閸濈儤绻涚喊鍗炲妞ゆ洏鍎辫灃闁告洦鍘滈妸鈺佺骇闁冲搫鍊搁悘锕傛煕鎼达絾鏆╃紒杈ㄦ煥椤繂鐣烽崶鍡愬妼椤潡宕奸崱妤冃ょ紒鈧崟顖涘仯闁归偊鍠栧▍鎰磼?
-                # 闂備礁鎼悧婊勭濠婂懐绀婂┑鐘插暟閳绘棃鏌嶈閸撶喎鐣烽悩璇插唨闁靛鍎辨慨锔剧磽閸屾艾鏆為柣鏃戝墰濡叉劕鈹戦崶鈺冩嚌闁诲函缍嗘禍璺好洪妶澶嬬叆?- (threshold - dist)  -> 濠电偛顕慨鎾敄閸曨叀濮?(-threshold, 0]
+                # 闂備浇顕栭崹顏堝疾濠靛牏绀婇柟鐑橆殔缁犳澘顭跨捄鐑樻崳闁绘稈鏅濈槐鎺楀磼濠婂懎绗￠梺鎼炲妽閼规崘顣鹃梺鍝勫€告晶鑺ュ閹扮増鐓ユ繛鎴炵懃閸濈儤绻涚喊鍗炲妞ゆ洏鍎辫灃闁告洦鍘滈妸鈺佺骇闁冲搫鍊搁悘锕傛煕鎼达絾鏆╃紒杈ㄦ煥椤繂鐣烽崶鍡愬妼椤潡宕奸崱妤冃ょ紒鈧崟顖涘仯闁归偊鍠栧▍鎰�?
+                # 闂備礁鎼悧婊勭濠婂懐绀婂┑鐘插暟閳绘棃鏌嶈閸撶喎鐣烽悩璇插唨闁靛鍎辨慨锔剧磽閸屾艾鏆為柣鏃戝墰濡叉劕鈹戦崶鈺冩嚌闁诲函缍嗘禍璺好洪妶澶嬬叆?- (threshold - dist)  -> 濠电偛顕慨鎾敄閸曨叀�?(-threshold, 0]
                 pen = -(threshold - dist)
                 if pen < worst_pen:
                     worst_pen = pen
@@ -408,7 +439,7 @@ class UAV:
         for other_uav in uav_list:
             if other_uav != self and self.__distance(other_uav) <= self.dp:
                 neighbor_rewards.append(other_uav.raw_reward)
-        # 婵犵數鍋涙径鍥礈濠靛棴鑰垮〒姘ｅ亾鐎规洘绻堥幃鈺呭箵閹烘垶杈圥MI缂傚倸鍊搁崯顖炲垂閸︻厼鍨?
+        # 婵犵數鍋涙径鍥礈濠靛棴鑰垮〒姘ｅ亾鐎规洘绻堥幃鈺呭箵閹烘垶杈圥MI缂傚倸鍊搁崯顖炲垂閸︻厼�?
         reward = (1 - a) * self.raw_reward + a * sum(neighbor_rewards) / len(neighbor_rewards) \
             if len(neighbor_rewards) else 0
         return reward
@@ -429,7 +460,7 @@ class UAV:
         def distance(x1, y1, x2, y2):
             return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-        # 濠电娀娼ч崐褰掓偋閺囩喐鍙忛柟鎯版濡炰粙鎮橀悙鏉戝姢闁告棑濡囩槐鎾诲礃閳哄喚鏆″┑鐐靛帶閻楁捇寮?
+        # 濠电娀娼ч崐褰掓偋閺囩喐鍙忛柟鎯版濡炰粙鎮橀悙鏉戝姢闁告棑濡囩槐鎾诲礃閳哄喚鏆″┑鐐靛帶閻楁捇�?
         target_reward_weight = 1.0
         repetition_penalty_weight = 0.8
         self.epsilon = 0.25
@@ -457,7 +488,7 @@ class UAV:
                         if dist_to_target_from_other_uav < self.dc:
                             repetition_penalty += repetition_penalty_weight
 
-                # 闂佽崵濮崇欢銈囨閺囥垺鍋╅柡鍕箞娴滃綊鏌熼幆褍鏆辨い銈呮嚇閺岋綁鍩℃繝鍌涚亶闂佺粯鐗紞渚€骞嗛崘顔肩妞ゆ劑鍊楃粻鎺楁⒑?
+                # 闂佽崵濮崇欢銈囨閺囥垺鍋╅柡鍕箞娴滃綊鏌熼幆褍鏆辨い銈呮嚇閺岋綁鍩℃繝鍌涚亶闂佺粯鐗紞渚€骞嗛崘顔肩妞ゆ劑鍊楃粻鎺楁�?
                 score = target_reward_weight / dist_to_target - repetition_penalty
 
                 # 闂備礁鎼粔鐑斤綖婢跺﹦鏆ゅù锝呭閸ゆ淇婇妶鍌氫壕闂佹悶鍔岄柊锝夊蓟閸涱喖绶為悗锝庝憾娴犳挳姊洪崫鍕闁稿鎸搁湁闁稿繒鈷堥悞鑺ョ箾闊厼宓嗙€?

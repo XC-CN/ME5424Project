@@ -32,6 +32,7 @@ protector:
   safe_radius: 200.0  # UAV 进入这个范围会被惩罚
   knockback: 200.0     # 弹开强度（最大推离距离）
   arm_thickness: 100.0 # 手臂碰撞厚度（判定范围）
+  heading_lock_duration: 5  # 碰撞后锁定朝向的基础步数
   na: 12
   obs_radius: 400.0
   alpha: 0.5

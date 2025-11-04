@@ -199,11 +199,11 @@ class Environment:
                 if target_actions is not None and i < len(target_actions):
                     t_action = target_actions[i]
                 target.update_position(t_action)
-        # 鏇存柊 UAV
+        # 鏇存�?UAV
         for i, uav in enumerate(self.uav_list):
             action = uav_actions[i] if uav_actions is not None and i < len(uav_actions) else None
             uav.update_position(action)
-        # 鏇存柊淇濇姢鑰?
+        # 鏇存柊淇濇姢�?
         for i, prot in enumerate(self.protector_list):
             p_action = None
             if protector_actions is not None and i < len(protector_actions):
@@ -216,11 +216,13 @@ class Environment:
         for target in self.target_list:
             target.build_observation(self.uav_list, self.protector_list, self.target_list)
 
-        # 纰版挒寮瑰紑鏁堟灉锛歎AV 纰板埌淇濇姢鑰呮墜鑷傚悗琚墿鐞嗘帹绂?
-        kb = config.get('protector', {}).get('knockback', 0.0)
-        arm_th = config.get('protector', {}).get('arm_thickness', 0.0)
+        # 纰版挒寮瑰紑鏁堟灉锛歎AV 纰板埌淇濇姢鑰呮墜鑷傚悗琚墿鐞嗘帹�?
+        protector_cfg = config.get('protector', {})
+        kb = protector_cfg.get('knockback', 0.0)
+        arm_th = protector_cfg.get('arm_thickness', 0.0)
+        lock_base = int(protector_cfg.get('heading_lock_duration', 0))
         if kb > 0 and arm_th > 0:
-            # 浣跨敤涓婁竴甯у潗鏍囦及璁′繚鎶よ€呰繍鍔ㄦ柟鍚?
+            # 浣跨敤涓婁竴甯у潗鏍囦及璁′繚鎶よ€呰繍鍔ㄦ柟�?
             prev_idx = max(0, len(self.position['all_protector_xs']) - 1)
             prev_xs = self.position['all_protector_xs'][prev_idx] if prev_idx < len(self.position['all_protector_xs']) else []
             prev_ys = self.position['all_protector_ys'][prev_idx] if prev_idx < len(self.position['all_protector_ys']) else []
@@ -252,31 +254,38 @@ class Environment:
                     h = getattr(prot, 'h', 0.0)
                     nx, ny = -np.sin(h), np.cos(h)
 
-                L = getattr(prot, 'safe_r', 0.0)  # 鎵嬭噦鍗婇暱搴?
-                # 涓ゆ潯鑷傜殑绔偣
+                L = getattr(prot, 'safe_r', 0.0)  # 鎵嬭噦鍗婇暱�?
+                # 涓ゆ潯鑷傜殑绔�?
                 x1, y1 = cx - nx * L, cy - ny * L  # 鍚庤噦绔偣
                 x2, y2 = cx + nx * L, cy + ny * L  # 鍓嶈噦绔偣
 
                 for uav in self.uav_list:
-                    # 鍒颁袱鏉¤噦鐨勬渶杩戠偣涓庤窛绂?
+                    # 鍒颁袱鏉¤噦鐨勬渶杩戠偣涓庤窛�?
                     cfx, cfy, d_front = closest_point_on_segment(uav.x, uav.y, cx, cy, x2, y2)
                     crx, cry, d_rear  = closest_point_on_segment(uav.x, uav.y, cx, cy, x1, y1)
                     if d_front < d_rear:
                         cxn, cyn, dmin = cfx, cfy, d_front
                     else:
                         cxn, cyn, dmin = crx, cry, d_rear
-
                     if dmin < arm_th and dmin > 1e-6:
-                        # 浠庢渶杩戠偣鎸囧悜 UAV 鐨勬硶鍚?
+                        # 浠庢渶杩戠偣鎸囧�?UAV 鐨勬硶鍚?
                         ux = (uav.x - cxn) / dmin
                         uy = (uav.y - cyn) / dmin
+                        knockback_angle = np.arctan2(uy, ux)
+                        collision_intensity = 1.0 - (dmin / arm_th)
+                        kb_factor = 1.0 + (kb / 1000.0)
+                        lock_duration = 0
+                        if lock_base > 0:
+                            lock_duration = max(1, int(lock_base * (0.5 + collision_intensity) * kb_factor))
                         push = min(kb, arm_th - dmin)  # 涓嶈秴杩?knockback
                         uav.x += ux * push
                         uav.y += uy * push
                         uav.x = np.clip(uav.x, 0, self.x_max)
                         uav.y = np.clip(uav.y, 0, self.y_max)
+                        if hasattr(uav, "apply_knockback"):
+                            uav.apply_knockback(knockback_angle, lock_duration)
 
-        # 鐩爣鎹曡幏妫€娴?
+        # 鐩爣鎹曡幏妫€�?
         for t_idx, target in enumerate(self.target_list):
             if getattr(target, 'captured', False):
                 continue
@@ -287,6 +296,8 @@ class Environment:
                 if np.hypot(dx, dy) <= cap_r:
                     target.captured = True
                     target.captured_step = self.step_i
+                    if hasattr(uav, "captured_targets_count"):
+                        uav.captured_targets_count += 1
                     break
 
         # UAV 瑙傛祴涓庨€氫俊
@@ -314,7 +325,7 @@ class Environment:
         prot_xs, prot_ys = self.__get_all_protector_position()
         self.position['all_protector_xs'].append(prot_xs)
         self.position['all_protector_ys'].append(prot_ys)
-        # 姝ラ€掑锛堢粺涓€鏃舵満锛?
+        # 姝ラ€掑锛堢粺涓€鏃舵満�?
         self.step_i += 1
 
         reward = {
