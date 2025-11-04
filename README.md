@@ -29,6 +29,12 @@ pip install numpy scipy matplotlib pillow imageio torch torchvision torchaudio t
 - **自动加载最新模型** 🚀：在评估阶段未显式传入权重路径时，会自动使用 `results/MAAC-R/` 中最近一次训练产物。
 - **物理碰撞与击退** 💥：新增了保护者对UAV的物理交互机制。当UAV靠近保护者时，会被其“手臂”弹开，并暂时锁定朝向，模拟真实的物理阻挡效果。
 
+## 智能体策略概览
+
+- **老鹰（UAV）**：每个仿真步都会读取场内所有未被捕获小鸡的实时位置，并结合护卫和队友的观测组成局部状态；奖励强调迅速捕获目标、避免越界和重复围捕，同时考虑被母鸡击退的惩罚。
+- **母鸡（Protector）**：围绕安全半径持续构建观测，优先护住半径内的小鸡，并通过挡在老鹰与小鸡连线之间获取更高奖励；一旦有小鸡被捕会整体受罚，驱动其贴身防御。
+- **小鸡（Target）**：持续感知最近的母鸡和老鹰，策略倾向于靠近保护者、远离威胁；奖励鼓励保持在护卫范围内并惩罚被捕，形成协同躲避行为。
+
 ## 快速上手
 
 ### 演示模式（无需训练、无需权重）
@@ -44,7 +50,7 @@ python src/main.py --phase run --method MAAC-R -s 300
 ### 训练模式（自动保存最新模型）
 
 ```bash
-python src/main.py --phase train --method MAAC-R -e 500 -s 300 
+python src/main.py --phase train --method MAAC-R -e 50 -s 3000 
 ```
 
 - `-e 50`：训练 50 局。
@@ -66,7 +72,7 @@ python src/main.py --phase evaluate --method MAAC-R -s 500
 - 未显式传入 `--actor_path` / `--protector_actor_path` / `--target_actor_path` 时，程序会自动在 `results/MAAC-R/` 中查找最近一次训练并加载对应权重。
 - 评估阶段会弹出实时可视化窗口，支持拖动观察；默认不会在 `results/MAAC-R/<experiment>/` 下生成新文件，如需导出动画或统计数据，可在 `configs/MAAC-R.yaml` 的 `evaluate` 区段将 `save_outputs` 设为 `true`。
 - 如需指定旧模型，可手动传入各角色的 `--*_actor_path` / `--*_critic_path`。
-- 若在服务器或无图形环境运行，可在 `configs/MAAC-R.yaml` 将 `evaluate.enable_live` 改为 `false` 关闭在线渲染。
+- 若在服务器或无图形界面运行，可在 `configs/MAAC-R.yaml` 将 `evaluate.enable_live` 改为 `false` 关闭在线渲染。
 
 ## 常用参数说明
 
