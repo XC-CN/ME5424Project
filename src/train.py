@@ -191,6 +191,8 @@ def operate_epoch(config, env, agents, pmi, num_steps, render_hook=None):
     target_acc = {'return': 0.0, 'safety': 0.0, 'danger': 0.0, 'capture': 0.0}
     covered_targets_list = []
 
+    steps_run = 0
+
     for step in range(num_steps):
         config['step'] = step + 1
         role_states = {role: [] for role in roles}
@@ -217,7 +219,7 @@ def operate_epoch(config, env, agents, pmi, num_steps, render_hook=None):
             role_states['target'].append(state)
             role_actions['target'].append(int(action.item()))
 
-        next_states, reward_dict, covered_targets = env.step(
+        next_states, reward_dict, covered_targets, done = env.step(
             config,
             pmi,
             role_actions['uav'],
@@ -251,13 +253,19 @@ def operate_epoch(config, env, agents, pmi, num_steps, render_hook=None):
 
         covered_targets_list.append(covered_targets)
 
+        steps_run += 1
+        if done:
+            break
+
     def average(total, count):
         return total / count if count > 0 else 0.0
 
+    effective_steps = max(steps_run, 1)
+
     counts = {
-        'uav': max(env.n_uav, 1) * num_steps,
-        'protector': max(env.n_protectors, 1) * num_steps,
-        'target': max(env.m_targets, 1) * num_steps
+        'uav': max(env.n_uav, 1) * effective_steps,
+        'protector': max(env.n_protectors, 1) * effective_steps,
+        'target': max(env.m_targets, 1) * effective_steps
     }
 
     uav_metrics = {
@@ -485,6 +493,8 @@ def run_epoch(config, pmi, env, num_steps, render_hook=None):
     target_acc = {'return': 0.0, 'safety': 0.0, 'danger': 0.0, 'capture': 0.0}
     covered_targets_list = []
 
+    steps_run = 0
+
     for step in range(num_steps):
         config['step'] = step + 1
         uav_actions = []
@@ -492,7 +502,7 @@ def run_epoch(config, pmi, env, num_steps, render_hook=None):
             action = uav.get_action_by_direction(env.target_list, env.uav_list)
             uav_actions.append(int(action))
 
-        _, reward_dict, covered_targets = env.step(config, pmi, uav_actions, None, None)
+        _, reward_dict, covered_targets, done = env.step(config, pmi, uav_actions, None, None)
 
         if render_hook is not None:
             render_hook(step, env)
@@ -515,13 +525,19 @@ def run_epoch(config, pmi, env, num_steps, render_hook=None):
 
         covered_targets_list.append(covered_targets)
 
+        steps_run += 1
+        if done:
+            break
+
     def average(total, count):
         return total / count if count > 0 else 0.0
 
+    effective_steps = max(steps_run, 1)
+
     counts = {
-        'uav': max(env.n_uav, 1) * num_steps,
-        'protector': max(env.n_protectors, 1) * num_steps,
-        'target': max(env.m_targets, 1) * num_steps
+        'uav': max(env.n_uav, 1) * effective_steps,
+        'protector': max(env.n_protectors, 1) * effective_steps,
+        'target': max(env.m_targets, 1) * effective_steps
     }
 
     uav_metrics = {

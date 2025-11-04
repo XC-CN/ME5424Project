@@ -44,7 +44,7 @@ python src/main.py --phase run --method MAAC-R -s 300
 ### 训练模式（自动保存最新模型）
 
 ```bash
-python src/main.py --phase train --method MAAC-R -e 50 -s 300 -f 20
+python src/main.py --phase train --method MAAC-R -e 500 -s 300 
 ```
 
 - `-e 50`：训练 50 局。
