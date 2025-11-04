@@ -1,0 +1,48 @@
+﻿exp_name: MAAC-R
+result_dir: ../results/MAAC-R
+# 绗竴涓猚uda device鐨勭紪鍙? -1浠ｈ〃cpu
+first_device: 0
+# cuda device鐨勬暟閲? 浣跨敤cpu鏃舵棤鏁?gpus: 1
+seed: 42
+cooperative: 0.3
+environment:
+  n_uav: 3
+  m_targets: 10
+  n_protectors: 3
+  x_max: 2000 # 鍦板浘x杞存渶澶ц寖鍥?  y_max: 2000 # 鍦板浘y杞存渶澶ц寖鍥?  na: 12  # 绂绘暎鍖栧姩浣滅┖闂寸淮鏁?
+uav:
+  dt: 1 # 鏃堕棿姝ラ暱
+  v_max: 20 # 鏈€澶ч€熷害
+  h_max: 6  # 琛ㄧず pi / 6
+  dc: 500 # 閲嶅杩借釜鍗婂緞鎯╃綒
+  dp: 200 #
+  alpha: 0.6 
+  beta: 0.2
+  gamma: 0.2
+  omega: 0.5
+
+protector:
+  n_protectors: 3
+  v_max: 5
+  h_max: 6         # 涓?UAV 涓€鑷寸殑瑙掗€熷害妗ｈ浆寮у害
+  dt: 0.1
+  safe_radius: 200.0  # 涓?UAV 杩涘叆杩欎釜浼氳鎯╃綒
+  knockback: 200.0     # 寮瑰紑寮哄害绯绘暟锛堝奖鍝嶉攣瀹氭椂闂撮暱搴︼紝鍊艰秺澶ч攣瀹氳秺涔咃級
+  arm_thickness: 100.0 # 鎵嬭噦纰版挒鍘氬害锛堝垽瀹氳寖鍥达級
+  heading_lock_duration: 5  # 鍩虹閿佸畾鏃堕棿锛堟鏁帮級锛岀鎾炲悗 UAV 鏈濆悜浼氳閿佸畾鏃犳硶鏀瑰彉
+
+target:
+  v_max: 5
+  h_max: 6  # 琛ㄧず pi / 6
+  capture_radius: 120.0  # 鐩爣鎹曡幏鍗婂緞锛堝皬浜庢鍗婂緞浼氳鎹曡幏锛?
+actor_critic:
+  buffer_size: 1000000
+  sample_size: 0  # 琛ㄧず姣忔閲囨牱鐨勫ぇ灏忎负姣忎釜epoch鐨剆tep鏁?  actor_lr: 1e-4
+  critic_lr: 1e-4
+  hidden_dim: 256
+  gamma: 0.95
+
+pmi:
+  hidden_dim: 128
+  b2_size: 3000
+  batch_size: 128
