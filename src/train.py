@@ -6,6 +6,12 @@ from utils.draw_util import LiveRenderer
 from torch.utils.tensorboard import SummaryWriter
 import random
 import collections
+import logging
+import sys
+import platform
+import time
+import yaml
+from datetime import datetime
 
 
 class ReturnValueOfTrain:
@@ -246,16 +252,29 @@ def operate_epoch(config, env, agents, pmi, num_steps, render_hook=None):
             role_states['uav'].append(state)
 
         # Protector decisions
+        # 计算epsilon：训练早期探索率较高，随episode衰减
+        epsilon_start = config.get('protector', {}).get('epsilon_start', 0.3)
+        epsilon_end = config.get('protector', {}).get('epsilon_end', 0.0)
+        epsilon_decay = config.get('protector', {}).get('epsilon_decay', 0.99)
+        current_episode = config.get('current_episode', 0)
+        epsilon_protector = max(epsilon_end, epsilon_start * (epsilon_decay ** current_episode))
+        
         for protector in env.protector_list:
             state = protector.get_local_state()
-            action, _ = agents['protector'].take_action(state)
+            action, _ = agents['protector'].take_action(state, epsilon=epsilon_protector)
             role_states['protector'].append(state)
             role_actions['protector'].append(int(action.item()))
 
         # Target decisions
+        # 计算epsilon：训练早期探索率较高，随episode衰减
+        epsilon_start = config.get('target', {}).get('epsilon_start', 0.3)
+        epsilon_end = config.get('target', {}).get('epsilon_end', 0.0)
+        epsilon_decay = config.get('target', {}).get('epsilon_decay', 0.99)
+        epsilon_target = max(epsilon_end, epsilon_start * (epsilon_decay ** current_episode))
+        
         for target in env.target_list:
             state = target.get_local_state()
-            action, _ = agents['target'].take_action(state)
+            action, _ = agents['target'].take_action(state, epsilon=epsilon_target)
             role_states['target'].append(state)
             role_actions['target'].append(int(action.item()))
 
@@ -363,8 +382,97 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
     frequency = max(1, int(freq_value))
 
     log_dir = os.path.join(config["save_dir"], "logs")
+    os.makedirs(log_dir, exist_ok=True)
     writer = SummaryWriter(log_dir=log_dir)
     return_value = ReturnValueOfTrain()
+
+    # 设置文本日志记录器
+    log_file = os.path.join(log_dir, "training.log")
+    file_handler = logging.FileHandler(log_file, encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    
+    train_logger = logging.getLogger('training')
+    train_logger.setLevel(logging.INFO)
+    train_logger.addHandler(file_handler)
+    train_logger.propagate = False
+
+    # 记录训练开始信息
+    train_start_time = time.time()
+    train_start_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    train_logger.info("=" * 80)
+    train_logger.info("训练开始")
+    train_logger.info("=" * 80)
+    train_logger.info(f"开始时间: {train_start_datetime}")
+    train_logger.info(f"训练episodes数: {num_episodes}")
+    train_logger.info(f"每episode最大步数: {num_steps}")
+    train_logger.info(f"保存频率: {frequency}")
+    
+    # 记录环境信息
+    train_logger.info("\n--- 环境信息 ---")
+    train_logger.info(f"Python版本: {sys.version}")
+    train_logger.info(f"操作系统: {platform.system()} {platform.release()}")
+    train_logger.info(f"PyTorch版本: {torch.__version__}")
+    train_logger.info(f"CUDA可用: {torch.cuda.is_available()}")
+    if torch.cuda.is_available():
+        train_logger.info(f"CUDA版本: {torch.version.cuda}")
+        train_logger.info(f"GPU数量: {torch.cuda.device_count()}")
+        for i in range(torch.cuda.device_count()):
+            train_logger.info(f"  GPU {i}: {torch.cuda.get_device_name(i)}")
+    train_logger.info(f"使用设备: {config.get('devices', ['unknown'])}")
+    
+    # 记录关键训练参数
+    train_logger.info("\n--- 关键训练参数 ---")
+    train_logger.info(f"实验名称: {config.get('exp_name', 'N/A')}")
+    train_logger.info(f"随机种子: {config.get('seed', 'N/A')}")
+    train_logger.info(f"环境配置: UAV={env.n_uav}, Protector={env.n_protectors}, Target={env.m_targets}")
+    train_logger.info(f"地图范围: {config.get('environment', {}).get('x_max', 'N/A')} x {config.get('environment', {}).get('y_max', 'N/A')}")
+    
+    # 记录各角色的网络配置
+    train_logger.info("\n--- 网络配置 ---")
+    for role in roles:
+        if agents.get(role) is not None:
+            cfg = config.get(f"{role}_actor_critic" if role != 'uav' else "actor_critic", {})
+            train_logger.info(f"{role.upper()}:")
+            train_logger.info(f"  隐藏层维度: {cfg.get('hidden_dim', 'N/A')}")
+            train_logger.info(f"  Actor学习率: {cfg.get('actor_lr', 'N/A')}")
+            train_logger.info(f"  Critic学习率: {cfg.get('critic_lr', 'N/A')}")
+            train_logger.info(f"  折扣因子: {cfg.get('gamma', 'N/A')}")
+            train_logger.info(f"  经验池大小: {cfg.get('buffer_size', 'N/A')}")
+    
+    # 保存训练参数摘要到config目录
+    config_dir = os.path.join(config["save_dir"], "config")
+    os.makedirs(config_dir, exist_ok=True)
+    summary_file = os.path.join(config_dir, "training_summary.yaml")
+    summary = {
+        'training_info': {
+            'start_time': train_start_datetime,
+            'num_episodes': num_episodes,
+            'num_steps_per_episode': num_steps,
+            'save_frequency': frequency,
+        },
+        'environment_info': {
+            'python_version': sys.version.split()[0],
+            'os': f"{platform.system()} {platform.release()}",
+            'pytorch_version': torch.__version__,
+            'cuda_available': torch.cuda.is_available(),
+            'devices': [str(d) for d in config.get('devices', [])],
+        },
+        'key_config': {
+            'exp_name': config.get('exp_name', 'N/A'),
+            'seed': config.get('seed', 'N/A'),
+            'n_uav': env.n_uav,
+            'n_protectors': env.n_protectors,
+            'm_targets': env.m_targets,
+        }
+    }
+    with open(summary_file, 'w', encoding='utf-8') as f:
+        yaml.dump(summary, f, default_flow_style=False, allow_unicode=True)
+    
+    train_logger.info(f"\n训练参数摘要已保存到: {summary_file}")
+    train_logger.info("=" * 80 + "\n")
 
     actor_cfg_map = {
         'uav': config["actor_critic"],
@@ -396,6 +504,7 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
 
     with tqdm(total=num_episodes, desc='Episodes') as pbar:
         for episode in range(num_episodes):
+            config['current_episode'] = episode  # 传递当前episode用于epsilon衰减
             env.reset(config=config)
 
             renderer = None
@@ -446,19 +555,72 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
             writer.add_scalar('coverage/average', average_targets, episode)
             writer.add_scalar('coverage/max', max_targets, episode)
 
+            return_value.save_epoch(uav_metrics, protector_metrics, target_metrics, average_targets, max_targets)
+
+            uav_sample_dict = None
+            uav_control_method = config.get('uav', {}).get('control_method', 'rl')
+            
             if (episode + 1) % frequency == 0 or episode == num_episodes - 1:
-                pbar.write(
+                log_msg = (
                     f"Episode {episode + 1}/{num_episodes} - "
                     f"Protector(return={protector_metrics['return']:.3f}, approach={protector_metrics['approach']:.3f}, "
                     f"retreat={protector_metrics['retreat']:.3f}, move={protector_metrics['movement']:.3f}) | "
                     f"Target(return={target_metrics['return']:.3f}, approach={target_metrics['approach']:.3f}, "
                     f"escape={target_metrics['escape']:.3f}, move={target_metrics['movement']:.3f})"
                 )
-
-            return_value.save_epoch(uav_metrics, protector_metrics, target_metrics, average_targets, max_targets)
-
-            uav_sample_dict = None
-            uav_control_method = config.get('uav', {}).get('control_method', 'rl')
+                pbar.write(log_msg)
+                train_logger.info(log_msg)
+                
+                # 记录详细的episode统计信息
+                train_logger.info(f"\n--- Episode {episode + 1} 详细统计 ---")
+                train_logger.info(f"UAV指标:")
+                train_logger.info(f"  总奖励: {uav_metrics['return']:.4f}")
+                train_logger.info(f"  目标追踪: {uav_metrics['target_tracking']:.4f}")
+                train_logger.info(f"  边界惩罚: {uav_metrics['boundary']:.4f}")
+                train_logger.info(f"  重复追踪惩罚: {uav_metrics['duplicate']:.4f}")
+                train_logger.info(f"  保护者碰撞惩罚: {uav_metrics['protector_collision']:.4f}")
+                
+                train_logger.info(f"Protector指标:")
+                train_logger.info(f"  总奖励: {protector_metrics['return']:.4f}")
+                train_logger.info(f"  保护奖励: {protector_metrics['protect']:.4f}")
+                train_logger.info(f"  阻挡奖励: {protector_metrics['block']:.4f}")
+                train_logger.info(f"  失败惩罚: {protector_metrics['failure']:.4f}")
+                train_logger.info(f"  接近奖励: {protector_metrics['approach']:.4f}")
+                train_logger.info(f"  撤退奖励: {protector_metrics['retreat']:.4f}")
+                train_logger.info(f"  移动惩罚: {protector_metrics['movement']:.4f}")
+                
+                train_logger.info(f"Target指标:")
+                train_logger.info(f"  总奖励: {target_metrics['return']:.4f}")
+                train_logger.info(f"  安全奖励: {target_metrics['safety']:.4f}")
+                train_logger.info(f"  危险惩罚: {target_metrics['danger']:.4f}")
+                train_logger.info(f"  捕获惩罚: {target_metrics['capture']:.4f}")
+                train_logger.info(f"  接近奖励: {target_metrics['approach']:.4f}")
+                train_logger.info(f"  逃脱奖励: {target_metrics['escape']:.4f}")
+                train_logger.info(f"  移动惩罚: {target_metrics['movement']:.4f}")
+                
+                train_logger.info(f"覆盖率:")
+                train_logger.info(f"  平均覆盖目标数: {average_targets:.2f}")
+                train_logger.info(f"  最大覆盖目标数: {max_targets:.2f}")
+                
+                # 记录损失信息
+                train_logger.info(f"损失值:")
+                for role in roles:
+                    if role == 'uav' and uav_control_method == 'rule_based':
+                        continue
+                    actor_loss_value, critic_loss_value = last_losses.get(role, (0.0, 0.0))
+                    train_logger.info(f"  {role.upper()}: Actor={actor_loss_value:.6f}, Critic={critic_loss_value:.6f}")
+                if pmi:
+                    train_logger.info(f"  PMI: {avg_pmi_loss:.6f}")
+                
+                # 记录经验池大小
+                train_logger.info(f"经验池大小:")
+                for role in roles:
+                    if role == 'uav' and uav_control_method == 'rule_based':
+                        continue
+                    buffer_size = buffers[role].size()
+                    train_logger.info(f"  {role.upper()}: {buffer_size}")
+                
+                train_logger.info("")
             for role in roles:
                 if role == 'uav' and uav_control_method == 'rule_based':
                     continue
@@ -509,6 +671,61 @@ def train(config, env, agents, pmi, num_episodes, num_steps, frequency):
 
             pbar.update(1)
 
+    # 记录训练结束信息
+    train_end_time = time.time()
+    train_duration = train_end_time - train_start_time
+    train_end_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    hours = int(train_duration // 3600)
+    minutes = int((train_duration % 3600) // 60)
+    seconds = int(train_duration % 60)
+    
+    train_logger.info("=" * 80)
+    train_logger.info("训练完成")
+    train_logger.info("=" * 80)
+    train_logger.info(f"结束时间: {train_end_datetime}")
+    train_logger.info(f"训练总时长: {hours}小时 {minutes}分钟 {seconds}秒 ({train_duration:.2f}秒)")
+    train_logger.info(f"平均每个episode耗时: {train_duration / num_episodes:.2f}秒")
+    
+    # 记录最终统计信息
+    if len(return_value.return_list) > 0:
+        train_logger.info("\n--- 最终训练统计 ---")
+        train_logger.info(f"UAV平均总奖励: {np.mean(return_value.return_list):.4f} (最后{frequency}个episode: {np.mean(return_value.return_list[-frequency:]):.4f})")
+        train_logger.info(f"Protector平均总奖励: {np.mean(return_value.protector_return_list):.4f} (最后{frequency}个episode: {np.mean(return_value.protector_return_list[-frequency:]):.4f})")
+        train_logger.info(f"Target平均总奖励: {np.mean(return_value.target_return_list):.4f} (最后{frequency}个episode: {np.mean(return_value.target_return_list[-frequency:]):.4f})")
+        train_logger.info(f"平均覆盖率: {np.mean(return_value.average_covered_targets_list):.4f} (最后{frequency}个episode: {np.mean(return_value.average_covered_targets_list[-frequency:]):.4f})")
+        train_logger.info(f"最大覆盖率: {np.mean(return_value.max_covered_targets_list):.4f} (最后{frequency}个episode: {np.mean(return_value.max_covered_targets_list[-frequency:]):.4f})")
+    
+    # 更新训练摘要文件
+    summary['training_info']['end_time'] = train_end_datetime
+    summary['training_info']['duration_seconds'] = train_duration
+    summary['training_info']['duration_formatted'] = f"{hours}小时 {minutes}分钟 {seconds}秒"
+    summary['training_info']['avg_time_per_episode'] = train_duration / num_episodes
+    
+    if len(return_value.return_list) > 0:
+        summary['final_statistics'] = {
+            'uav_avg_return': float(np.mean(return_value.return_list)),
+            'uav_avg_return_last_freq': float(np.mean(return_value.return_list[-frequency:])),
+            'protector_avg_return': float(np.mean(return_value.protector_return_list)),
+            'protector_avg_return_last_freq': float(np.mean(return_value.protector_return_list[-frequency:])),
+            'target_avg_return': float(np.mean(return_value.target_return_list)),
+            'target_avg_return_last_freq': float(np.mean(return_value.target_return_list[-frequency:])),
+            'avg_coverage': float(np.mean(return_value.average_covered_targets_list)),
+            'avg_coverage_last_freq': float(np.mean(return_value.average_covered_targets_list[-frequency:])),
+            'max_coverage': float(np.mean(return_value.max_covered_targets_list)),
+            'max_coverage_last_freq': float(np.mean(return_value.max_covered_targets_list[-frequency:])),
+        }
+    
+    with open(summary_file, 'w', encoding='utf-8') as f:
+        yaml.dump(summary, f, default_flow_style=False, allow_unicode=True)
+    
+    train_logger.info(f"\n训练摘要已更新到: {summary_file}")
+    train_logger.info(f"详细日志已保存到: {log_file}")
+    train_logger.info("=" * 80)
+    
+    # 关闭文件处理器
+    train_logger.removeHandler(file_handler)
+    file_handler.close()
+    
     writer.close()
     return return_value.item()
 

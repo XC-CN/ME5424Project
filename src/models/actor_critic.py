@@ -135,16 +135,24 @@ class ActorCritic:
         self.gamma = gamma
         self.device = device
 
-    def take_action(self, states):
+    def take_action(self, states, epsilon=0.0):
         """
-        :param states: nparray, size(state_dim,) 代表无人机的状态
+        :param states: nparray, size(state_dim,) 代表智能体的状态
+        :param epsilon: 探索率，用于epsilon-greedy策略（0.0表示完全使用策略网络）
         :return:
         """
         states_np = np.array(states)[np.newaxis, :]  # 直接使用np.array来转换
         states_tensor = torch.tensor(states_np, dtype=torch.float).to(self.device)
         probs = self.actor(states_tensor)
-        action_dist = torch.distributions.Categorical(probs)  # TODO ?
-        action = action_dist.sample()
+        
+        # Epsilon-greedy探索策略
+        if epsilon > 0.0 and np.random.random() < epsilon:
+            # 随机探索：均匀采样动作
+            action = torch.tensor([np.random.randint(0, probs.shape[1])], device=self.device)
+        else:
+            # 使用策略网络采样
+            action_dist = torch.distributions.Categorical(probs)
+            action = action_dist.sample()
         return action, probs
 
     def update(self, transition_dict):

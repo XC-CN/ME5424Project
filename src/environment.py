@@ -139,11 +139,15 @@ class Environment:
             target.last_min_uav_dist = None
             target.last_step_speed = 0.0
             target.stagnant_steps = 0
+            target.last_positions = []
+            target.circular_motion_steps = 0
         for protector in self.protector_list:
             protector.last_min_target_dist = None
             protector.last_min_uav_dist = None
             protector.last_step_speed = 0.0
             protector.stagnant_steps = 0
+            protector.last_positions = []
+            protector.circular_motion_steps = 0
 
         for protector in self.protector_list:
             protector.build_observation(self.uav_list, self.target_list, self.protector_list)
@@ -449,6 +453,8 @@ class Environment:
         p_move_penalty = protector_cfg.get("movement_penalty_weight", 0.0)
         p_min_speed = protector_cfg.get("movement_min_speed", 0.0)
         p_stagnate_steps = int(protector_cfg.get("stagnate_steps", 5))
+        p_circular_penalty = protector_cfg.get("circular_motion_penalty", 0.5)  # 转圈惩罚权重
+        p_position_change_threshold = protector_cfg.get("position_change_threshold", 50.0)  # 位置变化阈值
 
         failure_flag = any(target.captured for target in self.target_list)
 
@@ -504,9 +510,40 @@ class Environment:
                         retreat_bonus = p_retreat * delta
                 protector.last_min_uav_dist = min_uav_dist
 
+            # 改进的停滞检测：基于位置变化而非速度
+            position_change = 0.0
+            if len(protector.last_positions) >= 5:
+                # 计算最近5步的总位移
+                start_pos = protector.last_positions[0]
+                end_pos = protector.last_positions[-1]
+                position_change = Protector.distance(start_pos[0], start_pos[1], end_pos[0], end_pos[1])
+            
+            # 转圈检测：位置变化小但速度不为零
+            circular_penalty = 0.0
+            if len(protector.last_positions) >= 8:
+                # 计算最近8步的总位移
+                start_pos = protector.last_positions[0]
+                end_pos = protector.last_positions[-1]
+                total_displacement = Protector.distance(start_pos[0], start_pos[1], end_pos[0], end_pos[1])
+                # 计算路径长度（各步位移之和）
+                path_length = 0.0
+                for i in range(len(protector.last_positions) - 1):
+                    path_length += Protector.distance(
+                        protector.last_positions[i][0], protector.last_positions[i][1],
+                        protector.last_positions[i+1][0], protector.last_positions[i+1][1]
+                    )
+                # 如果路径长度远大于总位移，说明在转圈
+                if path_length > 0 and total_displacement < p_position_change_threshold and path_length > 3 * p_position_change_threshold:
+                    protector.circular_motion_steps += 1
+                    if protector.circular_motion_steps >= 3:  # 连续3次检测到转圈
+                        circular_penalty = -p_circular_penalty * (protector.circular_motion_steps / 3.0)
+                else:
+                    protector.circular_motion_steps = max(0, protector.circular_motion_steps - 1)
+            
             movement_penalty = 0.0
             if p_min_speed > 0:
-                if protector.last_step_speed < p_min_speed:
+                # 基于位置变化而非速度
+                if position_change < p_position_change_threshold:
                     protector.stagnant_steps += 1
                 else:
                     protector.stagnant_steps = 0
@@ -523,6 +560,7 @@ class Environment:
             protector.raw_reward["approach_bonus"] = approach_bonus
             protector.raw_reward["retreat_bonus"] = retreat_bonus
             protector.raw_reward["movement_penalty"] = movement_penalty
+            protector.raw_reward["circular_penalty"] = circular_penalty
 
             total_protector_reward = (
                 p_alpha * protect_score
@@ -531,6 +569,7 @@ class Environment:
                 + approach_bonus
                 + retreat_bonus
                 + movement_penalty
+                + circular_penalty
             )
             protector.reward = total_protector_reward
 
@@ -552,6 +591,8 @@ class Environment:
         t_move_penalty = target_cfg.get("movement_penalty_weight", 0.0)
         t_min_speed = target_cfg.get("movement_min_speed", 0.0)
         t_stagnate_steps = int(target_cfg.get("stagnate_steps", 5))
+        t_circular_penalty = target_cfg.get("circular_motion_penalty", 0.5)  # 转圈惩罚权重
+        t_position_change_threshold = target_cfg.get("position_change_threshold", 50.0)  # 位置变化阈值
 
         target_safety = []
         target_danger = []
@@ -606,9 +647,40 @@ class Environment:
                         escape_bonus = t_escape * delta
                 target.last_min_uav_dist = min_dist_uav
 
+            # 改进的停滞检测：基于位置变化而非速度
+            position_change = 0.0
+            if len(target.last_positions) >= 5:
+                # 计算最近5步的总位移
+                start_pos = target.last_positions[0]
+                end_pos = target.last_positions[-1]
+                position_change = Target.distance(start_pos[0], start_pos[1], end_pos[0], end_pos[1])
+            
+            # 转圈检测：位置变化小但速度不为零
+            circular_penalty = 0.0
+            if len(target.last_positions) >= 8:
+                # 计算最近8步的总位移
+                start_pos = target.last_positions[0]
+                end_pos = target.last_positions[-1]
+                total_displacement = Target.distance(start_pos[0], start_pos[1], end_pos[0], end_pos[1])
+                # 计算路径长度（各步位移之和）
+                path_length = 0.0
+                for i in range(len(target.last_positions) - 1):
+                    path_length += Target.distance(
+                        target.last_positions[i][0], target.last_positions[i][1],
+                        target.last_positions[i+1][0], target.last_positions[i+1][1]
+                    )
+                # 如果路径长度远大于总位移，说明在转圈
+                if path_length > 0 and total_displacement < t_position_change_threshold and path_length > 3 * t_position_change_threshold:
+                    target.circular_motion_steps += 1
+                    if target.circular_motion_steps >= 3:  # 连续3次检测到转圈
+                        circular_penalty = -t_circular_penalty * (target.circular_motion_steps / 3.0)
+                else:
+                    target.circular_motion_steps = max(0, target.circular_motion_steps - 1)
+            
             movement_penalty = 0.0
             if t_min_speed > 0:
-                if target.last_step_speed < t_min_speed:
+                # 基于位置变化而非速度
+                if position_change < t_position_change_threshold:
                     target.stagnant_steps += 1
                 else:
                     target.stagnant_steps = 0
@@ -625,6 +697,7 @@ class Environment:
             target.raw_reward["approach_bonus"] = approach_bonus
             target.raw_reward["escape_bonus"] = escape_bonus
             target.raw_reward["movement_penalty"] = movement_penalty
+            target.raw_reward["circular_penalty"] = circular_penalty
 
             total_target_reward = (
                 t_alpha * safety_score
@@ -633,6 +706,7 @@ class Environment:
                 + approach_bonus
                 + escape_bonus
                 + movement_penalty
+                + circular_penalty
             )
             target.reward = total_target_reward
 

@@ -5,7 +5,11 @@ from typing import List, Tuple, Optional
 from models.PMINet import PMINetwork
 from agent.target import Target
 from agent.protector import Protector
-from scipy.special import softmax
+# 使用numpy实现softmax，避免依赖scipy
+def softmax(x):
+    """使用numpy实现softmax函数"""
+    exp_x = np.exp(x - np.max(x))  # 减去最大值以提高数值稳定性
+    return exp_x / np.sum(exp_x)
 from utils.data_util import clip_and_normalize
 
 

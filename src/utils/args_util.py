@@ -25,7 +25,6 @@ def get_config(config_file, phase="train"):
     ])
 
     save_dir = os.path.join(config['result_dir'], exp_name)
-    args_save_name = os.path.join(save_dir, 'args.yaml')
     config['save_dir'] = save_dir
     config['phase'] = phase
 
@@ -34,9 +33,17 @@ def get_config(config_file, phase="train"):
     prepare_outputs = phase != "evaluate"
     if prepare_outputs:
         mkdir(save_dir)
+        # 模型文件目录
         mkdir(os.path.join(save_dir, "actor"))
         mkdir(os.path.join(save_dir, "critic"))
         mkdir(os.path.join(save_dir, "pmi"))
+        # 配置文件目录
+        mkdir(os.path.join(save_dir, "config"))
+        # 指标数据目录
+        mkdir(os.path.join(save_dir, "metrics"))
+        mkdir(os.path.join(save_dir, "metrics", "csv"))
+        mkdir(os.path.join(save_dir, "metrics", "plots"))
+        # 其他目录
         mkdir(os.path.join(save_dir, "animated"))
         mkdir(os.path.join(save_dir, "t_xy"))
         mkdir(os.path.join(save_dir, "u_xy"))
@@ -46,6 +53,8 @@ def get_config(config_file, phase="train"):
     set_device(config)
 
     if prepare_outputs:
+        # 将args.yaml保存到config目录
+        args_save_name = os.path.join(save_dir, "config", 'args.yaml')
         with open(args_save_name, 'w', encoding='utf-8') as f:
             yaml.dump(config, f, default_flow_style=False)
 

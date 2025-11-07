@@ -30,8 +30,12 @@ def save_csv(config, return_list):
         'max_covered_targets_list.csv': ('max_covered_targets', return_list.get('max_covered_targets_list', [])),
     }
 
+    # 将CSV文件保存到metrics/csv目录
+    csv_dir = os.path.join(config["save_dir"], "metrics", "csv")
+    os.makedirs(csv_dir, exist_ok=True)
+    
     for filename, (header, values) in metric_map.items():
-        file_path = os.path.join(config["save_dir"], filename)
+        file_path = os.path.join(csv_dir, filename)
         with open(file_path, mode='w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow([header])

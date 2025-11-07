@@ -250,8 +250,10 @@ def plot_reward_curve(config, return_list, name):
     plt.ylabel("Total Return")
     plt.title(name)
     plt.grid(True)
-    os.makedirs(config["save_dir"], exist_ok=True)
-    plt.savefig(os.path.join(config["save_dir"], f"{name}.png"))
+    # 将PNG图片保存到metrics/plots目录
+    plots_dir = os.path.join(config["save_dir"], "metrics", "plots")
+    os.makedirs(plots_dir, exist_ok=True)
+    plt.savefig(os.path.join(plots_dir, f"{name}.png"))
     plt.close()
 
 

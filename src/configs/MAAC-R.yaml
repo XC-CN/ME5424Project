@@ -48,6 +48,11 @@ protector:
   movement_penalty_weight: 0.2
   movement_min_speed: 0.5
   stagnate_steps: 5
+  circular_motion_penalty: 0.5  # 转圈惩罚权重，惩罚原地转圈行为
+  position_change_threshold: 50.0  # 位置变化阈值，用于检测停滞和转圈（单位：像素/距离单位）
+  epsilon_start: 0.3  # 训练初期的探索率
+  epsilon_end: 0.0  # 训练后期的探索率
+  epsilon_decay: 0.995  # 每episode的衰减率（0.995表示每episode衰减0.5%）
 target:
   v_max: 5
   h_max: 6  # 表示 pi / 6
@@ -62,6 +67,11 @@ target:
   movement_penalty_weight: 0.2
   movement_min_speed: 0.3
   stagnate_steps: 5
+  circular_motion_penalty: 0.5  # 转圈惩罚权重，惩罚原地转圈行为
+  position_change_threshold: 50.0  # 位置变化阈值，用于检测停滞和转圈（单位：像素/距离单位）
+  epsilon_start: 0.3  # 训练初期的探索率
+  epsilon_end: 0.0  # 训练后期的探索率
+  epsilon_decay: 0.995  # 每episode的衰减率（0.995表示每episode衰减0.5%）
 actor_critic:
   buffer_size: 1000000
   sample_size: 0  # 表示每次采样的大小为每个epoch的step数

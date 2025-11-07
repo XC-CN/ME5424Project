@@ -62,6 +62,8 @@ class Target:
         self.last_min_uav_dist: Optional[float] = None
         self.last_step_speed: float = 0.0
         self.stagnant_steps: int = 0
+        self.last_positions: List[Tuple[float, float]] = []  # 用于检测转圈
+        self.circular_motion_steps: int = 0  # 转圈步数计数
 
     # ------------------------------------------------------------------
     def reset_capture(self) -> None:
@@ -102,6 +104,10 @@ class Target:
         self.h = (self.h + pi) % (2 * pi) - pi
         self._clamp_inside()
         self.last_step_speed = float(hypot(self.x - prev_x, self.y - prev_y))
+        # 记录位置历史用于转圈检测（保留最近10步）
+        self.last_positions.append((self.x, self.y))
+        if len(self.last_positions) > 10:
+            self.last_positions.pop(0)
         return self.x, self.y, self.h
 
     def _clamp_inside(self) -> None:
