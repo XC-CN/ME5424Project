@@ -37,6 +37,12 @@ pip install numpy scipy matplotlib pillow imageio torch torchvision torchaudio t
 
 ## 快速上手
 
+### 激活conda环境
+
+```
+conda activate ME5424Project
+```
+
 ### 演示模式（无需训练、无需权重）
 
 ```bash
@@ -50,7 +56,7 @@ python src/main.py --phase run --method MAAC-R -s 300
 ### 训练模式（自动保存最新模型）
 
 ```bash
-python src/main.py --phase train --method MAAC-R -e 100 -s 1000
+python src/main.py --phase train --method MAAC -e 100 -s 1000
 ```
 
 - `-e 100`：训练 100 局（示例默认值，可按需调整）。
@@ -65,7 +71,7 @@ python src/main.py --phase train --method MAAC-R -e 100 -s 1000
 ### 评估模式（默认加载最新训练结果并实时播放）
 
 ```bash
-python src/main.py --phase evaluate --method MAAC-R -s 500
+python src/main.py --phase evaluate --method MAAC -s 500
 ```
 
 - 未显式传入 `--actor_path` / `--protector_actor_path` / `--target_actor_path` 时，程序会自动在 `results/MAAC-R/` 中查找最近一次训练并加载对应权重。

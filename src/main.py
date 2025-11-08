@@ -125,6 +125,9 @@ def build_environment(config):
 def build_pmi(config, args):
     """Create the PMI network and optionally load pretrained weights."""
     pmi_cfg = config.get("pmi", {})
+    # 如果配置中没有pmi字段或为空，返回None（适用于MAAC等不需要PMI的算法）
+    if not pmi_cfg:
+        return None
     pmi = PMINetwork(
         hidden_dim=pmi_cfg.get("hidden_dim", 64),
         b2_size=pmi_cfg.get("b2_size", 3000),
