@@ -246,7 +246,7 @@ for _ in range(cfg.max_steps):
 为了直观观察母鸡在启发式老鹰攻击下如何带动身后的小鸡链条进行防守，本仓库提供了一个简单的可视化脚本：
 
 ```bash
-python src/visualize_hen_stage1.py --model results/curriculum/hen_stage_1.zip --episodes 1 --fps 15
+python src/visualize_hen_stage1.py --episodes 1 --fps 60
 ```
 
 - **母鸡**：橙色圆点。
@@ -254,7 +254,7 @@ python src/visualize_hen_stage1.py --model results/curriculum/hen_stage_1.zip --
 - **小鸡链条**：绿色小圆点（完整链条上所有小鸡都会被绘制出来）。
 - 坐标范围与物理世界一致（\[-world_size, world_size\]^2），横纵坐标分别表示 X/Y 位置。
 
-你可以通过 `--episodes` 控制可视化的回合数，通过 `--fps` 控制刷新速度。可视化窗口关闭后程序自动结束。
+默认情况下，可视化脚本会加载 `results/curriculum/best_model.zip` 作为母鸡策略（即训练过程中评估分数最高的模型）。你可以通过 `--episodes` 控制可视化的回合数，通过 `--fps` 控制刷新速度；如需指定其他模型，可显式传入 `--model` 参数。可视化窗口关闭后程序自动结束。
 
 ---
 

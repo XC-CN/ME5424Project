@@ -260,6 +260,46 @@ class HenTrainingEnv(BasePhysicsEnv):
     def _active_role(self) -> str:
         return "hen"
 
+    @staticmethod
+    def _blocking_score_along_segment(
+        hen_pos: b2Vec2, tail_pos: b2Vec2, eagle_pos: b2Vec2, arm_span: float
+    ) -> float:
+        """
+        计算母鸡是否有效“挡在”老鹰与小鸡尾端之间的几何得分。
+
+        思路：
+        - 以老鹰为原点，指向小鸡尾端的向量为主轴；
+        - 将母鸡相对老鹰的位置投影到这条主轴上，要求投影在线段 E→T 之间；
+        - 再计算母鸡到这条线段的垂直距离，距离越小、越接近直线，得分越高；
+        - arm_span 为“臂展”宽度，垂距超过 arm_span 时视为没有挡住。
+        """
+        if arm_span <= 0.0:
+            return 0.0
+
+        vec_et = np.array(
+            [tail_pos.x - eagle_pos.x, tail_pos.y - eagle_pos.y], dtype=float
+        )
+        dist_et = np.linalg.norm(vec_et)
+        if dist_et < 1e-6:
+            return 0.0
+
+        vec_eh = np.array(
+            [hen_pos.x - eagle_pos.x, hen_pos.y - eagle_pos.y], dtype=float
+        )
+        # 母鸡在老鹰->尾端这条线段上的投影长度
+        proj = float(np.dot(vec_eh, vec_et) / dist_et)
+        if proj <= 0.0 or proj >= dist_et:
+            # 投影不在 E->T 段上，说明不在两者之间
+            return 0.0
+
+        # 母鸡到该主轴的最短向量
+        closest_vec = vec_eh - (proj / dist_et) * vec_et
+        perp_dist = np.linalg.norm(closest_vec)
+        if perp_dist > arm_span:
+            return 0.0
+
+        return max(0.0, 1.0 - perp_dist / max(arm_span, 1e-6))
+
     # Heuristic eagle pursues the tail with a bit of lateral drift to simulate flanking.
     def _heuristic_eagle_action(self) -> np.ndarray:
         tail = self.chicks[-1]
@@ -278,12 +318,43 @@ class HenTrainingEnv(BasePhysicsEnv):
         tail = self.chicks[-1]
         dist_eagle_tail = (self.eagle.position - tail.position).length
         dist_hen_tail = (self.hen.position - tail.position).length
-        dist_hen_eagle = (self.hen.position - self.eagle.position).length
 
-        reward = 0.6 * math.tanh(dist_eagle_tail / self.cfg.world_size)
-        reward += 0.2 * math.tanh(dist_hen_eagle / self.cfg.block_margin)
-        reward -= 0.05 * self._chain_stretch()
-        reward -= 0.1 * abs(dist_hen_tail - self.cfg.chain_spacing * self.cfg.chain_links)
+        # 1) 挡线得分：母鸡是否挡在老鹰与小鸡尾端之间，带“臂展”宽度
+        arm_span = max(self.cfg.block_margin, 1e-3)
+        block_score = self._blocking_score_along_segment(
+            hen_pos=self.hen.position,
+            tail_pos=tail.position,
+            eagle_pos=self.eagle.position,
+            arm_span=arm_span,
+        )
+
+        # 2) 让老鹰远离尾端（避免被抓）
+        avoid_catch_score = math.tanh(dist_eagle_tail / self.cfg.world_size)
+
+        # 3) 链条拉伸与尾距惩罚：母鸡既要挡线，又不能把链条拉得过长或过短
+        stretch_penalty = self._chain_stretch()
+        tail_dist_penalty = abs(
+            dist_hen_tail - self.cfg.chain_spacing * self.cfg.chain_links
+        )
+
+        # 4) 边界惩罚：母鸡贴近世界边界会被适度惩罚，鼓励在场内中部完成防守
+        bound = float(self.cfg.world_size)
+        hx, hy = float(self.hen.position.x), float(self.hen.position.y)
+        max_abs_coord = max(abs(hx), abs(hy))
+        # 当 |x| 或 |y| 超过 0.7 * world_size 时开始线性增加惩罚，最大惩罚为 1.0
+        border_margin = 0.7 * bound
+        if max_abs_coord <= border_margin or bound <= 0.0:
+            border_penalty = 0.0
+        else:
+            border_penalty = min((max_abs_coord - border_margin) / (bound - border_margin), 1.0)
+
+        reward = (
+            0.7 * block_score
+            + 0.3 * avoid_catch_score
+            - 0.05 * stretch_penalty
+            - 0.1 * tail_dist_penalty
+            - 0.2 * border_penalty
+        )
 
         caught = dist_eagle_tail < self.cfg.catch_radius
         terminated = bool(caught)

@@ -54,8 +54,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model",
         type=str,
-        default="results/curriculum/hen_stage_1.zip",
-        help="母鸡策略模型路径（.zip）。",
+        default="results/curriculum/best_model.zip",
+        help="母鸡策略模型路径（.zip），默认使用评估过程中表现最好的模型。",
     )
     parser.add_argument(
         "--episodes",
