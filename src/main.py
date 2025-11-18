@@ -67,30 +67,25 @@ def main(args):
         uav_agent = None
         protector_agent = None
     else:
-        # 计算动作边界（角速度范围）
-        from math import pi
-        uav_h_max = pi / float(config["uav"]["h_max"])
-        protector_h_max = pi / float(config["protector"]["h_max"])
-        
         # UAV agent: state_dim = 12 (uav: 5 + target: 4 + self: 3)
-        # 对于连续动作，action_dim=1（只有角速度一个维度），action_bound=(-h_max, h_max)
+        # 对于离散动作，action_dim=na（离散动作空间大小）
         uav_agent = ActorCritic(state_dim=12,
                                 hidden_dim=config["actor_critic"]["hidden_dim"],
-                                action_dim=1,  # 连续动作维度：角速度
+                                action_dim=config["environment"]["na"],  # 离散动作空间大小
                                 actor_lr=float(config["actor_critic"]["actor_lr"]),
                                 critic_lr=float(config["actor_critic"]["critic_lr"]),
                                 gamma=float(config["actor_critic"]["gamma"]),
                                 device=config["devices"][0],
-                                action_bound=(-uav_h_max, uav_h_max))  # 动作边界
+                                entropy_coef=config["actor_critic"].get("entropy_coef", 0.01))
         # Protector agent: state_dim = 15 (uav_obs: 4 + target_obs: 4 + prot_obs: 4 + self: 3)
         protector_agent = ActorCritic(state_dim=15,
                                       hidden_dim=config["actor_critic"]["hidden_dim"],
-                                      action_dim=1,  # 连续动作维度：角速度
+                                      action_dim=config["environment"]["na"],  # 离散动作空间大小
                                       actor_lr=float(config["actor_critic"]["actor_lr"]),
                                       critic_lr=float(config["actor_critic"]["critic_lr"]),
                                       gamma=float(config["actor_critic"]["gamma"]),
                                       device=config["devices"][0],
-                                      action_bound=(-protector_h_max, protector_h_max))  # 动作边界
+                                      entropy_coef=config["actor_critic"].get("entropy_coef", 0.01))
         if args.actor_path and args.critic_path:
             uav_agent.load(args.actor_path, args.critic_path)
         # TODO: 如果需要加载protector agent的权重，可以添加新的参数
@@ -152,8 +147,8 @@ if __name__ == "__main__":
 
     # 添加超参数
     parser.add_argument("--phase", type=str, default="train", choices=["train", "evaluate", "run"])
-    parser.add_argument("-e", "--num_episodes", type=int, default=10000, help="训练轮数")
-    parser.add_argument("-s", "--num_steps", type=int, default=200, help="每轮进行步数")
+    parser.add_argument("-e", "--num_episodes", type=int, default=5000, help="训练轮数")
+    parser.add_argument("-s", "--num_steps", type=int, default=400, help="每轮进行步数")
     parser.add_argument("-f", "--frequency", type=int, default=100, help="打印信息及保存的频率")
     parser.add_argument("-a", "--actor_path", type=str, default=None, help="actor网络权重的路径")
     parser.add_argument("-c", "--critic_path", type=str, default=None, help="critic网络权重的路径")

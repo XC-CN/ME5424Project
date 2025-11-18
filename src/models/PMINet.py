@@ -271,10 +271,14 @@ class PMINetwork(nn.Module):
         return avg_loss_cooperation, avg_loss_adversarial
 
     def save(self, save_dir, epoch_i):
+        # Create directory if it doesn't exist
+        pmi_dir = os.path.join(save_dir, "pmi")
+        os.makedirs(pmi_dir, exist_ok=True)
+        
         torch.save({
             'model_state_dict': self.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict()
-        }, os.path.join(save_dir, "pmi", 'pmi_weights_' + str(epoch_i) + '.pth'))
+        }, os.path.join(pmi_dir, 'pmi_weights_' + str(epoch_i) + '.pth'))
 
     def load(self, path):
         if path and os.path.exists(path):

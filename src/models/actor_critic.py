@@ -1,4 +1,4 @@
-import os.path
+import os
 
 import torch
 import torch.nn as nn
@@ -85,21 +85,19 @@ class ResValueNet(nn.Module):
 class FnnPolicyNet(nn.Module):
     def __init__(self, n_states, n_hiddens, n_actions):
         super(FnnPolicyNet, self).__init__()
-        # 对于连续动作，n_actions 是动作维度（这里应该是1，因为只有角速度）
-        self.action_dim = 1  # 连续动作维度：角速度
+        # 对于离散动作，n_actions 是动作空间的大小
+        self.action_dim = n_actions  # 离散动作空间大小
         self.fc1 = nn.Linear(n_states, n_hiddens)
-        # 输出均值和方差（对于对角高斯分布，只需要输出均值和log_std）
-        self.fc_mean = nn.Linear(n_hiddens, self.action_dim)
-        self.fc_log_std = nn.Linear(n_hiddens, self.action_dim)
+        # 输出动作概率分布（使用softmax）
+        self.fc2 = nn.Linear(n_hiddens, self.action_dim)
 
-    # 前向传播 - 连续动作版本
+    # 前向传播 - 离散动作版本
     def forward(self, x):
         x = self.fc1(x)  # [b,n_states]-->[b,n_hiddens]
         x = f.relu(x)
-        mean = self.fc_mean(x)  # [b,n_hiddens]-->[b,1] 动作均值
-        log_std = self.fc_log_std(x)  # [b,n_hiddens]-->[b,1] log标准差
-        log_std = torch.clamp(log_std, -20, 2)  # 限制log_std范围，避免方差过大或过小
-        return mean, log_std
+        action_probs = self.fc2(x)  # [b,n_hiddens]-->[b,n_actions]
+        action_probs = f.softmax(action_probs, dim=1)  # 转换为概率分布
+        return action_probs
 
 
 class FnnValueNet(nn.Module):
@@ -118,20 +116,25 @@ class FnnValueNet(nn.Module):
 
 class ActorCritic:
     def __init__(self, state_dim, hidden_dim, action_dim, actor_lr, critic_lr,
-                 gamma, device, action_bound=None):
+                 gamma, device, entropy_coef=0.01):
         """
         :param state_dim: 特征空间的维数
         :param hidden_dim: 隐藏层的维数
-        :param action_dim: 动作空间的维数（对于连续动作，通常为1）
+        :param action_dim: 动作空间的维数（对于离散动作，是动作空间的大小）
         :param actor_lr: actor网络的学习率
         :param critic_lr: critic网络的学习率
         :param gamma: 经验回放参数
         :param device: 用于训练的设备
-        :param action_bound: 动作边界，格式为 (low, high)，例如 (-h_max, h_max)
+        :param entropy_coef: 熵正则化系数，用于鼓励探索
         """
-        # 策略网络 - 连续动作版本
+        # 策略网络 - 离散动作版本
         self.actor = FnnPolicyNet(state_dim, hidden_dim, action_dim).to(device)
         self.critic = FnnValueNet(state_dim, hidden_dim).to(device)  # 价值网络
+        
+        # 初始化critic的最后一层权重更小，避免初始值过大
+        nn.init.orthogonal_(self.critic.fc2.weight, gain=0.01)
+        nn.init.constant_(self.critic.fc2.bias, 0.0)
+        
         # 策略网络优化器
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
                                                 lr=actor_lr)
@@ -139,27 +142,29 @@ class ActorCritic:
                                                  lr=critic_lr)  # 价值网络优化器
         self.gamma = gamma
         self.device = device
-        self.action_bound = action_bound  # 动作边界，用于限制动作范围
+        self.action_dim = action_dim  # 离散动作空间大小
+        self.entropy_coef = entropy_coef  # 熵正则化系数
+        
+        # Running statistics for reward normalization
+        self.reward_mean = 0.0
+        self.reward_std = 1.0
+        self.reward_count = 0
+        self.reward_momentum = 0.995  # 使用更保守的动量（0.995），使归一化更稳定
 
     def take_action(self, states):
         """
         :param states: nparray, size(state_dim,) 代表智能体的状态
-        :return: action (连续值), (mean, log_std) 用于记录
+        :return: action_idx (离散动作索引), action_probs (动作概率分布) 用于记录
         """
         states_np = np.array(states)[np.newaxis, :]  # 直接使用np.array来转换
         states_tensor = torch.tensor(states_np, dtype=torch.float).to(self.device)
-        mean, log_std = self.actor(states_tensor)
-        std = torch.exp(log_std)
-        # 使用高斯分布采样连续动作
-        action_dist = torch.distributions.Normal(mean, std)
-        action = action_dist.sample()
+        action_probs = self.actor(states_tensor)
+        # 使用分类分布采样离散动作
+        action_dist = torch.distributions.Categorical(action_probs)
+        action_idx = action_dist.sample()
         
-        # 如果指定了动作边界，直接使用 clip 限制动作范围（简化实现）
-        if self.action_bound is not None:
-            low, high = self.action_bound
-            action = torch.clamp(action, low, high)
-        
-        return action.squeeze().cpu().item(), (mean.squeeze().cpu().item(), log_std.squeeze().cpu().item())
+        # 使用detach()断开梯度连接，然后转换为numpy
+        return action_idx.squeeze().cpu().item(), action_probs.squeeze().detach().cpu().numpy()
 
     def update(self, transition_dict):
         """
@@ -168,47 +173,120 @@ class ActorCritic:
         """
         states = torch.tensor(np.array(transition_dict['states']),
                               dtype=torch.float).to(self.device)
-        actions = torch.tensor(transition_dict['actions'], 
-                              dtype=torch.float).view(-1, 1).to(self.device)  # 连续动作，使用float
+        actions = transition_dict['actions']  # 离散动作索引列表
         rewards = torch.tensor(transition_dict['rewards'],
                                dtype=torch.float).view(-1, 1).to(self.device).squeeze()
         next_states = torch.tensor(np.array(transition_dict['next_states']),
                                    dtype=torch.float).to(self.device)
 
-        # 时序差分目标
-        td_target = rewards + self.gamma * self.critic(next_states)
-        td_delta = td_target - self.critic(states)  # 时序差分误差
+        # 对于离散动作，计算 log_prob
+        action_probs = self.actor(states)
+        action_dist = torch.distributions.Categorical(action_probs)
         
-        # 对于连续动作，计算 log_prob
-        mean, log_std = self.actor(states)
-        std = torch.exp(log_std)
-        action_dist = torch.distributions.Normal(mean, std)
+        # 计算所选动作的 log_prob
+        actions_tensor = torch.tensor(actions, dtype=torch.long).to(self.device).view(-1)
+        log_probs = action_dist.log_prob(actions_tensor).unsqueeze(1)
         
-        # 直接计算 log_prob（因为动作已经在边界内通过 clip 限制）
-        log_probs = action_dist.log_prob(actions)
+        # 使用running statistics归一化奖励，避免critic loss过大
+        # 更新running statistics
+        batch_mean = rewards.mean().item()
+        batch_std = rewards.std().item() + 1e-8
         
-        log_probs = log_probs.sum(dim=1, keepdim=True)  # 如果是多维动作，需要求和
+        if self.reward_count == 0:
+            # 第一次，直接使用batch statistics
+            self.reward_mean = batch_mean
+            self.reward_std = max(batch_std, 0.1)  # 确保std不会太小
+        else:
+            # 使用指数移动平均更新running statistics
+            # 使用更保守的动量（0.995），使归一化更稳定
+            self.reward_momentum = 0.995
+            self.reward_mean = self.reward_momentum * self.reward_mean + (1 - self.reward_momentum) * batch_mean
+            # 使用更稳定的std更新方式，避免std突然变化
+            new_std = max(batch_std, 0.1)  # 确保std不会太小
+            self.reward_std = self.reward_momentum * self.reward_std + (1 - self.reward_momentum) * new_std
+        
+        self.reward_count += 1
+        
+        # 使用running statistics归一化奖励
+        # 确保std不会太小
+        effective_std = max(self.reward_std, 0.1)
+        rewards_normalized = (rewards - self.reward_mean) / effective_std
+        
+        # 限制归一化后的奖励范围，防止极端值导致Critic Loss爆炸
+        # 从[-20, 20]改为[-10, 10]，更保守的范围，提高稳定性
+        rewards_normalized = torch.clamp(rewards_normalized, min=-10.0, max=10.0)
+        
+        # 计算td_target和td_delta（使用归一化后的奖励）
+        td_target_normalized = rewards_normalized + self.gamma * self.critic(next_states).detach()
+        td_delta_normalized = td_target_normalized - self.critic(states)
+        
+        # 计算 critic loss（使用归一化后的奖励）
+        critic_loss = torch.mean(f.mse_loss(self.critic(states), td_target_normalized.detach()))
+        
+        # 添加Critic Loss的clipping，防止极端值（设置合理的上限100）
+        # 但使用更温和的clipping，只clip极端值，不影响正常训练
+        if critic_loss.item() > 100.0:
+            critic_loss = torch.clamp(critic_loss, min=0.0, max=100.0)
+        
+        # 数值稳定性保护：限制 log_probs 的范围
+        # log_probs 通常应该在 [-20, 0] 范围内，如果超出则裁剪
+        log_probs = torch.clamp(log_probs, min=-20.0, max=10.0)
+        
+        # 限制 td_delta 的范围，平衡策略梯度信号和稳定性
+        # 从[-20, 20]改为[-10, 10]，更保守的范围，提高稳定性
+        td_delta_clipped = torch.clamp(td_delta_normalized.detach(), min=-10.0, max=10.0)
+        
+        # 计算熵（用于鼓励探索）
+        entropy = action_dist.entropy().mean()
+        
+        # 检查是否有 NaN 或 Inf
+        if torch.any(torch.isnan(log_probs)) or torch.any(torch.isinf(log_probs)):
+            print("Warning: log_probs contains NaN or Inf, skipping actor update")
+            return torch.tensor(0.0, device=self.device), critic_loss, td_delta_normalized
+        
+        if torch.any(torch.isnan(td_delta_clipped)) or torch.any(torch.isinf(td_delta_clipped)):
+            print("Warning: td_delta contains NaN or Inf, skipping actor update")
+            return torch.tensor(0.0, device=self.device), critic_loss, td_delta_normalized
 
-        actor_loss = torch.mean(-log_probs * td_delta.detach())
-        critic_loss = torch.mean(f.mse_loss(self.critic(states), td_target.detach()))
+        # Actor loss = policy gradient - entropy regularization
+        # 熵正则化鼓励探索，防止策略过早收敛
+        actor_loss = torch.mean(-log_probs * td_delta_clipped) - self.entropy_coef * entropy
+        
+        # 检查 actor_loss 是否有 NaN 或 Inf（虽然理论上不应该发生，但为了安全起见）
+        if torch.isnan(actor_loss) or torch.isinf(actor_loss):
+            print(f"Warning: actor_loss is NaN or Inf (value: {actor_loss.item()}), skipping this update")
+            return torch.tensor(0.0, device=self.device), critic_loss, td_delta_normalized
+        
         self.actor_optimizer.zero_grad()
         self.critic_optimizer.zero_grad()
         actor_loss.backward()
         critic_loss.backward()
+        
+        # 梯度裁剪，防止梯度爆炸
+        # 进一步加强梯度裁剪，从2.0改为1.0，提高稳定性
+        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0)
+        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0)
+        
         self.actor_optimizer.step()
         self.critic_optimizer.step()
 
-        return actor_loss, critic_loss, td_delta
+        return actor_loss, critic_loss, td_delta_normalized
 
     def save(self, save_dir, epoch_i):
+        # Create directories if they don't exist
+        actor_dir = os.path.join(save_dir, "actor")
+        critic_dir = os.path.join(save_dir, "critic")
+        os.makedirs(actor_dir, exist_ok=True)
+        os.makedirs(critic_dir, exist_ok=True)
+        
         torch.save({
             'model_state_dict': self.actor.state_dict(),
             'optimizer_state_dict': self.actor_optimizer.state_dict()
-        }, os.path.join(save_dir, "actor", 'actor_weights_' + str(epoch_i) + '.pth'))
+        }, os.path.join(actor_dir, 'actor_weights_' + str(epoch_i) + '.pth'))
         torch.save({
             'model_state_dict': self.critic.state_dict(),
             'optimizer_state_dict': self.critic_optimizer.state_dict()
-        }, os.path.join(save_dir, "critic", 'critic_weights_' + str(epoch_i) + '.pth'))
+        }, os.path.join(critic_dir, 'critic_weights_' + str(epoch_i) + '.pth'))
 
     def load(self, actor_path, critic_path):
         if actor_path and os.path.exists(actor_path):

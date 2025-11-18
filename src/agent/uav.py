@@ -19,7 +19,7 @@ class UAV:
         :param a0: float, 初始动作值（角度改变量，连续值）
         :param v_max: float, 最大线速度
         :param h_max: float, 最大角速度
-        :param na: int, 动作空间的维度（保留用于兼容性，但不再使用）
+        :param na: int, 离散动作空间的维度（动作空间大小）
         :param dc: float, 与无人机交流的最大距离
         :param dp: float, 捕捉目标的最大距离
         :param use_global_info: bool, 是否使用全局信息（忽略距离限制）
@@ -34,9 +34,9 @@ class UAV:
 
         # the max heading angular rate and the action of this uav
         self.h_max = h_max
-        self.Na = na  # 保留用于兼容性，但动作现在是连续的
+        self.Na = na  # 离散动作空间大小
 
-        # action: 现在存储连续的角度改变量（角速度）
+        # action: 存储当前动作值（角度改变量，角速度）
         self.a = a0
 
         # the maximum communication distance and maximum perception distance
@@ -87,11 +87,15 @@ class UAV:
 
     def discrete_action(self, a_idx: int) -> float:
         """
-        from the action space index to the real difference (保留用于兼容性)
-        :param a_idx: {0,1,...,Na - 1}
-        :return: action : scalar 即角度改变量
+        将离散动作索引转换为连续动作值（角度改变量）
+        :param a_idx: 离散动作索引，范围 {0, 1, ..., Na - 1}
+        :return: action: 连续动作值（角度改变量，角速度），范围 [-h_max, h_max]
         """
-        # from action space to the real world action
+        if self.Na is None or self.Na <= 1:
+            # 如果没有设置 Na 或无效值，返回随机动作
+            return random.uniform(-self.h_max, self.h_max)
+        # 将动作索引映射到连续动作值
+        # 动作索引 0 对应 -h_max，动作索引 Na-1 对应 h_max
         na = a_idx + 1  # 从 1 开始索引
         return (2 * na - self.Na - 1) * self.h_max / (self.Na - 1)
 
@@ -121,6 +125,23 @@ class UAV:
         self.h = (self.h + pi) % (2 * pi) - pi  # 确保朝向角度在 [-pi, pi) 范围内
 
         return self.x, self.y, self.h  # 返回agent的位置和朝向(heading/theta)
+    
+    def clamp_inside(self, x_max, y_max):
+        """边界夹紧 + 调头，防止UAV跑到边界外面"""
+        if self.x < 0:
+            self.x = 0
+            self.h = pi - self.h
+        if self.x > x_max:
+            self.x = x_max
+            self.h = pi - self.h
+        if self.y < 0:
+            self.y = 0
+            self.h = -self.h
+        if self.y > y_max:
+            self.y = y_max
+            self.h = -self.h
+        # 确保朝向角度在有效范围内
+        self.h = (self.h + pi) % (2 * pi) - pi
     
     def apply_knockback(self, knockback_angle: float, lock_duration: int = 0):
         """
@@ -306,45 +327,50 @@ class UAV:
     def __calculate_multi_target_tracking_reward(self, target_list) -> float:
         """
         Calculates multi-target tracking reward.
-        Modified to give a very small reward for being close to targets,
-        considering a larger tracking radius than `self.dp` and limiting
-        the reward to only the closest few targets to prevent reward exploitation.
-        :return: scalar [0, small_reward_factor * max_rewarded_targets]
+        Modified to provide strong incentive for UAVs to actively pursue targets.
+        Uses a global reward scheme where all targets contribute, with stronger rewards for closer targets.
+        :return: scalar reward value
         """
         track_reward = 0
 
         # Define parameters for tracking reward
-        # The tracking radius is set to be larger than self.dp (perception/capture range).
-        # This allows for a reward for being in the vicinity, even if not within capture range.
-        tracking_radius = 2.5 * self.dp  # Example: 2.5 times the perception distance
-
-        # Limit the number of closest targets for which a tracking reward is given.
-        # This prevents a UAV from accumulating excessive rewards by being in the middle of many targets.
-        max_rewarded_targets = 3  # Reward only the 3 closest targets within tracking_radius
-
-        # Define a small factor for the reward magnitude.
-        # This ensures the tracking reward remains small compared to capture rewards.
-        small_reward_factor = 0.1
-
-        # Calculate distances to all targets and filter those within the tracking radius
-        distances_to_targets = []
+        # Use a much larger tracking radius to provide rewards even when targets are far away
+        # This encourages UAVs to move towards targets instead of staying in the center
+        max_tracking_radius = 10.0 * self.dp  # 10 times the perception distance (2000 units)
+        
+        # Base reward factor - significantly increased to provide strong incentive
+        base_reward_factor = 2.0  # Increased from 0.1 to 2.0 for much stronger signal
+        
+        # Calculate distances to all targets and compute rewards
+        # Use all targets, not just the closest few, to encourage exploration
         for target in target_list:
             distance = self.__distance(target)
-            if distance <= tracking_radius:
-                distances_to_targets.append((distance, target))
-
-        # Sort targets by distance (closest first)
-        distances_to_targets.sort(key=lambda x: x[0])
-
-        # Calculate reward only for the closest 'max_rewarded_targets'
-        for i, (distance, _) in enumerate(distances_to_targets):
-            if i >= max_rewarded_targets:
-                break  # Stop after processing the specified number of targets
-
-            # Reward is scaled down and decreases linearly with distance.
-            # Max reward (small_reward_factor) is given at distance 0, and 0 reward at tracking_radius.
-            reward = small_reward_factor * (tracking_radius - distance) / tracking_radius
-            track_reward += reward
+            
+            if distance <= max_tracking_radius:
+                # Reward decreases with distance, but never goes to zero within tracking radius
+                # Use inverse distance weighting: closer targets give much higher rewards
+                if distance <= self.dp:
+                    # Very close to target - give maximum reward
+                    reward = base_reward_factor * 2.0  # Double reward when very close
+                else:
+                    # Further away - reward decreases with distance
+                    # Use exponential decay for stronger distance sensitivity
+                    # Ensure reward doesn't go to zero at max_tracking_radius
+                    normalized_distance = (distance - self.dp) / (max_tracking_radius - self.dp)
+                    # Use quadratic decay, but keep minimum reward at boundary
+                    reward = base_reward_factor * (1.0 - normalized_distance * 0.95) ** 2  # Keep 5% reward at boundary
+                
+                track_reward += reward
+            else:
+                # Even if outside tracking radius, give a small reward to encourage movement
+                # This prevents UAVs from getting stuck in areas with no targets
+                # Reward decreases exponentially with distance beyond max_tracking_radius
+                excess_distance = distance - max_tracking_radius
+                # Use a large falloff distance (e.g., another 2000 units)
+                falloff_distance = 2000.0
+                if excess_distance < falloff_distance:
+                    reward = base_reward_factor * 0.1 * (1.0 - excess_distance / falloff_distance)
+                    track_reward += reward
 
         return track_reward
 
@@ -357,7 +383,7 @@ class UAV:
         self.captured_targets_count = 0
         return capture_reward
 
-    def __calculate_duplicate_tracking_punishment(self, uav_list: List['UAV'], radio=2) -> float:
+    def __calculate_duplicate_tracking_punishment(self, uav_list: List['UAV'], radio=4) -> float:
         """
         calculate duplicate tracking punishment
         :param uav_list: [class UAV]
@@ -401,10 +427,11 @@ class UAV:
         :return: float, float, float
         """
         reward = self.__calculate_multi_target_tracking_reward(target__list)
+        capture_reward = self.__calculate_target_capture_reward()
         boundary_punishment = self.__calculate_boundary_punishment(x_max, y_max)
-        punishment = self.__calculate_duplicate_tracking_punishment(uav_list)
+        duplicate_tracking_punishment = self.__calculate_duplicate_tracking_punishment(uav_list)
         protector_punishment = self.__calculate_protector_collision_punishment(protector_list)
-        return reward, boundary_punishment, punishment, protector_punishment
+        return reward, capture_reward, boundary_punishment, duplicate_tracking_punishment, protector_punishment
 
     def __calculate_protector_collision_punishment(self, protector_list: List['PROTECTOR']) -> float:
         """

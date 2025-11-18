@@ -160,6 +160,7 @@ class Environment:
         # 更新 UAV
         for i, uav in enumerate(self.uav_list):
             uav.update_position(uav_actions[i])
+            uav.clamp_inside(self.x_max, self.y_max)  # 添加边界限制，防止UAV跑到边界外面
         # 更新保护者
         for i, prot in enumerate(self.protector_list):
             prot.update_position(protector_actions[i])
@@ -247,6 +248,8 @@ class Environment:
                 if np.hypot(dx, dy) <= cap_r:
                     target.captured = True
                     target.captured_step = self.step_i
+                    # 增加捕获该目标的UAV的捕获计数
+                    uav.captured_targets_count += 1
                     break
 
         # UAV 观测与通信
@@ -264,6 +267,7 @@ class Environment:
         (rewards,
          protector_rewards,
          target_tracking_reward,
+         capture_reward,
          boundary_punishment,
          duplicate_tracking_punishment) = self.calculate_rewards(config=config, pmi=pmi)
         next_states = self.get_states()
@@ -289,6 +293,7 @@ class Environment:
             'rewards': rewards,  # UAV rewards
             'protector_rewards': protector_rewards,  # Protector rewards
             'target_tracking_reward': target_tracking_reward,
+            'capture_reward': capture_reward,  # UAV capture rewards
             'boundary_punishment': boundary_punishment,
             'duplicate_tracking_punishment': duplicate_tracking_punishment
         }
@@ -335,15 +340,17 @@ class Environment:
         return (self.position['all_uav_xs'], self.position['all_uav_ys'],
                 self.position['all_target_xs'], self.position['all_target_ys'])
 
-    def calculate_rewards(self, config, pmi) -> ([float], [float], float, float, float):
+    def calculate_rewards(self, config, pmi) -> ([float], [float], float, float, float, float):
         # raw reward first
         target_tracking_rewards = []
+        capture_rewards = []
         boundary_punishments = []
         duplicate_tracking_punishments = []
         protector_punishments = []
         for uav in self.uav_list:
             # raw reward for each uav (not clipped)
             (target_tracking_reward,
+             capture_reward,
              boundary_punishment,
              duplicate_tracking_punishment,
              protector_punishment) = uav.calculate_raw_reward(self.uav_list, self.target_list, self.protector_list, self.x_max, self.y_max)
@@ -351,21 +358,28 @@ class Environment:
             # clip op
             target_tracking_reward = clip_and_normalize(target_tracking_reward,
                                                         0, 2 * config['environment']['m_targets'], 0)
+            capture_reward = clip_and_normalize(capture_reward,
+                                                0, config['environment']['m_targets'], 0)
             duplicate_tracking_punishment = clip_and_normalize(duplicate_tracking_punishment,
-                                                               -e / 2 * config['environment']['n_uav'], 0, -1)
+                                                              -e / 2 * config['environment']['n_uav'], 0, -1)
             boundary_punishment = clip_and_normalize(boundary_punishment, -1/2, 0, -1)
             protector_punishment = clip_and_normalize(protector_punishment,
                                                       -e / 2 * config['environment']['n_protectors'], 0, -1)
 
             # append
             target_tracking_rewards.append(target_tracking_reward)
+            capture_rewards.append(capture_reward)
             boundary_punishments.append(boundary_punishment)
             duplicate_tracking_punishments.append(duplicate_tracking_punishment)
             protector_punishments.append(protector_punishment)
 
-            # weights
-            uav.raw_reward = (config["uav"]["alpha"] * target_tracking_reward + config["uav"]["beta"] *
-                              boundary_punishment + config["uav"]["gamma"] * duplicate_tracking_punishment + config["uav"]["omega"] * duplicate_tracking_punishment)
+            # weights (加入capture_reward权重)
+            capture_weight = config["uav"].get("capture_weight", 1.0)
+            uav.raw_reward = (config["uav"]["alpha"] * target_tracking_reward + 
+                             capture_weight * capture_reward +
+                             config["uav"]["beta"] * boundary_punishment + 
+                             config["uav"]["gamma"] * duplicate_tracking_punishment + 
+                             config["uav"]["omega"] * protector_punishment)
 
         rewards = []
         # 计算UAV的合作奖励（UAV是友方，protector是敌方）
@@ -419,7 +433,7 @@ class Environment:
         for protector in self.protector_list:
             protector_rewards.append(protector.reward)
         
-        return rewards, protector_rewards, target_tracking_rewards, boundary_punishments, duplicate_tracking_punishments
+        return rewards, protector_rewards, target_tracking_rewards, capture_rewards, boundary_punishments, duplicate_tracking_punishments
 
     def save_position(self, save_dir, epoch_i):
         u_xy = np.array([self.position["all_uav_xs"],
