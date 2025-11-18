@@ -93,8 +93,10 @@ def draw_animation(config, env, num_steps, ep_num, frames=100):
     for patch in uav_search_patches:
         ax.add_patch(patch)
 
-    save_dir = os.path.join(config["save_dir"], "frames")
-    os.makedirs(save_dir, exist_ok=True)
+    # 精简：使用临时目录保存frames，生成视频后自动删除，不在save_dir下创建frames文件夹
+    import tempfile
+    temp_frames_dir = tempfile.mkdtemp(prefix='frames_')
+    save_dir = temp_frames_dir
 
     step_interval = 5
     for frame in range(0, num_steps, step_interval):
@@ -115,10 +117,15 @@ def draw_animation(config, env, num_steps, ep_num, frames=100):
             writer.append_data(img_array)
     writer.close()
 
+    # 精简：删除临时frames目录
+    import shutil
     for frame in range(0, num_steps, step_interval):
         frame_path = os.path.join(save_dir, f'frame_{frame:04d}.png')
         if os.path.exists(frame_path):
             os.remove(frame_path)
+    # 删除临时目录
+    if os.path.exists(temp_frames_dir):
+        shutil.rmtree(temp_frames_dir)
 
 
 def plot_reward_curve(config, return_list, name):
@@ -182,8 +189,11 @@ def draw_textured_animation(config, env, num_steps, ep_num, assets_dir="assets",
     arm_front_lines = [ax.plot([], [], color='red', linewidth=2.0, zorder=12)[0] for _ in env.protector_list]
     arm_rear_lines = [ax.plot([], [], color='red', linewidth=2.0, zorder=12)[0] for _ in env.protector_list]
 
-    save_dir = os.path.join(config["save_dir"], "frames")
-    os.makedirs(save_dir, exist_ok=True)
+    # 精简：使用临时目录保存frames，生成视频后自动删除，不在save_dir下创建frames文件夹
+    import tempfile
+    import shutil
+    temp_frames_dir = tempfile.mkdtemp(prefix='frames_')
+    save_dir = temp_frames_dir
     os.makedirs(os.path.join(config["save_dir"], "animated"), exist_ok=True)
 
     # 基于历史轨迹更新到当前帧的位置（不旋转）
@@ -280,9 +290,13 @@ def draw_textured_animation(config, env, num_steps, ep_num, assets_dir="assets",
             writer.append_data(img_array)
     writer.close()
 
-    # 清理帧图
+    # 精简：清理帧图并删除临时frames目录
+    import shutil
     for frame in range(1, total_steps, step_interval):
         frame_path = os.path.join(save_dir, f'tex_frame_{frame:04d}.png')
         if os.path.exists(frame_path):
             os.remove(frame_path)
+    # 删除临时目录
+    if os.path.exists(temp_frames_dir):
+        shutil.rmtree(temp_frames_dir)
 

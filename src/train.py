@@ -16,6 +16,10 @@ class ReturnValueOfTrain:
         self.capture_return_list = []
         self.boundary_punishment_return_list = []
         self.duplicate_tracking_punishment_return_list = []
+        # Protector奖励项
+        self.protection_return_list = []
+        self.interception_return_list = []
+        self.overlapping_punishment_return_list = []
         self.average_covered_targets_list = []
         self.max_covered_targets_list = []
 
@@ -26,17 +30,24 @@ class ReturnValueOfTrain:
             'capture_return_list': self.capture_return_list,
             'boundary_punishment_return_list': self.boundary_punishment_return_list,
             'duplicate_tracking_punishment_return_list': self.duplicate_tracking_punishment_return_list,
+            'protection_return_list': self.protection_return_list,
+            'interception_return_list': self.interception_return_list,
+            'overlapping_punishment_return_list': self.overlapping_punishment_return_list,
             'average_covered_targets_list': self.average_covered_targets_list,
             'max_covered_targets_list': self.max_covered_targets_list
         }
         return value_dict
 
-    def save_epoch(self, reward, tt_return, cr_return, bp_return, dtp_return, average_targets, max_targets):
+    def save_epoch(self, reward, tt_return, cr_return, bp_return, dtp_return, 
+                   pr_return, ir_return, op_return, average_targets, max_targets):
         self.return_list.append(reward)
         self.target_tracking_return_list.append(tt_return)
         self.capture_return_list.append(cr_return)
         self.boundary_punishment_return_list.append(bp_return)
         self.duplicate_tracking_punishment_return_list.append(dtp_return)
+        self.protection_return_list.append(pr_return)
+        self.interception_return_list.append(ir_return)
+        self.overlapping_punishment_return_list.append(op_return)
         self.average_covered_targets_list.append(average_targets)
         self.max_covered_targets_list.append(max_targets)
 
@@ -161,11 +172,15 @@ def operate_epoch(config, env, uav_agent, protector_agent, pmi, num_steps, cwrit
     episode_boundary_punishment_return = 0
     episode_duplicate_tracking_punishment_return = 0
     episode_capture_return = 0
+    # Protector奖励项
+    episode_protection_return = 0
+    episode_interception_return = 0
+    episode_overlapping_punishment_return = 0
     covered_targets_list = []
     
-    # 用于记录每个智能体的详细奖励
-    uav_rewards_list = []  # 每个step的UAV奖励列表
-    protector_rewards_list = []  # 每个step的Protector奖励列表
+    # 用于记录每个智能体的详细奖励（精简：只保留汇总奖励，不记录每个step的详细列表）
+    uav_rewards_list = []  # 每个step的UAV奖励列表（用于CSV记录）
+    protector_rewards_list = []  # 每个step的Protector奖励列表（用于CSV记录）
 
     for i in range(num_steps):
         config['step'] = i + 1
@@ -228,9 +243,13 @@ def operate_epoch(config, env, uav_agent, protector_agent, pmi, num_steps, cwrit
         episode_capture_return += sum(reward_list.get('capture_reward', []))
         episode_boundary_punishment_return += sum(reward_list['boundary_punishment'])
         episode_duplicate_tracking_punishment_return += sum(reward_list['duplicate_tracking_punishment'])
+        # Protector奖励项
+        episode_protection_return += sum(reward_list.get('protection_reward', []))
+        episode_interception_return += sum(reward_list.get('interception_reward', []))
+        episode_overlapping_punishment_return += sum(reward_list.get('overlapping_punishment', []))
         covered_targets_list.append(covered_targets)
         
-        # 记录每个UAV和Protector的详细奖励
+        # 记录每个UAV和Protector的详细奖励（精简：只在需要时记录，减少内存占用）
         uav_rewards_list.append(reward_list['rewards'])
         protector_rewards_list.append(reward_list.get('protector_rewards', []))
 
@@ -245,6 +264,7 @@ def operate_epoch(config, env, uav_agent, protector_agent, pmi, num_steps, cwrit
 
     return (uav_transition_dict, protector_transition_dict, episode_return, episode_target_tracking_return,
             episode_capture_return, episode_boundary_punishment_return, episode_duplicate_tracking_punishment_return,
+            episode_protection_return, episode_interception_return, episode_overlapping_punishment_return,
             average_covered_targets, max_covered_targets, uav_rewards_list, protector_rewards_list)
 
 
@@ -277,9 +297,10 @@ def train(config, env, uav_agent, protector_agent, pmi, num_episodes, num_steps,
     metrics_csv_file = open(metrics_csv_path, mode='w', newline='')
     metrics_writer = csv.writer(metrics_csv_file)
     
-    # Define CSV header
+    # Define CSV header（精简：合并相关指标，减少列数）
     csv_header = ['episode', 'reward', 'target_tracking_return', 'capture_reward', 'boundary_punishment', 
-                  'duplicate_tracking_punishment', 'average_covered_targets', 'max_covered_targets',
+                  'duplicate_tracking_punishment', 'protection_return', 'interception_return', 
+                  'overlapping_punishment', 'average_covered_targets', 'max_covered_targets',
                   'uav_actor_loss', 'uav_critic_loss', 'avg_pmi_loss', 'pmi_loss_cooperation',
                   'pmi_loss_adversarial', 'protector_actor_loss', 'protector_critic_loss']
     metrics_writer.writerow(csv_header)
@@ -300,102 +321,113 @@ def train(config, env, uav_agent, protector_agent, pmi, num_episodes, num_steps,
     protector_header = ['episode'] + [f'protector_{j}_reward' for j in range(config["environment"]["n_protectors"])]
     protector_rewards_writer.writerow(protector_header)
 
-    with open(os.path.join(save_dir, 'state.csv'), mode='w', newline='') as state_file, \
-            open(os.path.join(save_dir, 'prob.csv'), mode='w', newline='') as prob_file:
-        cwriter_state = csv.writer(state_file)
-        cwriter_prob = csv.writer(prob_file)
+    # 精简：删除state.csv和prob.csv的创建和写入
+    # with open(os.path.join(save_dir, 'state.csv'), mode='w', newline='') as state_file, \
+    #         open(os.path.join(save_dir, 'prob.csv'), mode='w', newline='') as prob_file:
+    #     cwriter_state = csv.writer(state_file)
+    #     cwriter_prob = csv.writer(prob_file)
+    #     cwriter_state.writerow(['state'])
+    #     cwriter_prob.writerow(['prob'])
+    cwriter_state = None
+    cwriter_prob = None
 
-        cwriter_state.writerow(['state'])  # 写入state.csv的表头
-        cwriter_prob.writerow(['prob'])  # 写入prob.csv的表头
+    with tqdm(total=num_episodes, desc='Episodes') as pbar:
+        for i in range(num_episodes):
+            # reset environment from config yaml file
+            env.reset(config=config)
 
-        with tqdm(total=num_episodes, desc='Episodes') as pbar:
-            for i in range(num_episodes):
-                # reset environment from config yaml file
-                env.reset(config=config)
+            # episode start
+            uav_transition_dict, protector_transition_dict, reward, tt_return, cr_return, bp_return, \
+                dtp_return, pr_return, ir_return, op_return, average_targets, max_targets, uav_rewards_list, protector_rewards_list = operate_epoch(config, env, uav_agent, protector_agent, pmi, num_steps, cwriter_state, cwriter_prob)
+            
+            # TensorBoard日志（精简：只记录关键指标，减少写入频率）
+            writer.add_scalar('reward', reward, i)
+            writer.add_scalar('target_tracking_return', tt_return, i)
+            writer.add_scalar('capture_reward', cr_return, i)
+            writer.add_scalar('boundary_punishment', bp_return, i)
+            writer.add_scalar('duplicate_tracking_punishment', dtp_return, i)
+            writer.add_scalar('protection_return', pr_return, i)
+            writer.add_scalar('interception_return', ir_return, i)
+            writer.add_scalar('overlapping_punishment', op_return, i)
+            writer.add_scalar('average_covered_targets', average_targets, i)
+            writer.add_scalar('max_covered_targets', max_targets, i)
 
-                # episode start
-                uav_transition_dict, protector_transition_dict, reward, tt_return, cr_return, bp_return, \
-                    dtp_return, average_targets, max_targets, uav_rewards_list, protector_rewards_list = operate_epoch(config, env, uav_agent, protector_agent, pmi, num_steps, cwriter_state, cwriter_prob)
-                writer.add_scalar('reward', reward, i)
-                writer.add_scalar('target_tracking_return', tt_return, i)
-                writer.add_scalar('capture_reward', cr_return, i)
-                writer.add_scalar('boundary_punishment', bp_return, i)
-                writer.add_scalar('duplicate_tracking_punishment', dtp_return, i)
-                writer.add_scalar('average_covered_targets', average_targets, i)
-                writer.add_scalar('max_covered_targets', max_targets, i)
+            # saving return lists
+            return_value.save_epoch(reward, tt_return, cr_return, bp_return, dtp_return, 
+                                   pr_return, ir_return, op_return, average_targets, max_targets)
+            
+            # Write detailed agent rewards to CSV
+            # Calculate average rewards for each agent across the episode
+            if uav_rewards_list:
+                avg_uav_rewards = np.mean(uav_rewards_list, axis=0).tolist()
+                uav_rewards_writer.writerow([i] + avg_uav_rewards)
+                uav_rewards_csv_file.flush()
+            
+            if protector_rewards_list and len(protector_rewards_list[0]) > 0:
+                avg_protector_rewards = np.mean(protector_rewards_list, axis=0).tolist()
+                protector_rewards_writer.writerow([i] + avg_protector_rewards)
+                protector_rewards_csv_file.flush()
 
-                # saving return lists
-                return_value.save_epoch(reward, tt_return, cr_return, bp_return, dtp_return, average_targets, max_targets)
+            # sample from buffer and update UAV agent
+            uav_actor_loss = uav_critic_loss = None
+            uav_actor_loss_val = uav_critic_loss_val = None
+            avg_pmi_loss = avg_loss_cooperation = avg_loss_adversarial = None
+            if uav_agent:
+                uav_buffer.add(uav_transition_dict)
+                uav_sample_dict, uav_indices, _ = uav_buffer.sample(sample_size)
                 
-                # Write detailed agent rewards to CSV
-                # Calculate average rewards for each agent across the episode
-                if uav_rewards_list:
-                    avg_uav_rewards = np.mean(uav_rewards_list, axis=0).tolist()
-                    uav_rewards_writer.writerow([i] + avg_uav_rewards)
-                    uav_rewards_csv_file.flush()
-                
-                if protector_rewards_list and len(protector_rewards_list[0]) > 0:
-                    avg_protector_rewards = np.mean(protector_rewards_list, axis=0).tolist()
-                    protector_rewards_writer.writerow([i] + avg_protector_rewards)
-                    protector_rewards_csv_file.flush()
-
-                # sample from buffer and update UAV agent
-                uav_actor_loss = uav_critic_loss = None
-                uav_actor_loss_val = uav_critic_loss_val = None
-                avg_pmi_loss = avg_loss_cooperation = avg_loss_adversarial = None
-                if uav_agent:
-                    uav_buffer.add(uav_transition_dict)
-                    uav_sample_dict, uav_indices, _ = uav_buffer.sample(sample_size)
+                # Check if buffer has enough samples
+                if len(uav_sample_dict.get('states', [])) > 0:
+                    # update actor-critic network
+                    uav_actor_loss, uav_critic_loss, uav_td_errors = uav_agent.update(uav_sample_dict)
+                    # Convert tensor to float if needed
+                    uav_actor_loss_val = uav_actor_loss.item() if isinstance(uav_actor_loss, torch.Tensor) else uav_actor_loss
+                    uav_critic_loss_val = uav_critic_loss.item() if isinstance(uav_critic_loss, torch.Tensor) else uav_critic_loss
+                    writer.add_scalar('uav_actor_loss', uav_actor_loss_val, i)
+                    writer.add_scalar('uav_critic_loss', uav_critic_loss_val, i)
                     
-                    # Check if buffer has enough samples
-                    if len(uav_sample_dict.get('states', [])) > 0:
-                        # update actor-critic network
-                        uav_actor_loss, uav_critic_loss, uav_td_errors = uav_agent.update(uav_sample_dict)
-                        # Convert tensor to float if needed
-                        uav_actor_loss_val = uav_actor_loss.item() if isinstance(uav_actor_loss, torch.Tensor) else uav_actor_loss
-                        uav_critic_loss_val = uav_critic_loss.item() if isinstance(uav_critic_loss, torch.Tensor) else uav_critic_loss
-                        writer.add_scalar('uav_actor_loss', uav_actor_loss_val, i)
-                        writer.add_scalar('uav_critic_loss', uav_critic_loss_val, i)
-                        
-                        # update buffer
-                        uav_buffer.update_priorities(uav_indices, uav_td_errors.abs().detach().cpu().numpy())
-                        
-                        # update pmi network (using UAV states)
-                        if pmi:
-                            avg_loss_cooperation, avg_loss_adversarial = pmi.train_pmi(config, torch.tensor(np.array(uav_sample_dict["states"])), env.n_uav)
-                            avg_pmi_loss = (avg_loss_cooperation + avg_loss_adversarial) / 2 if avg_loss_adversarial > 0 else avg_loss_cooperation
-                            writer.add_scalar('avg_pmi_loss', avg_pmi_loss, i)
-                            writer.add_scalar('pmi_loss_cooperation', avg_loss_cooperation, i)
-                            writer.add_scalar('pmi_loss_adversarial', avg_loss_adversarial, i)
-
-                # sample from buffer and update Protector agent
-                protector_actor_loss = protector_critic_loss = None
-                protector_actor_loss_val = protector_critic_loss_val = None
-                if protector_agent:
-                    protector_buffer.add(protector_transition_dict)
-                    protector_sample_dict, protector_indices, _ = protector_buffer.sample(sample_size)
+                    # update buffer
+                    uav_buffer.update_priorities(uav_indices, uav_td_errors.abs().detach().cpu().numpy())
                     
-                    # Check if buffer has enough samples
-                    if len(protector_sample_dict.get('states', [])) > 0:
-                        # update actor-critic network
-                        protector_actor_loss, protector_critic_loss, protector_td_errors = protector_agent.update(protector_sample_dict)
-                        # Convert tensor to float if needed
-                        protector_actor_loss_val = protector_actor_loss.item() if isinstance(protector_actor_loss, torch.Tensor) else protector_actor_loss
-                        protector_critic_loss_val = protector_critic_loss.item() if isinstance(protector_critic_loss, torch.Tensor) else protector_critic_loss
-                        writer.add_scalar('protector_actor_loss', protector_actor_loss_val, i)
-                        writer.add_scalar('protector_critic_loss', protector_critic_loss_val, i)
-                        
-                        # update buffer
-                        protector_buffer.update_priorities(protector_indices, protector_td_errors.abs().detach().cpu().numpy())
+                    # update pmi network (using UAV states)
+                    if pmi:
+                        avg_loss_cooperation, avg_loss_adversarial = pmi.train_pmi(config, torch.tensor(np.array(uav_sample_dict["states"])), env.n_uav)
+                        avg_pmi_loss = (avg_loss_cooperation + avg_loss_adversarial) / 2 if avg_loss_adversarial > 0 else avg_loss_cooperation
+                        writer.add_scalar('avg_pmi_loss', avg_pmi_loss, i)
+                        writer.add_scalar('pmi_loss_cooperation', avg_loss_cooperation, i)
+                        writer.add_scalar('pmi_loss_adversarial', avg_loss_adversarial, i)
+
+            # sample from buffer and update Protector agent
+            protector_actor_loss = protector_critic_loss = None
+            protector_actor_loss_val = protector_critic_loss_val = None
+            if protector_agent:
+                protector_buffer.add(protector_transition_dict)
+                protector_sample_dict, protector_indices, _ = protector_buffer.sample(sample_size)
                 
-                # Write metrics to CSV
-                csv_row = [
+                # Check if buffer has enough samples
+                if len(protector_sample_dict.get('states', [])) > 0:
+                    # update actor-critic network
+                    protector_actor_loss, protector_critic_loss, protector_td_errors = protector_agent.update(protector_sample_dict)
+                    # Convert tensor to float if needed
+                    protector_actor_loss_val = protector_actor_loss.item() if isinstance(protector_actor_loss, torch.Tensor) else protector_actor_loss
+                    protector_critic_loss_val = protector_critic_loss.item() if isinstance(protector_critic_loss, torch.Tensor) else protector_critic_loss
+                    writer.add_scalar('protector_actor_loss', protector_actor_loss_val, i)
+                    writer.add_scalar('protector_critic_loss', protector_critic_loss_val, i)
+                    
+                    # update buffer
+                    protector_buffer.update_priorities(protector_indices, protector_td_errors.abs().detach().cpu().numpy())
+            
+            # Write metrics to CSV（精简：合并到training_metrics.csv，不再单独保存重复的CSV文件）
+            csv_row = [
                     i,  # episode
                     reward if reward is not None else '',
                     tt_return if tt_return is not None else '',
                     cr_return if cr_return is not None else '',
                     bp_return if bp_return is not None else '',
                     dtp_return if dtp_return is not None else '',
+                    pr_return if pr_return is not None else '',  # protection_return
+                    ir_return if ir_return is not None else '',  # interception_return
+                    op_return if op_return is not None else '',  # overlapping_punishment
                     average_targets if average_targets is not None else '',
                     max_targets if max_targets is not None else '',
                     uav_actor_loss_val if uav_actor_loss_val is not None else '',
@@ -405,38 +437,39 @@ def train(config, env, uav_agent, protector_agent, pmi, num_episodes, num_steps,
                     avg_loss_adversarial if avg_loss_adversarial is not None else '',
                     protector_actor_loss_val if protector_actor_loss_val is not None else '',
                     protector_critic_loss_val if protector_critic_loss_val is not None else ''
-                ]
-                metrics_writer.writerow(csv_row)
-                metrics_csv_file.flush()  # Ensure data is written immediately
+            ]
+            metrics_writer.writerow(csv_row)
+            metrics_csv_file.flush()  # Ensure data is written immediately
 
-                # save & print
-                if (i + 1) % frequency == 0:
-                    # print some information
-                    postfix_dict = {'episode': '%d' % (i + 1),
-                                   'return': '%.3f' % np.mean(return_value.return_list[-frequency:])}
-                    if uav_agent:
-                        postfix_dict['uav_actor_loss'] = '%f' % uav_actor_loss
-                        postfix_dict['uav_critic_loss'] = '%f' % uav_critic_loss
-                    if protector_agent:
-                        postfix_dict['prot_actor_loss'] = '%f' % protector_actor_loss
-                        postfix_dict['prot_critic_loss'] = '%f' % protector_critic_loss
-                    if pmi:
-                        postfix_dict['avg pmi loss'] = '%f' % avg_pmi_loss
-                    pbar.set_postfix(postfix_dict)
+            # save & print
+            if (i + 1) % frequency == 0:
+                # print some information
+                postfix_dict = {'episode': '%d' % (i + 1),
+                               'return': '%.3f' % np.mean(return_value.return_list[-frequency:])}
+                if uav_agent:
+                    postfix_dict['uav_actor_loss'] = '%f' % uav_actor_loss
+                    postfix_dict['uav_critic_loss'] = '%f' % uav_critic_loss
+                if protector_agent:
+                    postfix_dict['prot_actor_loss'] = '%f' % protector_actor_loss
+                    postfix_dict['prot_critic_loss'] = '%f' % protector_critic_loss
+                if pmi:
+                    postfix_dict['avg pmi loss'] = '%f' % avg_pmi_loss
+                pbar.set_postfix(postfix_dict)
 
-                    # save results and weights
-                    draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=i)
-                    if uav_agent:
-                        uav_agent.save(save_dir=config["save_dir"], epoch_i=i + 1)
-                    if protector_agent:
-                        protector_agent.save(save_dir=os.path.join(config["save_dir"], "protector"), epoch_i=i + 1)
-                    if pmi:
-                        pmi.save(save_dir=config["save_dir"], epoch_i=i + 1)
-                    env.save_position(save_dir=config["save_dir"], epoch_i=i + 1)
-                    env.save_covered_num(save_dir=config["save_dir"], epoch_i=i + 1)
+                # save results and weights
+                draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=i)
+                if uav_agent:
+                    uav_agent.save(save_dir=config["save_dir"], epoch_i=i + 1)
+                if protector_agent:
+                    protector_agent.save(save_dir=os.path.join(config["save_dir"], "protector"), epoch_i=i + 1)
+                if pmi:
+                    pmi.save(save_dir=config["save_dir"], epoch_i=i + 1)
+                # 精简：删除位置和覆盖目标数的保存
+                # env.save_position(save_dir=config["save_dir"], epoch_i=i + 1)
+                # env.save_covered_num(save_dir=config["save_dir"], epoch_i=i + 1)
 
-                # episode end
-                pbar.update(1)
+            # episode end
+            pbar.update(1)
 
     # 训练结束后，保存最终结果（无论是否到达保存点）
     final_epoch = num_episodes
@@ -446,7 +479,7 @@ def train(config, env, uav_agent, protector_agent, pmi, num_episodes, num_steps,
         # 重置环境以获取最终状态
         env.reset(config=config)
         # 运行一个epoch以获取最终状态
-        _, _, _, _, _, _, _, _, _, _, _ = operate_epoch(config, env, uav_agent, protector_agent, pmi, num_steps)
+        _, _, _, _, _, _, _, _, _, _, _, _, _ = operate_epoch(config, env, uav_agent, protector_agent, pmi, num_steps)
         draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=final_epoch - 1)
         if uav_agent:
             uav_agent.save(save_dir=config["save_dir"], epoch_i=final_epoch)
@@ -454,8 +487,9 @@ def train(config, env, uav_agent, protector_agent, pmi, num_episodes, num_steps,
             protector_agent.save(save_dir=os.path.join(config["save_dir"], "protector"), epoch_i=final_epoch)
         if pmi:
             pmi.save(save_dir=config["save_dir"], epoch_i=final_epoch)
-        env.save_position(save_dir=config["save_dir"], epoch_i=final_epoch)
-        env.save_covered_num(save_dir=config["save_dir"], epoch_i=final_epoch)
+        # 精简：删除位置和覆盖目标数的保存
+        # env.save_position(save_dir=config["save_dir"], epoch_i=final_epoch)
+        # env.save_covered_num(save_dir=config["save_dir"], epoch_i=final_epoch)
         print("最终结果已保存。")
     else:
         # 即使最后一轮在保存点，也保存一次最终模型权重（作为最终版本）
@@ -494,15 +528,17 @@ def evaluate(config, env, uav_agent, protector_agent, pmi, num_steps):
     env.reset(config=config)
 
     # episode start
-    uav_transition_dict, protector_transition_dict, reward, tt_return, cr_return, bp_return, dtp_return, average_targets, max_targets, _, _ = operate_epoch(config, env, uav_agent, protector_agent, pmi, num_steps)
+    uav_transition_dict, protector_transition_dict, reward, tt_return, cr_return, bp_return, dtp_return, pr_return, ir_return, op_return, average_targets, max_targets, _, _ = operate_epoch(config, env, uav_agent, protector_agent, pmi, num_steps)
 
     # saving return lists
-    return_value.save_epoch(reward, tt_return, cr_return, bp_return, dtp_return, average_targets, max_targets)
+    return_value.save_epoch(reward, tt_return, cr_return, bp_return, dtp_return, 
+                           pr_return, ir_return, op_return, average_targets, max_targets)
 
     # save results and weights
     draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=0)
-    env.save_position(save_dir=config["save_dir"], epoch_i=0)
-    env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
+    # 精简：删除位置和覆盖目标数的保存
+    # env.save_position(save_dir=config["save_dir"], epoch_i=0)
+    # env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
 
     return return_value.item()
 
@@ -577,7 +613,8 @@ def run(config, env, pmi, num_steps):
 
     # save results and weights
     draw_textured_animation(config=config, env=env, num_steps=num_steps, ep_num=0)
-    env.save_position(save_dir=config["save_dir"], epoch_i=0)
-    env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
+    # 精简：删除位置和覆盖目标数的保存
+    # env.save_position(save_dir=config["save_dir"], epoch_i=0)
+    # env.save_covered_num(save_dir=config["save_dir"], epoch_i=0)
 
     return return_value.item()

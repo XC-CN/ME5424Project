@@ -291,6 +291,7 @@ class PROTECTOR:
     def __calculate_target_protection_reward(self, target_list: List['TARGET'], uav_list: List['UAV']) -> float:
         """
         计算保护目标的奖励：当protector能够阻挡UAV接近目标时给予奖励
+        改进：增加接近目标的基础奖励，解决奖励稀疏问题
         :param target_list: 目标列表
         :param uav_list: UAV列表
         :return: 保护奖励 [0, reward_factor * protected_targets]
@@ -299,9 +300,13 @@ class PROTECTOR:
         
         # 保护半径：protector的保护范围（通常大于观测距离）
         protection_radius = 2.0 * self.safe_r  # 使用安全半径的倍数作为保护范围
+        # 扩展接近奖励半径：即使不在保护范围内，靠近目标也应该有小奖励
+        proximity_reward_radius = 4.0 * self.safe_r  # 更大的范围给予基础奖励
         
         # 奖励因子：每保护一个目标的基础奖励
         reward_factor = 1.0
+        # 接近奖励因子：即使不在保护范围内，靠近目标也有小奖励
+        proximity_reward_factor = 0.3  # 较小的基础奖励，鼓励接近目标
         
         # 最大奖励目标数量：避免奖励过度集中在少数目标上
         max_rewarded_targets = 5
@@ -315,11 +320,15 @@ class PROTECTOR:
             # protector到目标的距离
             dist_prot_to_target = self.__distance(target)
             
-            # 如果protector在保护范围内
+            # 基础接近奖励：即使不在保护范围内，靠近目标也有奖励（解决稀疏问题）
+            proximity_base_reward = 0.0
+            if dist_prot_to_target <= proximity_reward_radius:
+                # 距离越近，奖励越高（线性衰减）
+                proximity_base_reward = proximity_reward_factor * (1.0 - dist_prot_to_target / proximity_reward_radius)
+            
+            # 如果protector在保护范围内，计算阻挡效果
+            blocking_score = 0.0
             if dist_prot_to_target <= protection_radius:
-                # 计算protector阻挡UAV的效果
-                blocking_score = 0.0
-                
                 for uav in uav_list:
                     # UAV到目标的距离
                     dist_uav_to_target = sqrt((uav.x - target.x) ** 2 + (uav.y - target.y) ** 2)
@@ -358,8 +367,14 @@ class PROTECTOR:
                 
                 # 综合奖励：protector靠近目标 + 阻挡UAV
                 proximity_bonus = (protection_radius - dist_prot_to_target) / protection_radius
-                total_score = proximity_bonus * 0.3 + blocking_score * 0.7
-                protected_scores.append((total_score, dist_prot_to_target))
+                blocking_reward = proximity_bonus * 0.3 + blocking_score * 0.7
+            else:
+                # 不在保护范围内，只有基础接近奖励
+                blocking_reward = 0.0
+            
+            # 总奖励 = 基础接近奖励 + 阻挡奖励
+            total_score = proximity_base_reward + blocking_reward
+            protected_scores.append((total_score, dist_prot_to_target))
         
         # 按得分排序，只奖励前max_rewarded_targets个目标
         protected_scores.sort(key=lambda x: x[0], reverse=True)
@@ -373,19 +388,21 @@ class PROTECTOR:
     def __calculate_overlapping_protector_punishment(self, protector_list: List['PROTECTOR'], radio=1.5) -> float:
         """
         计算重叠保护者惩罚：如果太多保护者聚集在一起，给予轻微惩罚
+        改进：弱化惩罚，因为protector需要合作，过度聚集的惩罚可能过于严格
         :param protector_list: [class PROTECTOR]
         :param radio: 控制惩罚范围的系数
         :return: 惩罚值 (-radio * punishment_factor, 0]
         """
         total_punishment = 0.0
-        punishment_factor = 0.3  # 惩罚强度（较轻，鼓励合作但避免过度聚集）
+        punishment_factor = 0.15  # 降低惩罚强度（从0.3降到0.15），鼓励合作但避免过度聚集
         
         for other_prot in protector_list:
             if other_prot != self:
                 distance = self.__distance(other_prot)
-                if distance <= radio * self.safe_r:
+                # 只在非常接近时才给予惩罚（缩小惩罚范围）
+                if distance <= 0.8 * radio * self.safe_r:  # 从radio降到0.8*radio
                     # 惩罚按距离递减：靠得越近惩罚越大
-                    punishment = -punishment_factor * exp((radio * self.safe_r - distance) / (radio * self.safe_r))
+                    punishment = -punishment_factor * exp((0.8 * radio * self.safe_r - distance) / (0.8 * radio * self.safe_r))
                     total_punishment += punishment
         
         return total_punishment
@@ -435,6 +452,7 @@ class PROTECTOR:
     def __calculate_successful_interception_reward(self, uav_list: List['UAV'], target_list: List['TARGET']) -> float:
         """
         计算成功拦截奖励：当protector成功拦截UAV，且拦截使其远离目标时给予奖励
+        改进：增加接近UAV的基础奖励，即使未成功拦截，接近威胁UAV也有奖励（解决稀疏问题）
         :param uav_list: UAV列表
         :param target_list: 目标列表
         :return: 拦截奖励 [0, reward_factor * intercepted_uavs]
@@ -443,61 +461,76 @@ class PROTECTOR:
         
         # 拦截检测范围：protector的拦截影响范围（基于safe_r）
         interception_range = 1.5 * self.safe_r  # 考虑手臂长度和碰撞范围
+        # 接近威胁奖励范围：即使未成功拦截，接近威胁UAV也有奖励
+        threat_proximity_range = 3.0 * self.safe_r  # 更大的范围给予基础奖励
         
         # 奖励因子
         reward_factor = 2.0  # 拦截奖励应该比较高，因为这是直接有效的防御
+        # 接近威胁奖励因子：即使未成功拦截，接近威胁UAV也有小奖励
+        threat_proximity_factor = 0.4  # 较小的基础奖励，鼓励接近威胁UAV
         
-        # 对每个UAV检查是否被拦截
+        # 对每个UAV检查是否被拦截或接近威胁
         for uav in uav_list:
-            # 检查UAV是否处于锁定状态（被拦截）
-            if getattr(uav, 'lock', 0) > 0:
-                # 检查protector是否在拦截范围内（可能是这个protector拦截的）
-                dist_to_uav = self.__distance(uav)
+            dist_to_uav = self.__distance(uav)
+            
+            # 找到最近的未被捕获的目标
+            closest_target = None
+            min_dist = float('inf')
+            for target in target_list:
+                if getattr(target, 'captured', False):
+                    continue
+                dist = sqrt((uav.x - target.x) ** 2 + (uav.y - target.y) ** 2)
+                if dist < min_dist:
+                    min_dist = dist
+                    closest_target = target
+            
+            if closest_target:
+                # 计算UAV到目标的距离
+                uav_to_target_dist = min_dist
                 
-                if dist_to_uav <= interception_range:
+                # 基础接近威胁奖励：即使未成功拦截，接近威胁UAV也有奖励（解决稀疏问题）
+                if dist_to_uav <= threat_proximity_range and uav_to_target_dist < 5.0 * self.safe_r:
+                    # UAV正在接近目标，protector接近UAV应该得到奖励
+                    # 距离越近，奖励越高（线性衰减）
+                    proximity_reward = threat_proximity_factor * (1.0 - dist_to_uav / threat_proximity_range)
+                    # 根据UAV到目标的距离调整：UAV越接近目标，protector接近UAV的奖励越高
+                    urgency = (5.0 * self.safe_r - uav_to_target_dist) / (5.0 * self.safe_r)
+                    proximity_reward *= max(0.0, urgency)  # 确保非负
+                    interception_reward += proximity_reward
+                
+                # 检查UAV是否处于锁定状态（被拦截）
+                if getattr(uav, 'lock', 0) > 0 and dist_to_uav <= interception_range:
                     # 检查拦截后的朝向是否使UAV远离目标
                     uav_heading = uav.h  # UAV当前朝向（拦截后的朝向）
                     
-                    # 找到最近的未被捕获的目标
-                    closest_target = None
-                    min_dist = float('inf')
-                    for target in target_list:
-                        if getattr(target, 'captured', False):
-                            continue
-                        dist = sqrt((uav.x - target.x) ** 2 + (uav.y - target.y) ** 2)
-                        if dist < min_dist:
-                            min_dist = dist
-                            closest_target = target
+                    # 计算UAV朝向目标的理想方向
+                    target_dx = closest_target.x - uav.x
+                    target_dy = closest_target.y - uav.y
+                    target_angle = np.arctan2(target_dy, target_dx)
                     
-                    if closest_target:
-                        # 计算UAV朝向目标的理想方向
-                        target_dx = closest_target.x - uav.x
-                        target_dy = closest_target.y - uav.y
-                        target_angle = np.arctan2(target_dy, target_dx)
+                    # 计算UAV当前朝向与目标方向的夹角
+                    angle_diff = abs(uav_heading - target_angle)
+                    # 归一化到 [0, pi]
+                    if angle_diff > pi:
+                        angle_diff = 2 * pi - angle_diff
+                    
+                    # 如果夹角大于 pi/2（90度），说明UAV朝向远离目标
+                    if angle_diff > pi / 2:
+                        # 夹角越大，远离效果越好，奖励越高
+                        # 夹角从 pi/2 到 pi，奖励从 0 到 reward_factor
+                        effectiveness = (angle_diff - pi / 2) / (pi / 2)  # [0, 1]
                         
-                        # 计算UAV当前朝向与目标方向的夹角
-                        angle_diff = abs(uav_heading - target_angle)
-                        # 归一化到 [0, pi]
-                        if angle_diff > pi:
-                            angle_diff = 2 * pi - angle_diff
+                        # 根据距离目标的远近调整奖励（越近时拦截，奖励越高）
+                        current_dist = sqrt(target_dx ** 2 + target_dy ** 2)
+                        # 假设危险距离为 5 * safe_r，在此范围内拦截更有效
+                        danger_zone = 5.0 * self.safe_r
+                        if current_dist < danger_zone:
+                            urgency_bonus = (danger_zone - current_dist) / danger_zone  # [0, 1]
+                            reward = reward_factor * effectiveness * (1.0 + urgency_bonus)
+                        else:
+                            reward = reward_factor * effectiveness
                         
-                        # 如果夹角大于 pi/2（90度），说明UAV朝向远离目标
-                        if angle_diff > pi / 2:
-                            # 夹角越大，远离效果越好，奖励越高
-                            # 夹角从 pi/2 到 pi，奖励从 0 到 reward_factor
-                            effectiveness = (angle_diff - pi / 2) / (pi / 2)  # [0, 1]
-                            
-                            # 根据距离目标的远近调整奖励（越近时拦截，奖励越高）
-                            current_dist = sqrt(target_dx ** 2 + target_dy ** 2)
-                            # 假设危险距离为 5 * safe_r，在此范围内拦截更有效
-                            danger_zone = 5.0 * self.safe_r
-                            if current_dist < danger_zone:
-                                urgency_bonus = (danger_zone - current_dist) / danger_zone  # [0, 1]
-                                reward = reward_factor * effectiveness * (1.0 + urgency_bonus)
-                            else:
-                                reward = reward_factor * effectiveness
-                            
-                            interception_reward += reward
+                        interception_reward += reward
         
         return interception_reward
 

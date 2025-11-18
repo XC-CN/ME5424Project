@@ -105,7 +105,7 @@ class Environment:
         protector_dc = config.get("protector", {}).get("dc", config["uav"]["dc"])
         protector_dp = config.get("protector", {}).get("dp", config["uav"]["dp"])
         # 获取是否使用全局信息的配置（默认为False，即使用距离限制）
-        use_global_info = config.get("environment", {}).get("use_global_info", False)
+        use_global_info = config.get("environment", {}).get("use_global_info", True)
         self.__reset(t_v_max=config["target"]["v_max"],
                      t_h_max=pi / float(config["target"]["h_max"]),
                      u_v_max=config["uav"]["v_max"],
@@ -269,7 +269,10 @@ class Environment:
          target_tracking_reward,
          capture_reward,
          boundary_punishment,
-         duplicate_tracking_punishment) = self.calculate_rewards(config=config, pmi=pmi)
+         duplicate_tracking_punishment,
+         protection_reward,
+         interception_reward,
+         overlapping_punishment) = self.calculate_rewards(config=config, pmi=pmi)
         next_states = self.get_states()
         next_protector_states = self.get_protector_states()
 
@@ -295,7 +298,11 @@ class Environment:
             'target_tracking_reward': target_tracking_reward,
             'capture_reward': capture_reward,  # UAV capture rewards
             'boundary_punishment': boundary_punishment,
-            'duplicate_tracking_punishment': duplicate_tracking_punishment
+            'duplicate_tracking_punishment': duplicate_tracking_punishment,
+            # Protector详细奖励项
+            'protection_reward': protection_reward,
+            'interception_reward': interception_reward,
+            'overlapping_punishment': overlapping_punishment
         }
 
         return next_states, next_protector_states, reward, covered_targets
@@ -340,13 +347,18 @@ class Environment:
         return (self.position['all_uav_xs'], self.position['all_uav_ys'],
                 self.position['all_target_xs'], self.position['all_target_ys'])
 
-    def calculate_rewards(self, config, pmi) -> ([float], [float], float, float, float, float):
+    def calculate_rewards(self, config, pmi) -> ([float], [float], [float], [float], [float], [float], [float], [float], [float]):
         # raw reward first
         target_tracking_rewards = []
         capture_rewards = []
         boundary_punishments = []
         duplicate_tracking_punishments = []
         protector_punishments = []
+        # Protector奖励项
+        protection_rewards = []
+        interception_rewards = []
+        overlapping_punishments = []
+        protector_boundary_punishments = []
         for uav in self.uav_list:
             # raw reward for each uav (not clipped)
             (target_tracking_reward,
@@ -410,6 +422,12 @@ class Environment:
             overlapping_punishment = clip_and_normalize(overlapping_punishment, -2, 0, -1)
             interception_reward = clip_and_normalize(interception_reward, 0, 5, 0)  # 拦截奖励通常是正数
             
+            # 收集protector的详细奖励项（用于统计和日志）
+            protection_rewards.append(protection_reward)
+            interception_rewards.append(interception_reward)
+            overlapping_punishments.append(overlapping_punishment)
+            protector_boundary_punishments.append(boundary_punishment)
+            
             # 计算protector的原始奖励（权重可以在config中配置）
             protector.raw_reward = (config.get("protector", {}).get("alpha", 1.0) * protection_reward +
                                    config.get("protector", {}).get("beta", 0.5) * boundary_punishment +
@@ -433,7 +451,8 @@ class Environment:
         for protector in self.protector_list:
             protector_rewards.append(protector.reward)
         
-        return rewards, protector_rewards, target_tracking_rewards, capture_rewards, boundary_punishments, duplicate_tracking_punishments
+        return (rewards, protector_rewards, target_tracking_rewards, capture_rewards, boundary_punishments, 
+                duplicate_tracking_punishments, protection_rewards, interception_rewards, overlapping_punishments)
 
     def save_position(self, save_dir, epoch_i):
         u_xy = np.array([self.position["all_uav_xs"],

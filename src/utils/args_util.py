@@ -39,10 +39,11 @@ def get_config(config_file):
     mkdir(os.path.join(save_dir, "critic"))
     mkdir(os.path.join(save_dir, "pmi"))
     mkdir(os.path.join(save_dir, "animated"))
-    mkdir(os.path.join(save_dir, "t_xy"))
-    mkdir(os.path.join(save_dir, "u_xy"))
-    mkdir(os.path.join(save_dir, "p_xy"))
-    mkdir(os.path.join(save_dir, "covered_target_num"))
+    # 精简：删除不需要的文件夹创建
+    # mkdir(os.path.join(save_dir, "t_xy"))
+    # mkdir(os.path.join(save_dir, "u_xy"))
+    # mkdir(os.path.join(save_dir, "p_xy"))
+    # mkdir(os.path.join(save_dir, "covered_target_num"))
 
     # create cuda devices
     set_device(config)

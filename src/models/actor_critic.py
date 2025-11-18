@@ -213,8 +213,8 @@ class ActorCritic:
         rewards_normalized = (rewards - self.reward_mean) / effective_std
         
         # 限制归一化后的奖励范围，防止极端值导致Critic Loss爆炸
-        # 从[-20, 20]改为[-10, 10]，更保守的范围，提高稳定性
-        rewards_normalized = torch.clamp(rewards_normalized, min=-10.0, max=10.0)
+        # 从[-10, 10]改为[-5, 5]，更保守的范围，进一步提高稳定性
+        rewards_normalized = torch.clamp(rewards_normalized, min=-5.0, max=5.0)
         
         # 计算td_target和td_delta（使用归一化后的奖励）
         td_target_normalized = rewards_normalized + self.gamma * self.critic(next_states).detach()
@@ -233,8 +233,8 @@ class ActorCritic:
         log_probs = torch.clamp(log_probs, min=-20.0, max=10.0)
         
         # 限制 td_delta 的范围，平衡策略梯度信号和稳定性
-        # 从[-20, 20]改为[-10, 10]，更保守的范围，提高稳定性
-        td_delta_clipped = torch.clamp(td_delta_normalized.detach(), min=-10.0, max=10.0)
+        # 从[-10, 10]改为[-5, 5]，更保守的范围，进一步提高稳定性
+        td_delta_clipped = torch.clamp(td_delta_normalized.detach(), min=-5.0, max=5.0)
         
         # 计算熵（用于鼓励探索）
         entropy = action_dist.entropy().mean()
@@ -263,9 +263,9 @@ class ActorCritic:
         critic_loss.backward()
         
         # 梯度裁剪，防止梯度爆炸
-        # 进一步加强梯度裁剪，从2.0改为1.0，提高稳定性
-        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0)
-        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0)
+        # 进一步加强梯度裁剪，从1.0改为0.5，进一步提高稳定性
+        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=0.5)
+        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=0.5)
         
         self.actor_optimizer.step()
         self.critic_optimizer.step()
