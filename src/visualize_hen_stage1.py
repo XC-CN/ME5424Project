@@ -5,6 +5,7 @@ from typing import Tuple
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import font_manager as fm
+import math
 import numpy as np
 from stable_baselines3 import PPO
 
@@ -98,6 +99,8 @@ def _init_figure(world_size: float) -> Tuple[plt.Figure, plt.Axes, dict]:
     hen_scatter = ax.scatter([], [], s=80, c="tab:orange", label="母鸡")
     eagle_scatter = ax.scatter([], [], s=80, c="tab:blue", label="老鹰")
     chicks_scatter = ax.scatter([], [], s=40, c="tab:green", label="小鸡链条")
+    # 用一条线段表示母鸡的“翅膀”（即阻挡带的宽度）
+    hen_wing_line, = ax.plot([], [], color="red", linewidth=2.0, alpha=0.8, label="母鸡翅膀")
 
     ax.legend(loc="upper right")
 
@@ -105,6 +108,7 @@ def _init_figure(world_size: float) -> Tuple[plt.Figure, plt.Axes, dict]:
         "hen": hen_scatter,
         "eagle": eagle_scatter,
         "chicks": chicks_scatter,
+        "hen_wing": hen_wing_line,
     }
     return fig, ax, handles
 
@@ -122,12 +126,51 @@ def _update_scatter(env: HenTrainingEnv, handles: dict, ax: plt.Axes, step_idx: 
     handles["hen"].set_offsets(np.array([[hen_pos.x, hen_pos.y]], dtype=float))
     handles["eagle"].set_offsets(np.array([[eagle_pos.x, eagle_pos.y]], dtype=float))
 
+    # 计算老鹰与链尾的距离，用于判断是否“吃掉”小鸡
+    caught = False
     if chick_positions:
+        tail_pos = chick_positions[-1]
+        dist_eagle_tail = math.hypot(
+            float(eagle_pos.x - tail_pos.x), float(eagle_pos.y - tail_pos.y)
+        )
+        # 使用环境中的捕获半径作为判定条件
+        catch_radius = getattr(env.cfg, "catch_radius", 0.0)
+        if catch_radius > 0.0 and dist_eagle_tail < catch_radius:
+            caught = True
+
         xs = [p.x for p in chick_positions]
         ys = [p.y for p in chick_positions]
         handles["chicks"].set_offsets(np.column_stack([xs, ys]))
+
+        # 默认所有小鸡为绿色，若被捕则将链尾标为红色
+        colors = ["tab:green"] * len(chick_positions)
+        if caught and len(colors) > 0:
+            colors[-1] = "red"
+        handles["chicks"].set_color(colors)
+
+        # 绘制母鸡的“翅膀”：一条垂直于母鸡->尾端方向的线段，长度由阻挡宽度 block_margin 决定
+        arm_span = max(getattr(env.cfg, "block_margin", 0.0), 0.0)
+        if arm_span > 0.0:
+            vx = float(tail_pos.x - hen_pos.x)
+            vy = float(tail_pos.y - hen_pos.y)
+            norm = math.hypot(vx, vy)
+            if norm < 1e-5:
+                # 若母鸡与尾端几乎重合，则使用固定方向
+                nx, ny = 0.0, 1.0
+            else:
+                # 取垂直方向作为“翅膀”方向
+                nx = -vy / norm
+                ny = vx / norm
+            x1 = hen_pos.x - nx * arm_span
+            y1 = hen_pos.y - ny * arm_span
+            x2 = hen_pos.x + nx * arm_span
+            y2 = hen_pos.y + ny * arm_span
+            handles["hen_wing"].set_data([x1, x2], [y1, y2])
+        else:
+            handles["hen_wing"].set_data([], [])
     else:
         handles["chicks"].set_offsets(np.empty((0, 2), dtype=float))
+        handles["hen_wing"].set_data([], [])
 
     ax.set_xlabel(f"当前步数：{step_idx}")
 

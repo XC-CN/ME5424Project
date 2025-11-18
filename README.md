@@ -246,7 +246,7 @@ for _ in range(cfg.max_steps):
 为了直观观察母鸡在启发式老鹰攻击下如何带动身后的小鸡链条进行防守，本仓库提供了一个简单的可视化脚本：
 
 ```bash
-python src/visualize_hen_stage1.py --episodes 1 --fps 60
+python src/visualize_hen_stage1.py --episodes 5 --fps 60
 ```
 
 - **母鸡**：橙色圆点。

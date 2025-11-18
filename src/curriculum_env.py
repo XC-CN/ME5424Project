@@ -357,6 +357,11 @@ class HenTrainingEnv(BasePhysicsEnv):
         )
 
         caught = dist_eagle_tail < self.cfg.catch_radius
+        # 5) 生存奖励：只要小鸡链条尾端尚未被捕获，随着时间推移给予一个很小的正奖励
+        if not caught and self.cfg.max_steps > 0:
+            survival_bonus = 0.02 * (float(self.step_count) / float(self.cfg.max_steps))
+            reward += survival_bonus
+
         terminated = bool(caught)
         if caught:
             reward -= 5.0
@@ -372,6 +377,41 @@ class HenTrainingEnv(BasePhysicsEnv):
 
         self.world.Step(self.cfg.dt, 6, 2)
         self._enforce_bounds()
+        # 在物理步进之后，根据母鸡的“翅膀”对老鹰进行简单的物理弹回处理，
+        # 使其无法轻易穿过母鸡的阻挡带。
+        tail = self.chicks[-1]
+        arm_span = max(self.cfg.block_margin, 0.0)
+        if arm_span > 0.0:
+            # 主轴：老鹰 -> 小鸡尾端
+            vec_et = np.array(
+                [tail.position.x - self.eagle.position.x, tail.position.y - self.eagle.position.y],
+                dtype=float,
+            )
+            dist_et = np.linalg.norm(vec_et)
+            if dist_et > 1e-6:
+                vec_eh = np.array(
+                    [self.hen.position.x - self.eagle.position.x, self.hen.position.y - self.eagle.position.y],
+                    dtype=float,
+                )
+                proj = float(np.dot(vec_eh, vec_et) / dist_et)
+                # 仅在老鹰位于母鸡与尾端之间时考虑弹回
+                if 0.0 < proj < dist_et:
+                    closest_vec = vec_eh - (proj / dist_et) * vec_et
+                    perp_dist = np.linalg.norm(closest_vec)
+                    if perp_dist < arm_span and perp_dist > 1e-6:
+                        # 计算从翅膀带边缘推回的最小位移
+                        push_dir = closest_vec / perp_dist  # 从主轴指向母鸡的垂直方向
+                        push_amount = arm_span - perp_dist
+                        # 将老鹰沿该方向推离翅膀带，避免直接穿过母鸡
+                        self.eagle.position = b2Vec2(
+                            float(self.eagle.position.x + push_dir[0] * push_amount),
+                            float(self.eagle.position.y + push_dir[1] * push_amount),
+                        )
+                        # 简单衰减老鹰速度，减少弹回后的抖动
+                        self.eagle.linearVelocity = b2Vec2(0.0, 0.0)
+                        # 再次确保不出界
+                        self._enforce_bounds()
+
         self.step_count += 1
 
         reward, done = self._compute_reward_done()
