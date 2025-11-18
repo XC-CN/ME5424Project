@@ -10,3 +10,6 @@ tensorboard>=2.14
 torch>=2.1
 torchvision>=0.16
 torchaudio>=2.1
+gymnasium>=0.29  # 不使用 box2d 扩展，避免额外依赖 box2d-py，由 pybox2d 提供 Box2D 绑定
+stable-baselines3>=2.3.0
+# box2d-py>=2.3.5  # 使用 conda 安装 pybox2d 替代，避免在 Windows 上本地编译 box2d-py 失败
