@@ -47,8 +47,9 @@ class PhysicsConfig:
     joint_frequency_hz: float = 4.0 # 链条关节的弹性频率
     joint_damping: float = 0.7      # 链条关节的阻尼系数
     hen_max_speed: float = 9.0      # 母鸡最大速度
-    eagle_max_speed: float = 10.0    # 老鹰最大速度
-    max_force: float = 80.0         # 最大允许的加速度/力
+    eagle_max_speed: float = 36.0    # 老鹰最大速度 (4x 母鸡)
+    max_force: float = 80.0         # 母鸡最大允许的加速度/力
+    eagle_max_force: float = 320.0   # 老鹰最大允许的加速度/力 (4x 母鸡)
     catch_radius: float = 0.7       # 老鹰判定抓到尾端小鸡的距离阈值
     block_margin: float = 3       # 母鸡“翅膀”侧向阻挡的宽度（碰撞判定）
 
@@ -74,6 +75,7 @@ class BasePhysicsEnv(gym.Env):
         self.cfg = config or PhysicsConfig()
         self.seed_val = seed
         self.rng = np.random.default_rng(seed)
+        self.eagle_bounced_this_step = False # 新增标志位，用于传递反弹信息
 
         # Continuous acceleration in x/y, clipped to [-1, 1].
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
@@ -106,6 +108,7 @@ class BasePhysicsEnv(gym.Env):
             self.seed(seed)
         self._build_world()
         self.step_count = 0
+        self.eagle_bounced_this_step = False
         obs = self._get_obs(role=self._active_role())
         return obs, {}
 
@@ -168,10 +171,10 @@ class BasePhysicsEnv(gym.Env):
 
     # --- Simulation helpers -------------------------------------------------
 
-    def _apply_action(self, body, action: np.ndarray, max_speed: float) -> None:
+    def _apply_action(self, body, action: np.ndarray, max_speed: float, max_force: float) -> None:
         act = np.asarray(action, dtype=np.float32)
         act = np.clip(act, -1.0, 1.0)
-        force = b2Vec2(float(act[0]) * self.cfg.max_force, float(act[1]) * self.cfg.max_force)
+        force = b2Vec2(float(act[0]) * max_force, float(act[1]) * max_force)
         body.ApplyForceToCenter(force, True)
 
         # Velocity capping keeps the simulation stable.
@@ -217,6 +220,7 @@ class BasePhysicsEnv(gym.Env):
                 radial_dist = float(np.linalg.norm(lateral_vec))
 
                 if 0.0 < dist_normal < dist_ht and radial_dist <= arm_span:
+                    # 增强版反弹：不仅修改速度，还清空之前的受力并增加位移
                     v = np.array(
                         [self.eagle.linearVelocity.x, self.eagle.linearVelocity.y],
                         dtype=float,
@@ -226,10 +230,18 @@ class BasePhysicsEnv(gym.Env):
                     v_t = v - v_n
                     restitution = 0.5
                     friction = 0.9
-                    v_reflect = -restitution * v_n + friction * v_t
+                    # 如果当前是向母鸡冲的速度（vn_mag < 0），则强力反弹；否则只保留切向
+                    if vn_mag < 0:
+                        v_reflect = -restitution * v_n + friction * v_t
+                    else:
+                        v_reflect = v_n + friction * v_t # 已经在远离了，不反转法向
+                    
                     self.eagle.linearVelocity = b2Vec2(float(v_reflect[0]), float(v_reflect[1]))
 
-                    knock = min(0.1, 0.1 * arm_span)
+                    # 清空受力，防止这帧的 Policy 输出继续推它
+                    self.eagle.angularVelocity = 0.0
+                    
+                    knock = max(0.5, 0.15 * arm_span) # 增大弹开距离，至少 0.5 米
                     self.eagle.position = b2Vec2(
                         float(self.eagle.position.x - n[0] * knock),
                         float(self.eagle.position.y - n[1] * knock),
@@ -237,8 +249,7 @@ class BasePhysicsEnv(gym.Env):
                     self._enforce_bounds()
                     bounced = True
 
-        # 2. 实体反弹检测（仅当尚未发生翅膀反弹，或允许叠加反弹时触发；此处设为独立检测，但通常一次step只触发一种）
-        # 为了保持与 Stage 1 逻辑一致，这里总是执行检测。
+        # 2. 实体反弹检测
         hen_r = float(getattr(self.cfg, "hen_radius", 0.4))
         eagle_r = float(getattr(self.cfg, "eagle_radius", 0.45))
         vec_h2e_body = np.array(
@@ -248,8 +259,6 @@ class BasePhysicsEnv(gym.Env):
         )
         dist_h2e_body = float(np.linalg.norm(vec_h2e_body))
         
-        # 如果已经发生了翅膀反弹，位置可能已经变了，再次检测实体反弹可能不准确，但通常不冲突。
-        # Stage 1 原逻辑是顺序执行的。
         if dist_h2e_body > 1e-6 and dist_h2e_body < (hen_r + eagle_r):
             n_body = vec_h2e_body / dist_h2e_body
             v = np.array(
@@ -261,18 +270,64 @@ class BasePhysicsEnv(gym.Env):
             v_t = v - v_n
             restitution = 0.5
             friction = 0.9
-            v_reflect = -restitution * v_n + friction * v_t
+            
+            if vn_mag < 0: # 正在撞向对方
+                v_reflect = -restitution * v_n + friction * v_t
+            else:
+                v_reflect = v_n + friction * v_t
+
             self.eagle.linearVelocity = b2Vec2(float(v_reflect[0]), float(v_reflect[1]))
 
-            knock_body = min(0.1, 0.1 * (hen_r + eagle_r))
+            knock_body = max(0.5, 0.2 * (hen_r + eagle_r)) # 同样增大实体弹开距离
             self.eagle.position = b2Vec2(
                 float(self.eagle.position.x + n_body[0] * knock_body),
                 float(self.eagle.position.y + n_body[1] * knock_body),
             )
             self._enforce_bounds()
             bounced = True
-
+            
+        self.eagle_bounced_this_step = bounced
         return bounced
+
+    @staticmethod
+    def _blocking_score_along_segment(
+        hen_pos: b2Vec2, tail_pos: b2Vec2, eagle_pos: b2Vec2, arm_span: float
+    ) -> float:
+        """
+        计算母鸡是否有效“挡在”老鹰与小鸡尾端之间的几何得分。
+
+        思路：
+        - 以老鹰为原点，指向小鸡尾端的向量为主轴；
+        - 将母鸡相对老鹰的位置投影到这条主轴上，要求投影在线段 E→T 之间；
+        - 再计算母鸡到这条线段的垂直距离，距离越小、越接近直线，得分越高；
+        - arm_span 为“臂展”宽度，垂距超过 arm_span 时视为没有挡住。
+        """
+        if arm_span <= 0.0:
+            return 0.0
+
+        vec_et = np.array(
+            [tail_pos.x - eagle_pos.x, tail_pos.y - eagle_pos.y], dtype=float
+        )
+        dist_et = np.linalg.norm(vec_et)
+        if dist_et < 1e-6:
+            return 0.0
+
+        vec_eh = np.array(
+            [hen_pos.x - eagle_pos.x, hen_pos.y - eagle_pos.y], dtype=float
+        )
+        # 母鸡在老鹰->尾端这条线段上的投影长度
+        proj = float(np.dot(vec_eh, vec_et) / dist_et)
+        if proj <= 0.0 or proj >= dist_et:
+            # 投影不在 E->T 段上，说明不在两者之间
+            return 0.0
+
+        # 母鸡到该主轴的最短向量
+        closest_vec = vec_eh - (proj / dist_et) * vec_et
+        perp_dist = np.linalg.norm(closest_vec)
+        if perp_dist > arm_span:
+            return 0.0
+
+        return max(0.0, 1.0 - perp_dist / max(arm_span, 1e-6))
 
     # --- Observations -------------------------------------------------------
 
@@ -350,46 +405,6 @@ class HenTrainingEnv(BasePhysicsEnv):
     def _active_role(self) -> str:
         return "hen"
 
-    @staticmethod
-    def _blocking_score_along_segment(
-        hen_pos: b2Vec2, tail_pos: b2Vec2, eagle_pos: b2Vec2, arm_span: float
-    ) -> float:
-        """
-        计算母鸡是否有效“挡在”老鹰与小鸡尾端之间的几何得分。
-
-        思路：
-        - 以老鹰为原点，指向小鸡尾端的向量为主轴；
-        - 将母鸡相对老鹰的位置投影到这条主轴上，要求投影在线段 E→T 之间；
-        - 再计算母鸡到这条线段的垂直距离，距离越小、越接近直线，得分越高；
-        - arm_span 为“臂展”宽度，垂距超过 arm_span 时视为没有挡住。
-        """
-        if arm_span <= 0.0:
-            return 0.0
-
-        vec_et = np.array(
-            [tail_pos.x - eagle_pos.x, tail_pos.y - eagle_pos.y], dtype=float
-        )
-        dist_et = np.linalg.norm(vec_et)
-        if dist_et < 1e-6:
-            return 0.0
-
-        vec_eh = np.array(
-            [hen_pos.x - eagle_pos.x, hen_pos.y - eagle_pos.y], dtype=float
-        )
-        # 母鸡在老鹰->尾端这条线段上的投影长度
-        proj = float(np.dot(vec_eh, vec_et) / dist_et)
-        if proj <= 0.0 or proj >= dist_et:
-            # 投影不在 E->T 段上，说明不在两者之间
-            return 0.0
-
-        # 母鸡到该主轴的最短向量
-        closest_vec = vec_eh - (proj / dist_et) * vec_et
-        perp_dist = np.linalg.norm(closest_vec)
-        if perp_dist > arm_span:
-            return 0.0
-
-        return max(0.0, 1.0 - perp_dist / max(arm_span, 1e-6))
-
     # Heuristic eagle pursues the tail with a bit of lateral drift to simulate flanking.
     def _heuristic_eagle_action(self) -> np.ndarray:
         tail = self.chicks[-1]
@@ -461,7 +476,7 @@ class HenTrainingEnv(BasePhysicsEnv):
         return reward, done_flag
 
     def step(self, action: np.ndarray):
-        self._apply_action(self.hen, action, self.cfg.hen_max_speed)
+        self._apply_action(self.hen, action, self.cfg.hen_max_speed, self.cfg.max_force)
         heuristic_act = self._heuristic_eagle_action()
 
         # 根据老鹰当前状态机调整其加速度方向
@@ -505,7 +520,7 @@ class HenTrainingEnv(BasePhysicsEnv):
             if self.eagle_orbit_steps >= max_orbit_steps:
                 self.eagle_state = "idle"
 
-        self._apply_action(self.eagle, heuristic_act, self.cfg.eagle_max_speed)
+        self._apply_action(self.eagle, heuristic_act, self.cfg.eagle_max_speed, self.cfg.eagle_max_force)
 
         self.world.Step(self.cfg.dt, 6, 2)
         self._enforce_bounds()
@@ -571,16 +586,44 @@ class EagleTrainingEnv(BasePhysicsEnv):
         dist_eagle_tail = (self.eagle.position - tail.position).length
         dist_eagle_hen = (self.eagle.position - self.hen.position).length
 
-        reward = 1.0 - math.tanh(dist_eagle_tail / self.cfg.world_size)
-        reward -= 0.05 * math.tanh(dist_eagle_hen / self.cfg.block_margin)
-        reward -= 0.02 * self._chain_stretch()
+        reward = 0
+        
+        # 3) 反弹惩罚（保留）
+        if getattr(self, "eagle_bounced_this_step", False):
+            reward -= 10.0
 
+        # 4) 边界惩罚
+        bound = self.cfg.world_size
+        ex, ey = float(self.eagle.position.x), float(self.eagle.position.y)
+        max_abs_coord = max(abs(ex), abs(ey))
+        if max_abs_coord > 0.9 * bound:
+            reward -= 10.0
+        
+        # 5) 绕后奖励 (Flanking Reward)
+        # 计算 (Hen->Tail) 和 (Hen->Eagle) 的夹角余弦
+        # 如果老鹰在母鸡身后（靠近尾部一侧），给予奖励
+        vec_ht = tail.position - self.hen.position
+        vec_he = self.eagle.position - self.hen.position
+        
+        # 简单的点积归一化计算余弦
+        ht_len = vec_ht.length
+        he_len = vec_he.length
+        if ht_len > 1e-6 and he_len > 1e-6:
+            cos_angle = (vec_ht.x * vec_he.x + vec_ht.y * vec_he.y) / (ht_len * he_len)
+            # 当 cos_angle > 0 时，说明老鹰在母鸡身后的半圆内
+            # 奖励范围 [0, 0.5]
+            flank_bonus = 5 * max(0.0, cos_angle)
+            reward += flank_bonus
+
+        # 6) 抓住小鸡奖励
         caught = dist_eagle_tail < self.cfg.catch_radius
         terminated = bool(caught)
         if caught:
-            reward += 6.0
+            reward += 100
 
+        # truncated：回合是否因为达到最大步数而提前终止
         truncated = self.step_count >= self.cfg.max_steps
+        # done_flag：本轮 episode 是否结束（被抓或步数用尽）
         done_flag = terminated or truncated
         return reward, done_flag
 
@@ -589,8 +632,8 @@ class EagleTrainingEnv(BasePhysicsEnv):
         hen_obs = self._get_obs(role="hen")
         hen_action, _ = self.hen_model.predict(hen_obs, deterministic=True)
 
-        self._apply_action(self.hen, hen_action, self.cfg.hen_max_speed)
-        self._apply_action(self.eagle, action, self.cfg.eagle_max_speed)
+        self._apply_action(self.hen, hen_action, self.cfg.hen_max_speed, self.cfg.max_force)
+        self._apply_action(self.eagle, action, self.cfg.eagle_max_speed, self.cfg.eagle_max_force)
 
         self.world.Step(self.cfg.dt, 6, 2)
         self._enforce_bounds()
