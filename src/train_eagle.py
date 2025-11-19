@@ -7,6 +7,8 @@ from stable_baselines3.common.callbacks import (
     CallbackList,
     EvalCallback,
 )
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import SubprocVecEnv
 from tqdm import tqdm
 
 from curriculum_env import EagleTrainingEnv, PhysicsConfig
@@ -55,8 +57,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--hen-model",
         type=str,
-        default="results/curriculum/hen_stage_1.zip",
-        help="已训练母鸡策略的模型路径。",
+        default="results/curriculum/best_hen/best_model.zip",
+        help="已训练母鸡策略的模型路径（建议使用 best_model）。",
     )
     parser.add_argument("--total-steps", type=int, default=300_000, help="PPO 总训练步数。")
     parser.add_argument("--eval-freq", type=int, default=10_000, help="评估频率（按环境步数计）。")
@@ -72,16 +74,34 @@ def main() -> None:
     save_dir.mkdir(parents=True, exist_ok=True)
 
     cfg = PhysicsConfig()
-    env = EagleTrainingEnv(
-        hen_policy_path=args.hen_model, config=cfg, seed=args.seed, device=args.device
+    
+    # 使用 16 个并行环境，充分利用 14700KF 的多核优势
+    # 这里的 env_kwargs 会被传递给每个并行进程中的 EagleTrainingEnv 构造函数
+    n_envs = 16
+    env = make_vec_env(
+        EagleTrainingEnv,
+        n_envs=n_envs,
+        seed=args.seed,
+        vec_env_cls=SubprocVecEnv,
+        env_kwargs={
+            "hen_policy_path": args.hen_model,
+            "config": cfg,
+            "device": "cpu"  # 强制在 CPU 上运行冻结的母鸡推理，避免多进程争抢 GPU 显存
+        },
     )
+
+    # 评估环境保持单进程即可
     eval_env = EagleTrainingEnv(
         hen_policy_path=args.hen_model, config=cfg, seed=args.seed + 1, device=args.device
     )
 
+    # 使用子目录来保存最佳模型，避免覆盖母鸡的模型
+    best_model_dir = save_dir / "best_eagle"
+    best_model_dir.mkdir(parents=True, exist_ok=True)
+
     eval_cb = EvalCallback(
         eval_env,
-        best_model_save_path=str(save_dir),
+        best_model_save_path=str(best_model_dir),
         log_path=str(save_dir),
         eval_freq=args.eval_freq,
         deterministic=True,
@@ -101,13 +121,13 @@ def main() -> None:
         verbose=1,  # 保留 SB3 自身的英文日志输出
         tensorboard_log=str(save_dir / "tb"),
         seed=args.seed,
-        batch_size=256,
-        n_steps=2048,
+        batch_size=512,     # 配合并行环境增大 batch_size
+        n_steps=256,        # 每个环境 256 步，总共 16*256=4096 步更新一次
         learning_rate=3e-4,
         gamma=0.995,
         device=args.device,
     )
-    model.learn(total_timesteps=args.total_steps, callback=callbacks)
+    model.learn(total_timesteps=args.total_steps, callback=callbacks, tb_log_name="Eagle_Stage2")
     model.save(save_dir / "eagle_stage_1")
 
 

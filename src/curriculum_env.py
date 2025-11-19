@@ -560,13 +560,21 @@ class EagleTrainingEnv(BasePhysicsEnv):
         hen_policy_path: str,
         config: PhysicsConfig | None = None,
         seed: Optional[int] = None,
-        device: str | None = None,
+        device: str | None = "cpu",
     ):
+        """
+        :param hen_policy_path: 冻结母鸡策略的模型路径（.zip）
+        :param config: 物理配置
+        :param seed: 随机种子
+        :param device: 加载母鸡策略的设备，默认使用 CPU（推荐）。如需显式使用 GPU，可传入 'cuda'。
+        """
         super().__init__(config=config, seed=seed)
         resolved_path = Path(hen_policy_path)
         if not resolved_path.exists():
             raise FileNotFoundError(f"Hen policy path not found: {resolved_path}")
-        self.hen_model = PPO.load(resolved_path.as_posix(), device=device)
+        # Stable-Baselines3 要求 device 为字符串或 torch.device，不能是 None，这里默认使用 CPU。
+        load_device = device or "cpu"
+        self.hen_model = PPO.load(resolved_path.as_posix(), device=load_device)
 
     def _active_role(self) -> str:
         return "eagle"

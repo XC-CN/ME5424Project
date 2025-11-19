@@ -84,9 +84,13 @@ def main() -> None:
     # 评估环境保持单个即可，避免多余开销
     eval_env = HenTrainingEnv(config=cfg, seed=args.seed + 1)
 
+    # 使用子目录来保存最佳模型，防止被后续阶段覆盖
+    best_model_dir = save_dir / "best_hen"
+    best_model_dir.mkdir(parents=True, exist_ok=True)
+
     eval_cb = EvalCallback(
         eval_env,
-        best_model_save_path=str(save_dir),
+        best_model_save_path=str(best_model_dir),
         log_path=str(save_dir),
         eval_freq=args.eval_freq,
         deterministic=True,
@@ -112,7 +116,7 @@ def main() -> None:
         gamma=0.995,
         device=args.device,
     )
-    model.learn(total_timesteps=args.total_steps, callback=callbacks)
+    model.learn(total_timesteps=args.total_steps, callback=callbacks, tb_log_name="Hen_Stage1")
     model.save(save_dir / "hen_stage_1")
 
 

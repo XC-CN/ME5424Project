@@ -124,6 +124,21 @@ python src/train_hen.py --total-steps 300000 --eval-freq 10000 --save-dir result
 - `--save-dir`：模型与日志的输出目录，默认 `results/curriculum`。
 - `--seed`：随机种子（用于环境和 PPO）。
 
+### 阶段一行为可视化
+
+为了直观观察母鸡在启发式老鹰攻击下如何带动身后的小鸡链条进行防守，本仓库提供了一个简单的可视化脚本：
+
+```bash
+python src/visualize_hen_stage1.py --episodes 1 --fps 90
+```
+
+默认情况下，可视化脚本会加载 `results/curriculum/best_model.zip` 作为母鸡策略（即训练过程中评估分数最高的模型）。你可以通过 `--episodes` 控制可视化的回合数，通过 `--fps` 控制刷新速度；如需指定其他模型，可显式传入 `--model` 参数。可视化窗口关闭后程序自动结束。
+
+- **母鸡**：橙色圆点。
+- **老鹰**：蓝色圆点。
+- **小鸡链条**：绿色小圆点（完整链条上所有小鸡都会被绘制出来）。
+- 坐标范围与物理世界一致（\[-world_size, world_size\]^2），横纵坐标分别表示 X/Y 位置。
+
 ### 并行训练与硬件加速
 
 为了充分利用高性能 CPU（如 i7-14700KF）的多核优势并提升数据多样性（IID），`src/train_hen.py` 默认配置为 **并行训练模式**：
@@ -151,21 +166,6 @@ python src/train_hen.py --total-steps 300000 --eval-freq 10000 --save-dir result
   tensorboard --logdir results/curriculum
   ```
 
-### 阶段一行为可视化（母鸡 + 老鹰 + 小鸡链条）
-
-为了直观观察母鸡在启发式老鹰攻击下如何带动身后的小鸡链条进行防守，本仓库提供了一个简单的可视化脚本：
-
-```bash
-python src/visualize_hen_stage1.py --episodes 1 --fps 90
-```
-
-默认情况下，可视化脚本会加载 `results/curriculum/best_model.zip` 作为母鸡策略（即训练过程中评估分数最高的模型）。你可以通过 `--episodes` 控制可视化的回合数，通过 `--fps` 控制刷新速度；如需指定其他模型，可显式传入 `--model` 参数。可视化窗口关闭后程序自动结束。
-
-- **母鸡**：橙色圆点。
-- **老鹰**：蓝色圆点。
-- **小鸡链条**：绿色小圆点（完整链条上所有小鸡都会被绘制出来）。
-- 坐标范围与物理世界一致（\[-world_size, world_size\]^2），横纵坐标分别表示 X/Y 位置。
-
 ---
 
 ## 阶段二：训练老鹰（`EagleTrainingEnv` + `train_eagle.py`）
@@ -179,21 +179,36 @@ python src/visualize_hen_stage1.py --episodes 1 --fps 90
 
 ### 运行命令
 
-确保已完成阶段一训练并生成 `results/curriculum/hen_stage_1.zip` 后执行：
+确保已完成阶段一训练并生成 `result/curriculum/hen_stage_1.zip` 后执行：
 
 ```bash
-python src/train_eagle.py \
-  --hen-model results/curriculum/hen_stage_1.zip \
-  --total-steps 300000 \
-  --eval-freq 10000 \
-  --save-dir results/curriculum \
-  --seed 123
+python src/train_eagle.py
 ```
 
 主要参数说明：
 
 - `--hen-model`：阶段一训练得到的母鸡 PPO 模型路径。
 - 其余参数含义与阶段一一致：`--total-steps`、`--eval-freq`、`--save-dir`、`--seed`。
+
+### 阶段二行为可视化
+
+为了观察老鹰在冻结母鸡防守下的进攻行为，可以使用阶段二可视化脚本：
+
+```bash
+python src/visualize_eagle_stage2.py --episodes 1 --fps 60
+```
+
+- **老鹰**：蓝色圆点（由阶段二训练得到的策略控制）。
+- **母鸡**：橙色圆点（使用阶段一冻结策略）。
+- **小鸡链条**：绿色小圆点，尾端被老鹰抓到时会变成红色。
+- **母鸡翅膀**：红色线段，表示阻挡带宽度（由 `block_margin` 决定）。
+
+可选参数：
+
+- `--model`：老鹰策略模型路径，默认 `results/curriculum/eagle_stage_1.zip`。
+- `--hen-model`：母鸡策略模型路径，默认 `results/curriculum/hen_stage_1.zip`。
+- `--episodes`：可视化回合数。
+- `--fps`：刷新帧率。
 
 ### 冻结母鸡策略与视角转换
 
