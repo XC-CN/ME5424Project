@@ -7,6 +7,8 @@ from stable_baselines3.common.callbacks import (
     CallbackList,
     EvalCallback,
 )
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import SubprocVecEnv
 from tqdm import tqdm
 
 from curriculum_env import HenTrainingEnv, PhysicsConfig
@@ -67,7 +69,19 @@ def main() -> None:
     save_dir.mkdir(parents=True, exist_ok=True)
 
     cfg = PhysicsConfig()
-    env = HenTrainingEnv(config=cfg, seed=args.seed)
+    
+    # 使用 16 个并行环境，充分利用 14700KF 的多核优势
+    # 总 Batch Size = n_envs * n_steps = 16 * 256 = 4096
+    n_envs = 16
+    env = make_vec_env(
+        HenTrainingEnv,
+        n_envs=n_envs,
+        seed=args.seed,
+        vec_env_cls=SubprocVecEnv,
+        env_kwargs={"config": cfg},
+    )
+    
+    # 评估环境保持单个即可，避免多余开销
     eval_env = HenTrainingEnv(config=cfg, seed=args.seed + 1)
 
     eval_cb = EvalCallback(
@@ -92,8 +106,8 @@ def main() -> None:
         verbose=1,  # 保留 SB3 自身的英文日志输出
         tensorboard_log=str(save_dir / "tb"),
         seed=args.seed,
-        batch_size=256,
-        n_steps=2048,
+        batch_size=512,     # 稍微增大 batch_size 以适应更大的吞吐量
+        n_steps=256,        # 每个环境采 256 步，总共 16*256=4096 步进行一次更新
         learning_rate=3e-4,
         gamma=0.995,
         device=args.device,

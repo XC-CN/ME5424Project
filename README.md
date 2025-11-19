@@ -107,6 +107,12 @@ conda activate ME5424Project
 
 在项目根目录执行：
 
+```
+python src/train_hen.py
+```
+
+或
+
 ```bash
 python src/train_hen.py --total-steps 300000 --eval-freq 10000 --save-dir results/curriculum --seed 42
 ```
@@ -117,6 +123,16 @@ python src/train_hen.py --total-steps 300000 --eval-freq 10000 --save-dir result
 - `--eval-freq`：每隔多少步在 `EvalCallback` 中评估并保存最优模型。
 - `--save-dir`：模型与日志的输出目录，默认 `results/curriculum`。
 - `--seed`：随机种子（用于环境和 PPO）。
+
+### 并行训练与硬件加速
+
+为了充分利用高性能 CPU（如 i7-14700KF）的多核优势并提升数据多样性（IID），`src/train_hen.py` 默认配置为 **并行训练模式**：
+
+- **多环境并行 (`n_envs=16`)**：使用 `SubprocVecEnv` 开启 16 个独立进程同时收集数据，极大地提高了采样速度 (FPS)。
+- **打破相关性**：并行采样能有效打破单环境中的时间相关性，使训练数据分布更均匀，提升 PPO 算法的稳定性。
+- **GPU 加速优化**：针对高性能显卡（如 RTX 5080），脚本中调整了 `batch_size=512` 和 `n_steps=256`，以平衡显存吞吐量与更新频率。
+
+> **注意**：如果你在核心数较少的机器上运行，建议在 `src/train_hen.py` 中适当减小 `n_envs`（例如改为 4 或 8）。
 
 ### 输出结果
 
