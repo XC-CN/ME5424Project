@@ -193,23 +193,47 @@ def main() -> None:
     fig, ax, handles = _init_figure(world_size=cfg.world_size)
     pause = 1.0 / max(float(args.fps), 1.0)
 
+    # 监听窗口关闭事件
+    status = {"running": True}
+
+    def on_close(event):
+        status["running"] = False
+
+    fig.canvas.mpl_connect("close_event", on_close)
+
     try:
         for ep in range(args.episodes):
+            if not status["running"]:
+                break
+
             print(f"开始第 {ep + 1} 个 episode 的可视化。")
             obs, _ = env.reset(seed=args.seed + ep)
             episode_reward = 0.0
 
             for step in range(cfg.max_steps):
+                if not status["running"]:
+                    break
+
                 action, _ = model.predict(obs, deterministic=True)
                 obs, reward, terminated, truncated, info = env.step(action)
 
                 episode_reward += float(reward)
                 _update_scatter(env, handles, ax, step_idx=step + 1)
 
-                fig.canvas.draw()
-                fig.canvas.flush_events()
-                if pause > 0:
-                    plt.pause(pause)
+                try:
+                    # 额外检查：如果在绘图前窗口已销毁
+                    if not plt.fignum_exists(fig.number):
+                        status["running"] = False
+                        break
+
+                    fig.canvas.draw()
+                    fig.canvas.flush_events()
+                    if pause > 0:
+                        plt.pause(pause)
+                except Exception:
+                    # 捕获可能的 GUI 异常
+                    status["running"] = False
+                    break
 
                 if terminated or truncated:
                     print(
@@ -217,9 +241,13 @@ def main() -> None:
                     )
                     break
 
-        print("可视化结束，关闭窗口即可退出程序。")
-        plt.ioff()
-        plt.show()
+        if status["running"]:
+            print("可视化结束，关闭窗口即可退出程序。")
+            plt.ioff()
+            plt.show()
+        else:
+            print("\n检测到窗口关闭，正在退出程序...")
+
     finally:
         env.close()
 
