@@ -36,21 +36,21 @@ from stable_baselines3 import PPO
 
 @dataclass
 class PhysicsConfig:
-    world_size: float = 20.0  # half side length; world is [-world_size, world_size]^2
-    dt: float = 1.0 / 30.0
-    max_steps: int = 600
-    hen_radius: float = 0.4
-    eagle_radius: float = 0.45
-    chick_radius: float = 0.25
-    chain_links: int = 3
-    chain_spacing: float = 1.0
-    joint_frequency_hz: float = 4.0
-    joint_damping: float = 0.7
-    hen_max_speed: float = 6.0
-    eagle_max_speed: float = 7.0
-    max_force: float = 25.0
-    catch_radius: float = 0.7
-    block_margin: float = 1.5
+    world_size: float = 20.0        # 世界范围的一半，坐标范围为[-world_size, world_size]^2
+    dt: float = 1.0 / 30.0          # 物理仿真每步的时间间隔
+    max_steps: int = 600            # 每个回合的最大步数
+    hen_radius: float = 0.4         # 母鸡物体半径
+    eagle_radius: float = 0.45      # 老鹰物体半径
+    chick_radius: float = 0.25      # 小鸡物体半径
+    chain_links: int = 7           # 小鸡链条的节点数量
+    chain_spacing: float = 1.0      # 链条节点之间的间隔
+    joint_frequency_hz: float = 4.0 # 链条关节的弹性频率
+    joint_damping: float = 0.7      # 链条关节的阻尼系数
+    hen_max_speed: float = 9.0      # 母鸡最大速度
+    eagle_max_speed: float = 10.0    # 老鹰最大速度
+    max_force: float = 80.0         # 最大允许的加速度/力
+    catch_radius: float = 0.7       # 老鹰判定抓到尾端小鸡的距离阈值
+    block_margin: float = 3       # 母鸡“翅膀”侧向阻挡的宽度（碰撞判定）
 
 
 class BasePhysicsEnv(gym.Env):
@@ -189,6 +189,90 @@ class BasePhysicsEnv(gym.Env):
             if clamped_x != pos.x or clamped_y != pos.y:
                 body.position = b2Vec2(clamped_x, clamped_y)
                 body.linearVelocity = b2Vec2(0.0, 0.0)
+
+    def _handle_eagle_bounce_physics(self) -> bool:
+        """
+        处理老鹰与母鸡（实体及翅膀）的物理反弹。
+        如果发生碰撞并执行了反弹，返回 True；否则返回 False。
+        """
+        tail = self.chicks[-1]
+        arm_span = max(self.cfg.block_margin, 0.0)
+        bounced = False
+
+        # 1. 翅膀反弹检测
+        if arm_span > 0.0:
+            vec_ht = np.array(
+                [tail.position.x - self.hen.position.x, tail.position.y - self.hen.position.y],
+                dtype=float,
+            )
+            dist_ht = np.linalg.norm(vec_ht)
+            if dist_ht > 1e-6:
+                n = vec_ht / dist_ht
+                vec_he = np.array(
+                    [self.eagle.position.x - self.hen.position.x, self.eagle.position.y - self.hen.position.y],
+                    dtype=float,
+                )
+                dist_normal = float(np.dot(vec_he, n))
+                lateral_vec = vec_he - dist_normal * n
+                radial_dist = float(np.linalg.norm(lateral_vec))
+
+                if 0.0 < dist_normal < dist_ht and radial_dist <= arm_span:
+                    v = np.array(
+                        [self.eagle.linearVelocity.x, self.eagle.linearVelocity.y],
+                        dtype=float,
+                    )
+                    vn_mag = float(np.dot(v, n))
+                    v_n = vn_mag * n
+                    v_t = v - v_n
+                    restitution = 0.5
+                    friction = 0.9
+                    v_reflect = -restitution * v_n + friction * v_t
+                    self.eagle.linearVelocity = b2Vec2(float(v_reflect[0]), float(v_reflect[1]))
+
+                    knock = min(0.1, 0.1 * arm_span)
+                    self.eagle.position = b2Vec2(
+                        float(self.eagle.position.x - n[0] * knock),
+                        float(self.eagle.position.y - n[1] * knock),
+                    )
+                    self._enforce_bounds()
+                    bounced = True
+
+        # 2. 实体反弹检测（仅当尚未发生翅膀反弹，或允许叠加反弹时触发；此处设为独立检测，但通常一次step只触发一种）
+        # 为了保持与 Stage 1 逻辑一致，这里总是执行检测。
+        hen_r = float(getattr(self.cfg, "hen_radius", 0.4))
+        eagle_r = float(getattr(self.cfg, "eagle_radius", 0.45))
+        vec_h2e_body = np.array(
+            [self.eagle.position.x - self.hen.position.x,
+             self.eagle.position.y - self.hen.position.y],
+            dtype=float,
+        )
+        dist_h2e_body = float(np.linalg.norm(vec_h2e_body))
+        
+        # 如果已经发生了翅膀反弹，位置可能已经变了，再次检测实体反弹可能不准确，但通常不冲突。
+        # Stage 1 原逻辑是顺序执行的。
+        if dist_h2e_body > 1e-6 and dist_h2e_body < (hen_r + eagle_r):
+            n_body = vec_h2e_body / dist_h2e_body
+            v = np.array(
+                [self.eagle.linearVelocity.x, self.eagle.linearVelocity.y],
+                dtype=float,
+            )
+            vn_mag = float(np.dot(v, n_body))
+            v_n = vn_mag * n_body
+            v_t = v - v_n
+            restitution = 0.5
+            friction = 0.9
+            v_reflect = -restitution * v_n + friction * v_t
+            self.eagle.linearVelocity = b2Vec2(float(v_reflect[0]), float(v_reflect[1]))
+
+            knock_body = min(0.1, 0.1 * (hen_r + eagle_r))
+            self.eagle.position = b2Vec2(
+                float(self.eagle.position.x + n_body[0] * knock_body),
+                float(self.eagle.position.y + n_body[1] * knock_body),
+            )
+            self._enforce_bounds()
+            bounced = True
+
+        return bounced
 
     # --- Observations -------------------------------------------------------
 
@@ -370,7 +454,7 @@ class HenTrainingEnv(BasePhysicsEnv):
 
         terminated = bool(caught)
         if caught:
-            reward -= 5.0
+            reward -= 200.0
 
         truncated = self.step_count >= self.cfg.max_steps
         done_flag = terminated or truncated
@@ -380,12 +464,8 @@ class HenTrainingEnv(BasePhysicsEnv):
         self._apply_action(self.hen, action, self.cfg.hen_max_speed)
         heuristic_act = self._heuristic_eagle_action()
 
-        # 根据老鹰当前状态机调整其加速度方向：
-        # - idle   ：正常追击尾端（带轻微扰动）；
-        # - retreat：从母鸡前方直线后退到远点；
-        # - orbit  ：在远点附近绕着母鸡旋转一小圈。
+        # 根据老鹰当前状态机调整其加速度方向
         if self.eagle_state == "retreat":
-            # 以“远离母鸡”的方向为主，追击方向为辅
             vec_h2e = np.array(
                 [self.eagle.position.x - self.hen.position.x,
                  self.eagle.position.y - self.hen.position.y],
@@ -394,23 +474,19 @@ class HenTrainingEnv(BasePhysicsEnv):
             norm = np.linalg.norm(vec_h2e)
             if norm > 1e-6:
                 away_dir = vec_h2e / norm
-                w = 0.9  # 退避阶段更偏向纯后退
+                w = 0.9
                 blended = (1.0 - w) * heuristic_act + w * away_dir
                 heuristic_act = np.clip(blended, -1.0, 1.0)
             self.eagle_retreat_steps += 1
 
-            # 判断是否退到了目标距离或超过最大退避步数
             dist_h2e = float(norm) if norm > 1e-6 else 0.0
             max_retreat_steps = 20
             if dist_h2e >= self.eagle_retreat_target_dist or self.eagle_retreat_steps >= max_retreat_steps:
-                # 进入绕圈阶段：以当前相对位置为切向方向基础
                 self.eagle_state = "orbit"
                 self.eagle_orbit_steps = 0
-                # 根据当前老鹰在母鸡周围的位置，选定一个稳定的绕圈方向（这里固定为逆时针）
                 self.eagle_orbit_sign = 1
 
         elif self.eagle_state == "orbit":
-            # 以母鸡为圆心，沿切向方向绕圈：t 为法向的垂线方向
             vec_h2e = np.array(
                 [self.eagle.position.x - self.hen.position.x,
                  self.eagle.position.y - self.hen.position.y],
@@ -418,128 +494,39 @@ class HenTrainingEnv(BasePhysicsEnv):
             )
             norm = np.linalg.norm(vec_h2e)
             if norm > 1e-6:
-                # 垂直方向 (顺/逆时针)
                 base_t = np.array([-vec_h2e[1], vec_h2e[0]], dtype=float) / norm
                 t = self.eagle_orbit_sign * base_t
-                w = 0.7  # 绕圈阶段切向为主
+                w = 0.7
                 blended = w * t + (1.0 - w) * heuristic_act
                 heuristic_act = np.clip(blended, -1.0, 1.0)
             self.eagle_orbit_steps += 1
 
             max_orbit_steps = 20
             if self.eagle_orbit_steps >= max_orbit_steps:
-                # 绕圈结束，回到正常追击状态
                 self.eagle_state = "idle"
 
-        # 根据状态调整好方向后，再真正施加力
         self._apply_action(self.eagle, heuristic_act, self.cfg.eagle_max_speed)
 
         self.world.Step(self.cfg.dt, 6, 2)
         self._enforce_bounds()
-        # 在物理步进之后，根据母鸡的“翅膀”对老鹰进行物理弹回处理：
-        # 翅膀定义为一条垂直于“母鸡 -> 小鸡尾端”方向、穿过母鸡位置的线段，
-        # 当老鹰从母鸡正面撞上这条翅膀时，会被沿法线方向弹回一段距离，并对速度做镜面反射，
-        # 从而形成“冲上去被弹开、再绕着母鸡旋转”的效果。
-        tail = self.chicks[-1]
-        arm_span = max(self.cfg.block_margin, 0.0)
-        if arm_span > 0.0:
-            # 轴向向量：母鸡 -> 小鸡尾端（作为翅膀法线方向）
-            vec_ht = np.array(
-                [tail.position.x - self.hen.position.x, tail.position.y - self.hen.position.y],
+
+        # 在物理步进后，调用父类方法处理反弹逻辑
+        bounced = self._handle_eagle_bounce_physics()
+        if bounced:
+            # 碰撞到翅膀或实体时，触发退避 -> 绕圈状态机
+            vec_h2e = np.array(
+                [self.eagle.position.x - self.hen.position.x,
+                 self.eagle.position.y - self.hen.position.y],
                 dtype=float,
             )
-            dist_ht = np.linalg.norm(vec_ht)
-            if dist_ht > 1e-6:
-                n = vec_ht / dist_ht  # 法线方向（指向尾端）
-                vec_he = np.array(
-                    [self.eagle.position.x - self.hen.position.x, self.eagle.position.y - self.hen.position.y],
-                    dtype=float,
-                )
-                # 在法线方向上的投影（>0 表示老鹰位于母鸡朝向尾端的一侧，0<dist<dist_ht 表示在母鸡和尾端之间）
-                dist_normal = float(np.dot(vec_he, n))
-                lateral_vec = vec_he - dist_normal * n
-                radial_dist = float(np.linalg.norm(lateral_vec))
-                # 当老鹰位于母鸡与尾端之间，且横向距离落在翅膀长度范围内时，视为撞上翅膀
-                if 0.0 < dist_normal < dist_ht and radial_dist <= arm_span:
-                    # 当前速度分解到法线与切向方向，进行“镜面反射”+衰减
-                    v = np.array(
-                        [self.eagle.linearVelocity.x, self.eagle.linearVelocity.y],
-                        dtype=float,
-                    )
-                    vn_mag = float(np.dot(v, n))
-                    v_n = vn_mag * n          # 法向分量
-                    v_t = v - v_n             # 切向分量（沿翅膀方向）
-                    restitution = 0.5         # 反弹系数：法向速度反转并衰减
-                    friction = 0.9            # 切向保留系数：保留大部分切向速度，便于绕行
-                    v_reflect = -restitution * v_n + friction * v_t
-                    self.eagle.linearVelocity = b2Vec2(float(v_reflect[0]), float(v_reflect[1]))
-
-                    # 碰撞到翅膀时：
-                    # 1) 进入“退避”状态，目标是从母鸡前方退到一个更远的位置；
-                    # 2) 之后自动切换到“绕圈”状态，在远点附近围绕母鸡旋转一小段时间。
-                    vec_h2e = np.array(
-                        [self.eagle.position.x - self.hen.position.x,
-                         self.eagle.position.y - self.hen.position.y],
-                        dtype=float,
-                    )
-                    dist_h2e = float(np.linalg.norm(vec_h2e))
-                    extra_retreat = 2.0   # 希望比当前距离再多退 2 个单位长度
-                    min_retreat_dist = 3.0
-                    target_dist = max(dist_h2e + extra_retreat, min_retreat_dist)
-                    self.eagle_retreat_target_dist = target_dist
-                    self.eagle_retreat_steps = 0
-                    self.eagle_orbit_steps = 0
-                    self.eagle_state = "retreat"
-
-                    # 沿 -n 方向仅做极小的位移修正，避免数值上卡在翅膀内部，
-                    # 不再将老鹰“瞬移”到数米之外，视觉上主要由速度反弹产生“弹开”效果。
-                    knock = min(0.1, 0.1 * arm_span)
-                    self.eagle.position = b2Vec2(
-                        float(self.eagle.position.x - n[0] * knock),
-                        float(self.eagle.position.y - n[1] * knock),
-                    )
-                    self._enforce_bounds()
-
-        # 除了翅膀带之外，母鸡自身的圆形刚体也应对老鹰产生碰撞反弹：
-        # 当老鹰中心与母鸡中心的距离小于半径和时，直接以“母鸡 -> 老鹰”为法线方向进行反弹，
-        # 并触发同样的退避 + 绕圈状态机。
-        hen_r = float(getattr(self.cfg, "hen_radius", 0.4))
-        eagle_r = float(getattr(self.cfg, "eagle_radius", 0.45))
-        vec_h2e_body = np.array(
-            [self.eagle.position.x - self.hen.position.x,
-             self.eagle.position.y - self.hen.position.y],
-            dtype=float,
-        )
-        dist_h2e_body = float(np.linalg.norm(vec_h2e_body))
-        if dist_h2e_body > 1e-6 and dist_h2e_body < (hen_r + eagle_r):
-            n_body = vec_h2e_body / dist_h2e_body  # 法线方向：母鸡 -> 老鹰
-            v = np.array(
-                [self.eagle.linearVelocity.x, self.eagle.linearVelocity.y],
-                dtype=float,
-            )
-            vn_mag = float(np.dot(v, n_body))
-            v_n = vn_mag * n_body
-            v_t = v - v_n
-            restitution = 0.5
-            friction = 0.9
-            v_reflect = -restitution * v_n + friction * v_t
-            self.eagle.linearVelocity = b2Vec2(float(v_reflect[0]), float(v_reflect[1]))
-
-            # 同样触发退避 + 绕圈状态机
+            dist_h2e = float(np.linalg.norm(vec_h2e))
             extra_retreat = 2.0
             min_retreat_dist = 3.0
-            target_dist = max(dist_h2e_body + extra_retreat, min_retreat_dist)
+            target_dist = max(dist_h2e + extra_retreat, min_retreat_dist)
             self.eagle_retreat_target_dist = target_dist
             self.eagle_retreat_steps = 0
             self.eagle_orbit_steps = 0
             self.eagle_state = "retreat"
-
-            knock_body = min(0.1, 0.1 * (hen_r + eagle_r))
-            self.eagle.position = b2Vec2(
-                float(self.eagle.position.x + n_body[0] * knock_body),
-                float(self.eagle.position.y + n_body[1] * knock_body),
-            )
-            self._enforce_bounds()
 
         self.step_count += 1
 
@@ -607,6 +594,11 @@ class EagleTrainingEnv(BasePhysicsEnv):
 
         self.world.Step(self.cfg.dt, 6, 2)
         self._enforce_bounds()
+        
+        # 增加对反弹逻辑的处理，与 Stage 1 保持物理特性一致
+        # 注意：这里只应用物理反弹，不干涉 RL 策略的状态
+        self._handle_eagle_bounce_physics()
+
         self.step_count += 1
 
         reward, done = self._compute_reward_done()
@@ -627,4 +619,3 @@ def resolve_model_path(path_str: str, default_name: str) -> Path:
     if path.is_dir():
         return path / f"{default_name}.zip"
     return path
-
