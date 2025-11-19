@@ -13,6 +13,18 @@ from tqdm import tqdm
 
 from curriculum_env import HenTrainingEnv, PhysicsConfig
 
+# --- 全局配置参数 ---
+TOTAL_STEPS = 1_000_000        # PPO 总训练步数
+EVAL_FREQ = 100_000            # 评估频率（按环境步数计）
+SAVE_DIR = "results/curriculum"  # 模型和日志保存目录
+SEED = 42                      # 随机种子
+DEVICE = "auto"                # 训练设备 (auto, cpu, cuda)
+N_ENVS = 16                    # 并行环境数量
+BATCH_SIZE = 512               # 批处理大小
+N_STEPS = 256                  # 每个环境每次更新的采样步数
+LEARNING_RATE = 3e-4           # 学习率
+GAMMA = 0.995                  # 折扣因子
+
 
 class ProgressBarCallback(BaseCallback):
     """
@@ -55,11 +67,11 @@ class ProgressBarCallback(BaseCallback):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="阶段一：训练母鸡，对手为启发式老鹰。")
-    parser.add_argument("--total-steps", type=int, default=300_000, help="PPO 总训练步数。")
-    parser.add_argument("--eval-freq", type=int, default=10_000, help="评估频率（按环境步数计）。")
-    parser.add_argument("--save-dir", type=str, default="results/curriculum", help="模型和日志保存目录。")
-    parser.add_argument("--seed", type=int, default=42, help="随机种子。")
-    parser.add_argument("--device", type=str, default="auto", help="训练设备 (auto, cpu, cuda)。")
+    parser.add_argument("--total-steps", type=int, default=TOTAL_STEPS, help="PPO 总训练步数。")
+    parser.add_argument("--eval-freq", type=int, default=EVAL_FREQ, help="评估频率（按环境步数计）。")
+    parser.add_argument("--save-dir", type=str, default=SAVE_DIR, help="模型和日志保存目录。")
+    parser.add_argument("--seed", type=int, default=SEED, help="随机种子。")
+    parser.add_argument("--device", type=str, default=DEVICE, help="训练设备 (auto, cpu, cuda)。")
     return parser.parse_args()
 
 
@@ -72,10 +84,9 @@ def main() -> None:
     
     # 使用 16 个并行环境，充分利用 14700KF 的多核优势
     # 总 Batch Size = n_envs * n_steps = 16 * 256 = 4096
-    n_envs = 16
     env = make_vec_env(
         HenTrainingEnv,
-        n_envs=n_envs,
+        n_envs=N_ENVS,
         seed=args.seed,
         vec_env_cls=SubprocVecEnv,
         env_kwargs={"config": cfg},
@@ -110,10 +121,10 @@ def main() -> None:
         verbose=1,  # 保留 SB3 自身的英文日志输出
         tensorboard_log=str(save_dir / "tb"),
         seed=args.seed,
-        batch_size=512,     # 稍微增大 batch_size 以适应更大的吞吐量
-        n_steps=256,        # 每个环境采 256 步，总共 16*256=4096 步进行一次更新
-        learning_rate=3e-4,
-        gamma=0.995,
+        batch_size=BATCH_SIZE,     # 稍微增大 batch_size 以适应更大的吞吐量
+        n_steps=N_STEPS,           # 每个环境采 256 步，总共 16*256=4096 步进行一次更新
+        learning_rate=LEARNING_RATE,
+        gamma=GAMMA,
         device=args.device,
     )
     model.learn(total_timesteps=args.total_steps, callback=callbacks, tb_log_name="Hen_Stage1")
@@ -122,4 +133,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

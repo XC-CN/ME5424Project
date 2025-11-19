@@ -108,7 +108,7 @@ conda activate ME5424Project
 在项目根目录执行：
 
 ```
-python src/train_hen.py
+python src/train_hen.py --total-steps 1000000
 ```
 
 或
@@ -262,43 +262,46 @@ tensorboard --logdir results/curriculum
 可以查看：
 
 - 每步/每回合的平均回报。
-    - 损失函数变化趋势等训练指标。
-   
-   ### 终端输出参数说明
-   
-   在训练过程中，终端会定期输出如下格式的日志表格，各参数含义解释如下：
-   
-   ```text
-   ------------------------------------------
-   | rollout/                |              |
-   |    ep_len_mean          | 287          |  <-- 平均每个回合（Episode）的步数长度
-   |    ep_rew_mean          | 1.68         |  <-- 平均每个回合的累积奖励（越高越好）
-   | time/                   |              |
-   |    fps                  | 3500         |  <-- Frames Per Second，每秒采样的环境步数（训练速度）
-   |    iterations           | 74           |  <-- PPO 算法的主循环迭代次数
-   |    time_elapsed         | 86           |  <-- 训练已花费的总时间（秒）
-   |    total_timesteps      | 303104       |  <-- 累计采样的环境总步数
-   | train/                  |              |
-   |    approx_kl            | 0.00417      |  <-- 近似 KL 散度，衡量新旧策略的差异（过大说明更新太激进）
-   |    clip_fraction        | 0.0267       |  <-- 被 PPO 截断（clip）机制处理的样本比例
-   |    clip_range           | 0.2          |  <-- PPO 的截断阈值（超参数）
-   |    entropy_loss         | -2.44        |  <-- 策略熵的负值，绝对值越大表示动作越随机（探索性越强）
-   |    explained_variance   | 0.87         |  <-- 价值函数的解释方差，越接近 1 表示 Value Net 预测越准
-   |    learning_rate        | 0.0003       |  <-- 当前学习率
-   |    loss                 | 0.651        |  <-- 总损失值（Policy Loss + Value Loss + Entropy Loss）
-   |    n_updates            | 730          |  <-- 梯度更新的总次数
-   |    policy_gradient_loss | -0.00234     |  <-- 策略梯度部分的损失
-   |    std                  | 0.82         |  <-- 动作分布的标准差（反映探索程度，训练初期较大，后期应减小）
-   |    value_loss           | 1.54         |  <-- 价值函数部分的损失（Critic 网络的误差）
-   ------------------------------------------
-   ```
-   
-   **重点关注指标：**
-   1. **`ep_rew_mean`**：最直观的性能指标，应随训练逐渐上升。
-   2. **`explained_variance`**：如果长期接近 0 或为负，说明 Value Network 未能有效拟合回报，可能需要调整网络结构或超参数。
-   3. **`entropy_loss`**：训练初期应保持一定大小以确保探索，后期随策略确定性增加而（绝对值）减小。如果过早接近 0，可能发生了过早收敛（Early Convergence）。
 
-   ### 自定义评估与回放示例
+- 损失函数变化趋势等训练指标。
+
+### 终端输出参数说明
+
+在训练过程中，终端会定期输出如下格式的日志表格，各参数含义解释如下：
+
+
+```text
+------------------------------------------
+| rollout/                |              |
+|    ep_len_mean          | 287          |  <-- 平均每个回合（Episode）的步数长度
+|    ep_rew_mean          | 1.68         |  <-- 平均每个回合的累积奖励（越高越好）
+| time/                   |              |
+|    fps                  | 3500         |  <-- Frames Per Second，每秒采样的环境步数（训练速度）
+|    iterations           | 74           |  <-- PPO 算法的主循环迭代次数
+|    time_elapsed         | 86           |  <-- 训练已花费的总时间（秒）
+|    total_timesteps      | 303104       |  <-- 累计采样的环境总步数
+| train/                  |              |
+|    approx_kl            | 0.00417      |  <-- 近似 KL 散度，衡量新旧策略的差异（过大说明更新太激进）
+|    clip_fraction        | 0.0267       |  <-- 被 PPO 截断（clip）机制处理的样本比例
+|    clip_range           | 0.2          |  <-- PPO 的截断阈值（超参数）
+|    entropy_loss         | -2.44        |  <-- 策略熵的负值，绝对值越大表示动作越随机（探索性越强）
+|    explained_variance   | 0.87         |  <-- 价值函数的解释方差，越接近 1 表示 Value Net 预测越准
+|    learning_rate        | 0.0003       |  <-- 当前学习率
+|    loss                 | 0.651        |  <-- 总损失值（Policy Loss + Value Loss + Entropy Loss）
+|    n_updates            | 730          |  <-- 梯度更新的总次数
+|    policy_gradient_loss | -0.00234     |  <-- 策略梯度部分的损失
+|    std                  | 0.82         |  <-- 动作分布的标准差（反映探索程度，训练初期较大，后期应减小）
+|    value_loss           | 1.54         |  <-- 价值函数部分的损失（Critic 网络的误差）
+------------------------------------------
+```
+
+  **重点关注指标：**
+
+  1. **`ep_rew_mean`**：最直观的性能指标，应随训练逐渐上升。
+  2. **`explained_variance`**：如果长期接近 0 或为负，说明 Value Network 未能有效拟合回报，可能需要调整网络结构或超参数。
+  3. **`entropy_loss`**：训练初期应保持一定大小以确保探索，后期随策略确定性增加而（绝对值）减小。如果过早接近 0，可能发生了过早收敛（Early Convergence）。
+
+  ### 自定义评估与回放示例
 
 当前仓库未内置独立评估脚本，如需自定义评估/回放，可以参考以下基本流程（示意代码）：
 
