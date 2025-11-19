@@ -615,7 +615,14 @@ class EagleTrainingEnv(BasePhysicsEnv):
             flank_bonus = 5 * max(0.0, cos_angle)
             reward += flank_bonus
 
-        # 6) 抓住小鸡奖励
+        # 6) 高速移动奖励
+        # 鼓励老鹰利用速度优势，避免怠速
+        speed = self.eagle.linearVelocity.length
+        # 简单的线性奖励，满速时 +0.1
+        speed_bonus = 0.1 * (speed / self.cfg.eagle_max_speed)
+        reward += speed_bonus
+
+        # 7) 抓住小鸡奖励
         caught = dist_eagle_tail < self.cfg.catch_radius
         terminated = bool(caught)
         if caught:
