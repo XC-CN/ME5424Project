@@ -1,0 +1,61 @@
+exp_name: MAAC-R
+result_dir: ./results/MAAC-R
+# 第一个cuda device的编号, -1代表cpu
+first_device: 0
+# cuda device的数量, 使用cpu时无效
+gpus: 1
+seed: 42
+cooperative: 0.3
+environment:
+  n_uav: 2
+  m_targets: 10
+  n_protectors: 3
+  x_max: 2500 # 地图x轴最大范围    
+  y_max: 2500 # 地图y轴最大范围
+  na: 12  # 离散化动作空间维数
+  use_global_info: True
+
+uav: 
+  dt: 1 # 时间步长
+  v_max: 20 # 最大速度
+  h_max: 6  # 表示 pi / 6
+  dc: 500 # 重复追踪半径惩罚
+  dp: 200 #
+  alpha: 1.5  # 降低目标追踪奖励权重，避免过大正奖励
+  beta: 0.03  # 降低边界惩罚权重，从0.05降到0.03，减少惩罚项影响
+  gamma: 0.2  # 进一步降低重复追踪惩罚权重，从0.3降到0.2，减少惩罚项影响
+  omega: 0.2  # 进一步降低protector惩罚权重，从0.3降到0.2
+  capture_weight: 6.0  # 缩小捕获奖励权重，减小回报方差
+
+protector:
+  n_protectors: 3
+  v_max: 20
+  h_max: 6         # 与 UAV 一致的角速度档转弧度
+  dt: 1
+  safe_radius: 200.0  # 与 UAV 进入这个会被惩罚
+  knockback: 200.0     # 弹开强度系数（影响锁定时间长度，值越大锁定越久）
+  arm_thickness: 50.0 # 手臂碰撞厚度（判定范围）
+  heading_lock_duration: 20  # 基础锁定时间（步数），碰撞后 UAV 朝向会被锁定无法改变
+  alpha: 2.0  # 保护奖励权重，从默认1.0增加到2.0，增强正奖励信号
+  beta: 0.3   # 边界惩罚权重，从默认0.5降到0.3，减少惩罚项影响
+  gamma: 0.2  # 重叠惩罚权重，从默认0.3降到0.2，减少惩罚项影响
+  delta: 3.0  # 拦截奖励权重，从默认1.5增加到3.0，更强烈鼓励拦截
+
+target:
+  v_max: 5
+  h_max: 6  # 表示 pi / 6
+  capture_radius: 100.0  # 目标捕获半径（小于此半径会被捕获）
+
+actor_critic:
+  buffer_size: 1000000
+  sample_size: 0  # 表示每次采样的大小为每个epoch的step数
+  actor_lr: 1e-4  # 降低actor学习率，减小策略更新步长
+  critic_lr: 5e-5  # 调高critic学习率至稳定范围，结合梯度裁剪
+  hidden_dim: 512
+  gamma: 0.95
+  entropy_coef: 0.15  # 增加熵正则化系数，从0.1增加到0.15，增强探索以突破平台期
+
+pmi:
+  hidden_dim: 256
+  b2_size: 3000
+  batch_size: 128
