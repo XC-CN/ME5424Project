@@ -256,9 +256,12 @@ class HenTrainingEnv(BasePhysicsEnv):
 
     def __init__(self, config: PhysicsConfig | None = None, seed: Optional[int] = None):
         super().__init__(config=config, seed=seed)
-        # 记录老鹰在最近一次撞到翅膀后的“反弹状态”，用于在若干步内施加强烈的反向加速度
-        self.eagle_bounce_steps: int = 0
-        self.eagle_bounce_dir: np.ndarray = np.zeros(2, dtype=float)
+        # 记录老鹰在最近一次撞到翅膀后的“状态机”，用于实现：冲击 -> 直线后退到远点 -> 绕着母鸡旋转。
+        self.eagle_state: str = "idle"  # "idle" / "retreat" / "orbit"
+        self.eagle_retreat_target_dist: float = 0.0  # 目标退到的母鸡距离
+        self.eagle_retreat_steps: int = 0           # 已经退了多少步
+        self.eagle_orbit_steps: int = 0             # 已经绕圈多少步
+        self.eagle_orbit_sign: int = 1              # 绕圈方向，+1 或 -1
 
     def _active_role(self) -> str:
         return "hen"
@@ -377,20 +380,58 @@ class HenTrainingEnv(BasePhysicsEnv):
         self._apply_action(self.hen, action, self.cfg.hen_max_speed)
         heuristic_act = self._heuristic_eagle_action()
 
-        # 若老鹰处于“反弹冷却”阶段，则在若干步内优先施加强烈的反向加速度，
-        # 使其在撞上翅膀后先被甩开一段距离，再重新回到追击状态。
-        if self.eagle_bounce_steps > 0:
-            # 归一化记录下来的反弹方向（通常是远离尾端的大致方向）
-            bounce_dir = self.eagle_bounce_dir.astype(float)
-            norm = np.linalg.norm(bounce_dir)
+        # 根据老鹰当前状态机调整其加速度方向：
+        # - idle   ：正常追击尾端（带轻微扰动）；
+        # - retreat：从母鸡前方直线后退到远点；
+        # - orbit  ：在远点附近绕着母鸡旋转一小圈。
+        if self.eagle_state == "retreat":
+            # 以“远离母鸡”的方向为主，追击方向为辅
+            vec_h2e = np.array(
+                [self.eagle.position.x - self.hen.position.x,
+                 self.eagle.position.y - self.hen.position.y],
+                dtype=float,
+            )
+            norm = np.linalg.norm(vec_h2e)
             if norm > 1e-6:
-                bounce_dir /= norm
-                # 反弹权重：bounce_weight 越大，老鹰越“听从”反方向加速度
-                bounce_weight = 0.8
-                blended = (1.0 - bounce_weight) * heuristic_act + bounce_weight * (-bounce_dir)
+                away_dir = vec_h2e / norm
+                w = 0.9  # 退避阶段更偏向纯后退
+                blended = (1.0 - w) * heuristic_act + w * away_dir
                 heuristic_act = np.clip(blended, -1.0, 1.0)
-            self.eagle_bounce_steps -= 1
+            self.eagle_retreat_steps += 1
 
+            # 判断是否退到了目标距离或超过最大退避步数
+            dist_h2e = float(norm) if norm > 1e-6 else 0.0
+            max_retreat_steps = 20
+            if dist_h2e >= self.eagle_retreat_target_dist or self.eagle_retreat_steps >= max_retreat_steps:
+                # 进入绕圈阶段：以当前相对位置为切向方向基础
+                self.eagle_state = "orbit"
+                self.eagle_orbit_steps = 0
+                # 根据当前老鹰在母鸡周围的位置，选定一个稳定的绕圈方向（这里固定为逆时针）
+                self.eagle_orbit_sign = 1
+
+        elif self.eagle_state == "orbit":
+            # 以母鸡为圆心，沿切向方向绕圈：t 为法向的垂线方向
+            vec_h2e = np.array(
+                [self.eagle.position.x - self.hen.position.x,
+                 self.eagle.position.y - self.hen.position.y],
+                dtype=float,
+            )
+            norm = np.linalg.norm(vec_h2e)
+            if norm > 1e-6:
+                # 垂直方向 (顺/逆时针)
+                base_t = np.array([-vec_h2e[1], vec_h2e[0]], dtype=float) / norm
+                t = self.eagle_orbit_sign * base_t
+                w = 0.7  # 绕圈阶段切向为主
+                blended = w * t + (1.0 - w) * heuristic_act
+                heuristic_act = np.clip(blended, -1.0, 1.0)
+            self.eagle_orbit_steps += 1
+
+            max_orbit_steps = 20
+            if self.eagle_orbit_steps >= max_orbit_steps:
+                # 绕圈结束，回到正常追击状态
+                self.eagle_state = "idle"
+
+        # 根据状态调整好方向后，再真正施加力
         self._apply_action(self.eagle, heuristic_act, self.cfg.eagle_max_speed)
 
         self.world.Step(self.cfg.dt, 6, 2)
@@ -433,10 +474,22 @@ class HenTrainingEnv(BasePhysicsEnv):
                     v_reflect = -restitution * v_n + friction * v_t
                     self.eagle.linearVelocity = b2Vec2(float(v_reflect[0]), float(v_reflect[1]))
 
-                    # 记录一次反弹方向，并在接下来的若干步内施加强烈的反向加速度，
-                    # 避免老鹰立刻又顶在翅膀上，实现“先被甩开再重新回到战场”的效果。
-                    self.eagle_bounce_dir = n.copy()
-                    self.eagle_bounce_steps = 12  # 反弹持续的步数，可根据视觉效果微调
+                    # 碰撞到翅膀时：
+                    # 1) 进入“退避”状态，目标是从母鸡前方退到一个更远的位置；
+                    # 2) 之后自动切换到“绕圈”状态，在远点附近围绕母鸡旋转一小段时间。
+                    vec_h2e = np.array(
+                        [self.eagle.position.x - self.hen.position.x,
+                         self.eagle.position.y - self.hen.position.y],
+                        dtype=float,
+                    )
+                    dist_h2e = float(np.linalg.norm(vec_h2e))
+                    extra_retreat = 2.0   # 希望比当前距离再多退 2 个单位长度
+                    min_retreat_dist = 3.0
+                    target_dist = max(dist_h2e + extra_retreat, min_retreat_dist)
+                    self.eagle_retreat_target_dist = target_dist
+                    self.eagle_retreat_steps = 0
+                    self.eagle_orbit_steps = 0
+                    self.eagle_state = "retreat"
 
                     # 沿 -n 方向仅做极小的位移修正，避免数值上卡在翅膀内部，
                     # 不再将老鹰“瞬移”到数米之外，视觉上主要由速度反弹产生“弹开”效果。
