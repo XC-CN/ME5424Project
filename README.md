@@ -123,15 +123,32 @@ python src/train_hen.py --total-steps 300000 --eval-freq 10000 --save-dir result
 默认情况下，阶段一脚本会产生：
 
 - **最优母鸡模型**：
+
   - 由 `EvalCallback` 自动保存，位于 `--save-dir` 下。
   - 脚本结束时显式保存：`results/curriculum/hen_stage_1.zip`。
 - **TensorBoard 日志**：
-  - 路径：`results/curriculum/tb`。
-  - 可视化命令：
 
-    ```bash
-    tensorboard --logdir results/curriculum
-    ```
+  - 路径：`results/curriculum/tb`。
+- 可视化命令：
+
+  ```bash
+  tensorboard --logdir results/curriculum
+  ```
+
+### 阶段一行为可视化（母鸡 + 老鹰 + 小鸡链条）
+
+为了直观观察母鸡在启发式老鹰攻击下如何带动身后的小鸡链条进行防守，本仓库提供了一个简单的可视化脚本：
+
+```bash
+python src/visualize_hen_stage1.py --episodes 1 --fps 60
+```
+
+默认情况下，可视化脚本会加载 `results/curriculum/best_model.zip` 作为母鸡策略（即训练过程中评估分数最高的模型）。你可以通过 `--episodes` 控制可视化的回合数，通过 `--fps` 控制刷新速度；如需指定其他模型，可显式传入 `--model` 参数。可视化窗口关闭后程序自动结束。
+
+- **母鸡**：橙色圆点。
+- **老鹰**：蓝色圆点。
+- **小鸡链条**：绿色小圆点（完整链条上所有小鸡都会被绘制出来）。
+- 坐标范围与物理世界一致（\[-world_size, world_size\]^2），横纵坐标分别表示 X/Y 位置。
 
 ---
 
@@ -240,21 +257,6 @@ for _ in range(cfg.max_steps):
 你可以在此基础上加入渲染、统计或录像等逻辑，形成适配自己实验需求的评估工具链。
 
 ---
-
-### 阶段一行为可视化（母鸡 + 老鹰 + 小鸡链条）
-
-为了直观观察母鸡在启发式老鹰攻击下如何带动身后的小鸡链条进行防守，本仓库提供了一个简单的可视化脚本：
-
-```bash
-python src/visualize_hen_stage1.py --episodes 5 --fps 60
-```
-
-- **母鸡**：橙色圆点。
-- **老鹰**：蓝色圆点。
-- **小鸡链条**：绿色小圆点（完整链条上所有小鸡都会被绘制出来）。
-- 坐标范围与物理世界一致（\[-world_size, world_size\]^2），横纵坐标分别表示 X/Y 位置。
-
-默认情况下，可视化脚本会加载 `results/curriculum/best_model.zip` 作为母鸡策略（即训练过程中评估分数最高的模型）。你可以通过 `--episodes` 控制可视化的回合数，通过 `--fps` 控制刷新速度；如需指定其他模型，可显式传入 `--model` 参数。可视化窗口关闭后程序自动结束。
 
 ---
 

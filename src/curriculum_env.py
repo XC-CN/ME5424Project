@@ -256,6 +256,9 @@ class HenTrainingEnv(BasePhysicsEnv):
 
     def __init__(self, config: PhysicsConfig | None = None, seed: Optional[int] = None):
         super().__init__(config=config, seed=seed)
+        # 记录老鹰在最近一次撞到翅膀后的“反弹状态”，用于在若干步内施加强烈的反向加速度
+        self.eagle_bounce_steps: int = 0
+        self.eagle_bounce_dir: np.ndarray = np.zeros(2, dtype=float)
 
     def _active_role(self) -> str:
         return "hen"
@@ -373,44 +376,76 @@ class HenTrainingEnv(BasePhysicsEnv):
     def step(self, action: np.ndarray):
         self._apply_action(self.hen, action, self.cfg.hen_max_speed)
         heuristic_act = self._heuristic_eagle_action()
+
+        # 若老鹰处于“反弹冷却”阶段，则在若干步内优先施加强烈的反向加速度，
+        # 使其在撞上翅膀后先被甩开一段距离，再重新回到追击状态。
+        if self.eagle_bounce_steps > 0:
+            # 归一化记录下来的反弹方向（通常是远离尾端的大致方向）
+            bounce_dir = self.eagle_bounce_dir.astype(float)
+            norm = np.linalg.norm(bounce_dir)
+            if norm > 1e-6:
+                bounce_dir /= norm
+                # 反弹权重：bounce_weight 越大，老鹰越“听从”反方向加速度
+                bounce_weight = 0.8
+                blended = (1.0 - bounce_weight) * heuristic_act + bounce_weight * (-bounce_dir)
+                heuristic_act = np.clip(blended, -1.0, 1.0)
+            self.eagle_bounce_steps -= 1
+
         self._apply_action(self.eagle, heuristic_act, self.cfg.eagle_max_speed)
 
         self.world.Step(self.cfg.dt, 6, 2)
         self._enforce_bounds()
-        # 在物理步进之后，根据母鸡的“翅膀”对老鹰进行简单的物理弹回处理，
-        # 使其无法轻易穿过母鸡的阻挡带。
+        # 在物理步进之后，根据母鸡的“翅膀”对老鹰进行物理弹回处理：
+        # 翅膀定义为一条垂直于“母鸡 -> 小鸡尾端”方向、穿过母鸡位置的线段，
+        # 当老鹰从母鸡正面撞上这条翅膀时，会被沿法线方向弹回一段距离，并对速度做镜面反射，
+        # 从而形成“冲上去被弹开、再绕着母鸡旋转”的效果。
         tail = self.chicks[-1]
         arm_span = max(self.cfg.block_margin, 0.0)
         if arm_span > 0.0:
-            # 主轴：老鹰 -> 小鸡尾端
-            vec_et = np.array(
-                [tail.position.x - self.eagle.position.x, tail.position.y - self.eagle.position.y],
+            # 轴向向量：母鸡 -> 小鸡尾端（作为翅膀法线方向）
+            vec_ht = np.array(
+                [tail.position.x - self.hen.position.x, tail.position.y - self.hen.position.y],
                 dtype=float,
             )
-            dist_et = np.linalg.norm(vec_et)
-            if dist_et > 1e-6:
-                vec_eh = np.array(
-                    [self.hen.position.x - self.eagle.position.x, self.hen.position.y - self.eagle.position.y],
+            dist_ht = np.linalg.norm(vec_ht)
+            if dist_ht > 1e-6:
+                n = vec_ht / dist_ht  # 法线方向（指向尾端）
+                vec_he = np.array(
+                    [self.eagle.position.x - self.hen.position.x, self.eagle.position.y - self.hen.position.y],
                     dtype=float,
                 )
-                proj = float(np.dot(vec_eh, vec_et) / dist_et)
-                # 仅在老鹰位于母鸡与尾端之间时考虑弹回
-                if 0.0 < proj < dist_et:
-                    closest_vec = vec_eh - (proj / dist_et) * vec_et
-                    perp_dist = np.linalg.norm(closest_vec)
-                    if perp_dist < arm_span and perp_dist > 1e-6:
-                        # 计算从翅膀带边缘推回的最小位移
-                        push_dir = closest_vec / perp_dist  # 从主轴指向母鸡的垂直方向
-                        push_amount = arm_span - perp_dist
-                        # 将老鹰沿该方向推离翅膀带，避免直接穿过母鸡
-                        self.eagle.position = b2Vec2(
-                            float(self.eagle.position.x + push_dir[0] * push_amount),
-                            float(self.eagle.position.y + push_dir[1] * push_amount),
-                        )
-                        # 简单衰减老鹰速度，减少弹回后的抖动
-                        self.eagle.linearVelocity = b2Vec2(0.0, 0.0)
-                        # 再次确保不出界
-                        self._enforce_bounds()
+                # 在法线方向上的投影（>0 表示老鹰位于母鸡朝向尾端的一侧，0<dist<dist_ht 表示在母鸡和尾端之间）
+                dist_normal = float(np.dot(vec_he, n))
+                lateral_vec = vec_he - dist_normal * n
+                radial_dist = float(np.linalg.norm(lateral_vec))
+                # 当老鹰位于母鸡与尾端之间，且横向距离落在翅膀长度范围内时，视为撞上翅膀
+                if 0.0 < dist_normal < dist_ht and radial_dist <= arm_span:
+                    # 当前速度分解到法线与切向方向，进行“镜面反射”+衰减
+                    v = np.array(
+                        [self.eagle.linearVelocity.x, self.eagle.linearVelocity.y],
+                        dtype=float,
+                    )
+                    vn_mag = float(np.dot(v, n))
+                    v_n = vn_mag * n          # 法向分量
+                    v_t = v - v_n             # 切向分量（沿翅膀方向）
+                    restitution = 0.5         # 反弹系数：法向速度反转并衰减
+                    friction = 0.9            # 切向保留系数：保留大部分切向速度，便于绕行
+                    v_reflect = -restitution * v_n + friction * v_t
+                    self.eagle.linearVelocity = b2Vec2(float(v_reflect[0]), float(v_reflect[1]))
+
+                    # 记录一次反弹方向，并在接下来的若干步内施加强烈的反向加速度，
+                    # 避免老鹰立刻又顶在翅膀上，实现“先被甩开再重新回到战场”的效果。
+                    self.eagle_bounce_dir = n.copy()
+                    self.eagle_bounce_steps = 12  # 反弹持续的步数，可根据视觉效果微调
+
+                    # 沿 -n 方向仅做极小的位移修正，避免数值上卡在翅膀内部，
+                    # 不再将老鹰“瞬移”到数米之外，视觉上主要由速度反弹产生“弹开”效果。
+                    knock = min(0.1, 0.1 * arm_span)
+                    self.eagle.position = b2Vec2(
+                        float(self.eagle.position.x - n[0] * knock),
+                        float(self.eagle.position.y - n[1] * knock),
+                    )
+                    self._enforce_bounds()
 
         self.step_count += 1
 
