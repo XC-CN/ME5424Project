@@ -500,6 +500,47 @@ class HenTrainingEnv(BasePhysicsEnv):
                     )
                     self._enforce_bounds()
 
+        # 除了翅膀带之外，母鸡自身的圆形刚体也应对老鹰产生碰撞反弹：
+        # 当老鹰中心与母鸡中心的距离小于半径和时，直接以“母鸡 -> 老鹰”为法线方向进行反弹，
+        # 并触发同样的退避 + 绕圈状态机。
+        hen_r = float(getattr(self.cfg, "hen_radius", 0.4))
+        eagle_r = float(getattr(self.cfg, "eagle_radius", 0.45))
+        vec_h2e_body = np.array(
+            [self.eagle.position.x - self.hen.position.x,
+             self.eagle.position.y - self.hen.position.y],
+            dtype=float,
+        )
+        dist_h2e_body = float(np.linalg.norm(vec_h2e_body))
+        if dist_h2e_body > 1e-6 and dist_h2e_body < (hen_r + eagle_r):
+            n_body = vec_h2e_body / dist_h2e_body  # 法线方向：母鸡 -> 老鹰
+            v = np.array(
+                [self.eagle.linearVelocity.x, self.eagle.linearVelocity.y],
+                dtype=float,
+            )
+            vn_mag = float(np.dot(v, n_body))
+            v_n = vn_mag * n_body
+            v_t = v - v_n
+            restitution = 0.5
+            friction = 0.9
+            v_reflect = -restitution * v_n + friction * v_t
+            self.eagle.linearVelocity = b2Vec2(float(v_reflect[0]), float(v_reflect[1]))
+
+            # 同样触发退避 + 绕圈状态机
+            extra_retreat = 2.0
+            min_retreat_dist = 3.0
+            target_dist = max(dist_h2e_body + extra_retreat, min_retreat_dist)
+            self.eagle_retreat_target_dist = target_dist
+            self.eagle_retreat_steps = 0
+            self.eagle_orbit_steps = 0
+            self.eagle_state = "retreat"
+
+            knock_body = min(0.1, 0.1 * (hen_r + eagle_r))
+            self.eagle.position = b2Vec2(
+                float(self.eagle.position.x + n_body[0] * knock_body),
+                float(self.eagle.position.y + n_body[1] * knock_body),
+            )
+            self._enforce_bounds()
+
         self.step_count += 1
 
         reward, done = self._compute_reward_done()

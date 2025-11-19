@@ -57,6 +57,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-freq", type=int, default=10_000, help="评估频率（按环境步数计）。")
     parser.add_argument("--save-dir", type=str, default="results/curriculum", help="模型和日志保存目录。")
     parser.add_argument("--seed", type=int, default=42, help="随机种子。")
+    parser.add_argument("--device", type=str, default="auto", help="训练设备 (auto, cpu, cuda)。")
     return parser.parse_args()
 
 
@@ -95,6 +96,7 @@ def main() -> None:
         n_steps=2048,
         learning_rate=3e-4,
         gamma=0.995,
+        device=args.device,
     )
     model.learn(total_timesteps=args.total_steps, callback=callbacks)
     model.save(save_dir / "hen_stage_1")
