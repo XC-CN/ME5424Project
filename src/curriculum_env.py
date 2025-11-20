@@ -116,13 +116,28 @@ class BasePhysicsEnv(gym.Env):
 
     def _build_world(self) -> None:
         self.world = b2World(gravity=(0, 0), doSleep=True)
-        spawn_radius = 0.4 * self.cfg.world_size
+        # 略微扩大生成范围 (0.4 -> 0.5)
+        spawn_radius = 0.5 * self.cfg.world_size
 
         hen_pos = self._random_point(radius=spawn_radius)
         eagle_pos = self._random_point(radius=spawn_radius)
+        
+        # 默认最小距离
+        min_dist = 3.0
+        
+        # 针对不同阶段设定初始距离
+        # 在训练老鹰时，拉大初始距离，给它足够的空间加速和进行战术拉扯
+        try:
+            if self._active_role() == "eagle":
+                min_dist = 8.0
+        except NotImplementedError:
+            pass
+
         # Avoid pathological overlap at reset.
-        while (hen_pos - eagle_pos).length < 2.0:
+        attempts = 0
+        while (hen_pos - eagle_pos).length < min_dist and attempts < 100:
             eagle_pos = self._random_point(radius=spawn_radius)
+            attempts += 1
 
         self.hen = self._create_agent(hen_pos, self.cfg.hen_radius)
         self.eagle = self._create_agent(eagle_pos, self.cfg.eagle_radius)
@@ -577,6 +592,13 @@ class EagleTrainingEnv(BasePhysicsEnv):
         # Stable-Baselines3 要求 device 为字符串或 torch.device，不能是 None，这里默认使用 CPU。
         load_device = device or "cpu"
         self.hen_model = PPO.load(resolved_path.as_posix(), device=load_device)
+        self.prev_dist_eagle_tail = 0.0
+
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
+        obs, info = super().reset(seed=seed, options=options)
+        tail = self.chicks[-1]
+        self.prev_dist_eagle_tail = (self.eagle.position - tail.position).length
+        return obs, info
 
     def _active_role(self) -> str:
         return "eagle"
@@ -584,54 +606,61 @@ class EagleTrainingEnv(BasePhysicsEnv):
     def _compute_reward_done(self) -> Tuple[float, bool]:
         tail = self.chicks[-1]
         dist_eagle_tail = (self.eagle.position - tail.position).length
-        dist_eagle_hen = (self.eagle.position - self.hen.position).length
-
-        reward = 0
         
-        # 3) 反弹惩罚（保留）
-        if getattr(self, "eagle_bounced_this_step", False):
-            reward -= 10.0
+        reward = 0.0
 
-        # 4) 边界惩罚
+        # 1) 抓捕奖励 (Sparse)
+        caught = dist_eagle_tail < self.cfg.catch_radius
+        if caught:
+            reward += 100.0
+
+        # 2) 逼近奖励 (Potential-based)
+        # 奖励本次步进缩短了多少距离。
+        # 假设每步缩短 0.1m (满速 36m/s * 1/30s = 1.2m/step, 但还要考虑对方移动)
+        # 设系数为 5.0，则每步缩短 0.1m -> +0.5 分。
+        if hasattr(self, "prev_dist_eagle_tail"):
+            dist_diff = self.prev_dist_eagle_tail - dist_eagle_tail
+            reward += 5.0 * dist_diff
+        
+        # 3) 拉伸奖励 (Stretch Reward) - 鼓励通过机动拉扯链条
+        avg_stretch = self._chain_stretch()
+        # 正常 stretch 约 1.0。如果 > 1.1 说明正在拉扯。
+        if avg_stretch > 1.1:
+            reward += 1.0 * (avg_stretch - 1.1)
+        
+        # 4) 反弹惩罚 (Bounce Penalty) - 降低惩罚以免不敢近身 (之前是 -10.0)
+        if getattr(self, "eagle_bounced_this_step", False):
+            reward -= 2.0
+
+        # 5) 边界惩罚 (Border Penalty)
         bound = self.cfg.world_size
         ex, ey = float(self.eagle.position.x), float(self.eagle.position.y)
         max_abs_coord = max(abs(ex), abs(ey))
         if max_abs_coord > 0.9 * bound:
-            reward -= 10.0
+            reward -= 5.0
         
-        # 5) 绕后奖励 (Flanking Reward)
-        # 计算 (Hen->Tail) 和 (Hen->Eagle) 的夹角余弦
-        # 如果老鹰在母鸡身后（靠近尾部一侧），给予奖励
+        # 6) 绕后奖励 (Flanking Reward) - 降低权重，避免只绕不攻 (之前是 5.0)
         vec_ht = tail.position - self.hen.position
         vec_he = self.eagle.position - self.hen.position
-        
-        # 简单的点积归一化计算余弦
         ht_len = vec_ht.length
         he_len = vec_he.length
         if ht_len > 1e-6 and he_len > 1e-6:
             cos_angle = (vec_ht.x * vec_he.x + vec_ht.y * vec_he.y) / (ht_len * he_len)
-            # 当 cos_angle > 0 时，说明老鹰在母鸡身后的半圆内
-            # 奖励范围 [0, 0.5]
-            flank_bonus = 5 * max(0.0, cos_angle)
+            flank_bonus = 0.5 * max(0.0, cos_angle)
             reward += flank_bonus
 
-        # 6) 高速移动奖励
-        # 鼓励老鹰利用速度优势，避免怠速
+        # 7) 高速移动奖励
         speed = self.eagle.linearVelocity.length
-        # 简单的线性奖励，满速时 +0.1
         speed_bonus = 0.1 * (speed / self.cfg.eagle_max_speed)
         reward += speed_bonus
 
-        # 7) 抓住小鸡奖励
-        caught = dist_eagle_tail < self.cfg.catch_radius
-        terminated = bool(caught)
-        if caught:
-            reward += 100
+        # 8) 距离压力 - 保持微弱的静态惩罚 (之前是 -0.05)
+        reward -= 0.01 * dist_eagle_tail
 
-        # truncated：回合是否因为达到最大步数而提前终止
+        terminated = bool(caught)
         truncated = self.step_count >= self.cfg.max_steps
-        # done_flag：本轮 episode 是否结束（被抓或步数用尽）
         done_flag = terminated or truncated
+
         return reward, done_flag
 
     def step(self, action: np.ndarray):
@@ -652,6 +681,10 @@ class EagleTrainingEnv(BasePhysicsEnv):
         self.step_count += 1
 
         reward, done = self._compute_reward_done()
+        
+        # [更新状态] 记录本帧距离，供下一帧计算 Potential Reward 使用
+        self.prev_dist_eagle_tail = float((self.eagle.position - self.chicks[-1].position).length)
+
         obs = self._get_obs(role="eagle")
         terminated = done and (self.step_count < self.cfg.max_steps)
         truncated = self.step_count >= self.cfg.max_steps
