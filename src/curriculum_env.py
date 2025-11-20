@@ -51,7 +51,7 @@ class PhysicsConfig:
     max_force: float = 80.0         # 母鸡最大允许的加速度/力
     eagle_max_force: float = 320.0   # 老鹰最大允许的加速度/力 (4x 母鸡)
     catch_radius: float = 0.7       # 老鹰判定抓到尾端小鸡的距离阈值
-    block_margin: float = 3       # 母鸡“翅膀”侧向阻挡的宽度（碰撞判定）
+    block_margin: float = 2.0       # 母鸡“翅膀”侧向阻挡的宽度（碰撞判定）
 
 
 class BasePhysicsEnv(gym.Env):
@@ -122,16 +122,8 @@ class BasePhysicsEnv(gym.Env):
         hen_pos = self._random_point(radius=spawn_radius)
         eagle_pos = self._random_point(radius=spawn_radius)
         
-        # 默认最小距离
-        min_dist = 3.0
-        
-        # 针对不同阶段设定初始距离
-        # 在训练老鹰时，拉大初始距离，给它足够的空间加速和进行战术拉扯
-        try:
-            if self._active_role() == "eagle":
-                min_dist = 8.0
-        except NotImplementedError:
-            pass
+        # [修改] 统一增大初始距离，给双方更多博弈空间，避免开局即贴脸
+        min_dist = 8.0
 
         # Avoid pathological overlap at reset.
         attempts = 0
@@ -594,6 +586,10 @@ class EagleTrainingEnv(BasePhysicsEnv):
         self.hen_model = PPO.load(resolved_path.as_posix(), device=load_device)
         self.prev_dist_eagle_tail = 0.0
 
+    def load_opponent(self, path: str, device: str = "cpu"):
+        """Reload the hen opponent model from a file."""
+        self.hen_model = PPO.load(path, device=device)
+
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         obs, info = super().reset(seed=seed, options=options)
         tail = self.chicks[-1]
@@ -620,13 +616,13 @@ class EagleTrainingEnv(BasePhysicsEnv):
         # 设系数为 5.0，则每步缩短 0.1m -> +0.5 分。
         if hasattr(self, "prev_dist_eagle_tail"):
             dist_diff = self.prev_dist_eagle_tail - dist_eagle_tail
-            reward += 5.0 * dist_diff
+            reward += 2.0 * dist_diff
         
         # 3) 拉伸奖励 (Stretch Reward) - 鼓励通过机动拉扯链条
         avg_stretch = self._chain_stretch()
         # 正常 stretch 约 1.0。如果 > 1.1 说明正在拉扯。
         if avg_stretch > 1.1:
-            reward += 1.0 * (avg_stretch - 1.1)
+            reward += 0.5 * (avg_stretch - 1.1)
         
         # 4) 反弹惩罚 (Bounce Penalty) - 降低惩罚以免不敢近身 (之前是 -10.0)
         if getattr(self, "eagle_bounced_this_step", False):
@@ -656,6 +652,16 @@ class EagleTrainingEnv(BasePhysicsEnv):
 
         # 8) 距离压力 - 保持微弱的静态惩罚 (之前是 -0.05)
         reward -= 0.01 * dist_eagle_tail
+        
+        # 9) [新增] 活跃度惩罚 (Activity Penalty) - 打破僵持
+        # 如果老鹰速度过低，给予惩罚，强制它动起来寻找机会。
+        if speed < 2.0:
+            reward -= 0.2 * (1.0 - speed / 2.0)
+
+        # 10) [新增] 饥饿惩罚 (Hunger Penalty)
+        # 随着时间推移，每步扣分逐渐增加，迫使老鹰尽早发起进攻
+        hunger = 0.1 * (float(self.step_count) / float(self.cfg.max_steps))
+        reward -= hunger
 
         terminated = bool(caught)
         truncated = self.step_count >= self.cfg.max_steps
@@ -692,6 +698,60 @@ class EagleTrainingEnv(BasePhysicsEnv):
         info = {
             "dist_to_tail": float((self.eagle.position - self.chicks[-1].position).length),
             "dist_to_hen": float((self.eagle.position - self.hen.position).length),
+        }
+        return obs, reward, terminated, truncated, info
+
+
+class HenVsModelEnv(HenTrainingEnv):
+    """Stage 3 (Hen side): train the hen against a loaded eagle policy.
+    
+    This environment allows the hen to learn against a pre-trained or concurrently
+    training eagle model, rather than the heuristic script used in Stage 1.
+    """
+
+    def __init__(
+        self,
+        eagle_policy_path: str,
+        config: PhysicsConfig | None = None,
+        seed: Optional[int] = None,
+        device: str = "cpu",
+    ):
+        super().__init__(config=config, seed=seed)
+        resolved_path = Path(eagle_policy_path)
+        if not resolved_path.exists():
+            raise FileNotFoundError(f"Eagle policy path not found: {resolved_path}")
+
+        load_device = device or "cpu"
+        self.eagle_model = PPO.load(resolved_path.as_posix(), device=load_device)
+
+    def load_opponent(self, path: str, device: str = "cpu"):
+        """Reload the eagle opponent model from a file."""
+        self.eagle_model = PPO.load(path, device=device)
+
+    def step(self, action: np.ndarray):
+        # 1. Get eagle action from the loaded model
+        eagle_obs = self._get_obs(role="eagle")
+        eagle_act, _ = self.eagle_model.predict(eagle_obs, deterministic=True)
+
+        # 2. Apply actions
+        self._apply_action(self.hen, action, self.cfg.hen_max_speed, self.cfg.max_force)
+        self._apply_action(self.eagle, eagle_act, self.cfg.eagle_max_speed, self.cfg.eagle_max_force)
+
+        # 3. Physics step
+        self.world.Step(self.cfg.dt, 6, 2)
+        self._enforce_bounds()
+        self._handle_eagle_bounce_physics()
+        self.step_count += 1
+
+        # 4. Compute reward/done (reusing HenTrainingEnv's reward logic)
+        reward, done = self._compute_reward_done()
+        obs = self._get_obs(role="hen")
+
+        terminated = done and (self.step_count < self.cfg.max_steps)
+        truncated = self.step_count >= self.cfg.max_steps
+
+        info = {
+            "dist_to_tail": float((self.eagle.position - self.chicks[-1].position).length),
         }
         return obs, reward, terminated, truncated, info
 
