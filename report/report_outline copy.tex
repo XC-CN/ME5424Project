@@ -1,0 +1,303 @@
+\documentclass[12pt]{ctexart}
+\usepackage{geometry}
+\geometry{a4paper,margin=1in}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{siunitx}
+\usepackage{hyperref}
+\usepackage{cite}
+
+\title{ME5424 课程项目报告：老鹰–母鸡链条对抗的分阶段强化学习}
+\author{项目组}
+\date{\today}
+
+\begin{document}
+\begin{titlepage}
+\centering
+{\LARGE ME5424 课程项目报告：老鹰–母鸡链条对抗的分阶段强化学习\\[12pt]}
+{\large 项目参与人：项目组\\}
+{\large 指导教师：——\\}
+{\large 提交单位：——\\}
+{\large 提交日期：\today\\}
+\vfill
+\end{titlepage}
+
+\tableofcontents
+\bigskip
+\newpage
+\begin{abstract}
+本报告围绕多智能体对抗强化学习在复杂物理场景的冷启动与收敛难题，提出基于课程学习的分阶段训练方案：阶段一训练母鸡对抗启发式老鹰，阶段二冻结母鸡策略训练老鹰。在 Box2D 物理仿真与 Gymnasium 接口下，采用 Stable-Baselines3 的 PPO 算法，并行采样与 TensorBoard 日志支持，实现可复现的工程流水线。主要工作涵盖物理环境建模（世界、链条与关节、边界与反弹）、观测与奖励设计、并行训练与评估回调、以及行为可视化与指标分析。关键成果显示阶段一母鸡防守能力提升（平均回报上升、解释方差接近 1、熵损失下降），阶段二老鹰逼近与抓捕策略有效（潜在奖励稳定为正、抓捕事件带来稀疏正回报），整体训练曲线平稳。项目局限在于奖励权重与物理参数仍需经验调参。后续将考虑联合微调、自博弈与更复杂场景扩展。
+\end{abstract}
+
+\textbf{关键词：} 多智能体对抗；课程学习；PPO；Gymnasium；Box2D
+
+\section{引言}
+本项目聚焦在真实物理约束下的多智能体对抗强化学习，构建“母鸡护卫小鸡链条、老鹰进攻链尾”的二维仿真任务，以检验在稀疏目标与强耦合动力学条件下的稳定学习。训练初期策略弱与回报稀疏使对抗难以形成，链条由多个个体通过距离关节相连，动作与惯性沿链传递产生滞后与振荡，边界约束与反弹进一步加剧优化难度，直接联合训练易震荡或早收敛。为此我们采用分阶段课程学习：第一阶段固定老鹰为启发式追尾，仅训练母鸡习得“挡线与护卫”；第二阶段冻结母鸡策略，训练老鹰在非平凡对手下学会“逼近与抓捕”。该方案在 Gymnasium 接口与 Box2D 物理仿真框架下实现，并配合视角特定观测归一化、潜在奖励塑形及统一的边界与反弹建模，降低分布不稳定与探索失败带来的训练困难。
+
+角色设定方面，老鹰每步根据场内未被捕获的小鸡位置与护卫、队友的观测组成局部状态，奖励强调快速抓捕、避免越界与重复围捕，并考虑被母鸡击退的惩罚；母鸡围绕安全半径持续构建观测，优先护住半径内的小鸡，并通过挡在老鹰与小鸡连线之间获取更高奖励，一旦有小鸡被捕会整体受罚以驱动贴身防御；小鸡持续感知最近的母鸡与老鹰，策略倾向靠近保护者、远离威胁，奖励鼓励保持在护卫范围内并惩罚被捕，促成协同躲避行为。该三方设定使任务目标、物理约束与可解释奖励形成一致闭环，便于后续分析与评估。
+核心目标在于通过物理真实的链条动力学与可解释奖励，验证分阶段训练在稀疏奖励的多智能体任务上的有效性，并形成一套可复现、可评估且具教学价值的工程实践流程。行为层面，母鸡在链条惯性作用下保持稳健居中、防守链尾并在老鹰与尾端连线之间形成有效“挡线”，老鹰学会从侧后绕行与加速逼近；指标层面，阶段一平均回报稳步提升、解释方差接近 1、熵损失逐步下降，阶段二抓捕成功率提升、逼近潜在奖励稳定为正且总体损失曲线平缓。我们同时强调训练过程的重复性与可验证性，通过固定随机种子、规范评估回调与可视化呈现，使结果具备教学与研究双重价值。
+
+
+
+
+
+\section{文献综述与研究现状}
+\subsection{研究现状与挑战}
+多智能体强化学习在对抗任务中常采用联合训练或自博弈策略，但在奖励稀疏、物理耦合复杂的场景下容易出现训练震荡、梯度估计方差大、策略互相适应导致分布漂移问题。主流方案包括：
+\begin{itemize}
+\item 使用 PPO、SAC 等 on-policy/off-policy 算法配合并行采样与熵正则来缓解探索不足
+\item 采用 Curriculum Learning 逐步提升任务难度
+\item 引入潜在奖励、shaping 或模仿学习稳定训练
+\end{itemize}
+现有不足：
+\begin{itemize}
+\item 联合训练早期两个策略均弱导致对抗无效，产生近零回报和无意义梯度
+\item 单视角观测未能在自身体坐标系下稳定归一化，导致感知不一致
+\item 物理碰撞与边界约束未被合理编码到奖励，易出现“边界卡死”等策略
+\end{itemize}
+\subsection{多智能体强化学习与自博弈}
+多智能体对抗任务广泛存在于机器人协作与博弈环境中。自博弈（Self-Play）与对手建模（Opponent Modeling）是提升策略鲁棒性的常见路径，但在早期阶段经常遭遇稀疏奖励与不稳定分布的问题。策略间相互适应会导致训练数据分布漂移，加剧优化难度。
+
+在系统性综述中，研究者总结了多智能体深度强化学习在通信、协作与对抗中的挑战与进展，指出分布非平稳、信用分配与探索不足是主要瓶颈，需通过稳定的算法与合理的任务设计加以缓解\cite{nguyen2020deep}。在通信方面，基于端到端学习的可微通信机制可在部分可观测条件下提升协作与对抗效果，但也引入了新的优化不稳定性，需配合正则与课程策略进行控制\cite{foerster2016learning}。
+
+\subsection{近端策略优化（PPO）}
+PPO 通过截断的目标函数限制策略更新幅度，结合优势函数估计与熵正则，兼顾稳定性与样本效率，已成为连续动作场景的主流基线。在本项目中，我们采用 SB3 实现，并行环境与高批量配置以降低时间相关性，配合评估回调与 TensorBoard 曲线监控收敛行为。
+
+与其他连续控制算法相比，DDPG 以确定性策略与目标网络稳定训练，适合低维连续动作但对探索与超参数较敏感\cite{lillicrap2016ddpg}；SAC 基于最大熵原理鼓励更均衡的探索，在复杂任务上常表现出更好的稳健性\cite{haarnoja2018sac}。PPO 以其更新简单、实现成熟、对超参数不敏感的优势在诸多工程场景成为首选，并有可靠的开源实现支撑复现实验\cite{raffin2022stable}。
+
+\subsection{课程学习（Curriculum Learning）}
+课程学习通过逐步提升任务难度缓解冷启动与探索问题。在本项目中，首先在阶段一固定老鹰为启发式策略，让母鸡在可控对手下学习“挡线与防守”，随后在阶段二冻结母鸡策略，使老鹰在非平凡对手下学习“逼近与抓捕”。这一方案避免了联合训练早期对抗无效导致的近零梯度。
+
+从经典视角看，课程学习通过样本或目标的序列化组织，使学习过程由易到难，从而提升泛化与稳定性\cite{bengio2009curriculum}。在对抗性的多智能体场景中，分阶段或半静态训练能够在不改变最终任务的前提下，缓解双边同时学习带来的震荡与劣适应问题，相关工作在群体对抗中也展现了有效性\cite{cai2023multiphase}。
+
+\subsection{奖励塑形与潜在函数}
+奖励塑形通过引入潜在函数或设计几何得分，使稀疏目标转化为可优化的密集信号。本项目采用：(1) 几何挡线得分，衡量母鸡是否有效位于老鹰与链尾之间；(2) 逼近潜在奖励，衡量老鹰与链尾的距离缩短；(3) 拉伸、边界与反弹项，约束物理合理性与鼓励探索活跃度。
+
+在最大熵框架下，通过熵正则鼓励多样化策略，可在局部最优附近维持足够探索，结合潜在奖励能进一步提升训练的稳定性与样本效率\cite{haarnoja2018sac}。在多智能体设置中，奖励通常同时依赖个体与队伍整体状态，因此塑形需与物理约束一致，以避免产生不合理的策略偏好\cite{nguyen2020deep}。
+
+\subsection{物理仿真与可解释性}
+基于 Box2D 的距离关节与刚体碰撞为链条与主体提供可解释的动力学。通过统一边界约束与反弹规则，学习到的策略在可视化层面符合直觉（如母鸡张开“翅膀”形成阻挡带、老鹰绕后与加速逼近），增强了实验结果的物理一致性与教学可读性。
+
+在控制任务的标准化评估方面，DeepMind Control Suite 提供了可复现实验的任务集合与评测指标，为连续控制算法的比较与复现实验奠定了基础\cite{tassa2018deepmind}。本项目遵循相同的可复现原则：固定随机种子、规范日志与评估回调、统一物理参数与接口定义，以提升结果的可信度与可重复性\cite{raffin2022stable}。
+
+\subsection{并行采样与稳定训练}
+并行环境（\texttt{SubprocVecEnv}）打破单环境时间相关性，提升采样吞吐与数据独立性；高批量配置与固定随机种子提高训练稳定性与可重复性。评估回调按固定频率保存最优模型，便于阶段性复盘与结果展示。
+
+工程实践表明，稳定的实现、明确的日志与评测协议、以及与社区基线的一致性对复现实验至关重要\cite{raffin2022stable}。我们在实现与评估上与主流基线保持一致的接口与设置，以尽可能减少实现差异带来的偏差。
+
+
+\section{项目设计与实现}
+\subsection{需求分析}
+系统需支持在二维世界边界内的稳定对抗：
+\begin{itemize}
+\item 母鸡防守链尾并保持链条运动稳定
+\item 老鹰在有限步数内高效逼近与抓捕
+\item 观测需在各自坐标系下归一化
+\item 奖励需兼顾目标达成与物理合理性
+\item 训练需具备并行采样与可重复性，提供评估与可视化
+\end{itemize}
+\subsection{方案设计（技术路线与选择依据）}
+整体方案以可复现的工程流水线为核心：在统一的物理环境上派生两阶段训练任务，采用并行采样与评估回调，以保证采样独立性与观测稳定；在观测归一化、奖励塑形与边界反弹上形成一致的设计，避免重复的理论叙述与不稳定实现。算法与仿真工具的具体选择在后续小节详述。
+
+\subsection{实现过程（流程与关键步骤）}
+\textbf{阶段一}
+\begin{itemize}
+\item 初始化世界与链条
+\item 老鹰使用启发式追尾策略
+\item 母鸡以 PPO 学习防守与位置控制
+\item 评估回调保存最优模型
+\end{itemize}
+\textbf{阶段二}
+\begin{itemize}
+\item 加载并冻结母鸡策略
+\item 老鹰以 PPO 学习逼近与抓捕
+\item 同样使用评估回调保存最优模型
+\item 提供可视化脚本用于行为检查
+\end{itemize}
+
+
+\subsection{物理环境实现}
+物理参数由统一配置管理，包含 \texttt{world\_size}、\texttt{dt}、\texttt{max\_steps}、\texttt{chain\_links}、\texttt{chain\_spacing}、\texttt{hen\_max\_speed}、\texttt{eagle\_max\_speed}、\texttt{catch\_radius}、\texttt{block\_margin} 等。世界构建、链条与关节由专用构建函数实现，并在动作应用时进行力作用与速度裁剪以保持仿真稳定。
+
+\subsection{观测与动作空间}
+观测统一在各自坐标系下进行归一化，动作为空间连续的二维加速度控制：
+\begin{itemize}
+\item 老鹰观测包含相对尾端位置与速度、与母鸡/队友的相对方位与距离、边界距离与法向；动作 \(a\in\mathbb{R}^2\) 表示加速度向量，施加后进行速度裁剪与边界反弹。
+\item 母鸡观测包含相对尾端与老鹰的几何关系（连线角度、垂距）、链条张力近似指标与边界距离；动作为空间二维加速度，用于居中与挡线控制。
+\item 小鸡观测包含最近的母鸡与老鹰的相对位置与速度，动作趋向靠近保护者、远离威胁以降低拉伸惩罚与被捕风险。
+\end{itemize}
+
+\subsection{物理参数与配置}
+\begin{table}[h]
+\centering
+\sisetup{round-mode=places}
+\begin{tabular}{ll}
+\toprule
+物理参数 & 数值 \\
+\midrule
+世界半边长 \texttt{world\_size} & 20.0 \\
+步长 \texttt{dt} & $\frac{1}{30}$ 秒 \\
+单回合最大步数 \texttt{max\_steps} & 600 \\
+链条节数 \texttt{chain\_links} & 7 \\
+链条间距 \texttt{chain\_spacing} & 1.0 \\
+母鸡最大速率 \texttt{hen\_max\_speed} & 9.0 \\
+老鹰最大速率 \texttt{eagle\_max\_speed} & 36.0 \\
+捕获半径 \texttt{catch\_radius} & 0.7 \\
+阻挡宽度 \texttt{block\_margin} & 2.0 \\
+\bottomrule
+\end{tabular}
+\caption{物理环境参数一览（项目设计与实现）}
+\end{table}
+
+\subsection{训练超参数与配置}
+\begin{table}[h]
+\centering
+\begin{tabular}{ll}
+\toprule
+训练超参数 & 数值 \\
+\midrule
+并行环境 \texttt{n\_envs} & 16 \\
+每环境步数 \texttt{n\_steps} & 256 \\
+批大小 \texttt{batch\_size} & 512 \\
+学习率 \texttt{learning\_rate} & $3\times10^{-4}$ \\
+折扣因子 \texttt{gamma} & 0.995 \\
+总步数 \texttt{total\_steps} & 1,000,000 \\
+设备 \texttt{device} & auto/cpu \\
+\bottomrule
+\end{tabular}
+\caption{PPO 训练超参数一览（项目设计与实现）}
+\end{table}
+
+\subsection{链条动力学与小鸡队伍协同}
+小鸡通过距离关节串联形成柔性链条，关节的目标长度、频率与阻尼决定了链条的刚柔程度与振荡幅度。链条结构对队伍协同行为有直接影响：
+\begin{itemize}
+\item \textbf{耦合与滞后}：任意一节小鸡的加速或转向会沿关节传递到邻近节段，产生时间上的滞后与相位差，要求母鸡在防守时保持平稳引导，避免过度拉伸与摆动。
+\item \textbf{形态与队形}：链条在运动中自然形成“头部—中段—尾部”的速度与惯性梯度，尾端最易被老鹰逼近，因此防守策略需优先保护尾端并在老鹰与尾端连线之间构建“挡线”。
+\item \textbf{约束与协同}：链条的长度与张力对队伍整体机动性构成约束，小鸡个体策略倾向于靠近母鸡的安全半径并保持与队友的距离，从而降低拉伸惩罚并提高整体稳定性。
+\item \textbf{奖励耦合}：拉伸、边界与反弹等物理项会同时影响多个节段的奖励，使个体行为与队伍表现耦合在一起，推动形成协同性的躲避与护卫行为。
+\end{itemize}
+
+\subsection{奖励与碰撞机制}
+母鸡阶段的总奖励 \(R_H\) 由下列项加权组成：
+\begin{align}
+&\text{挡线得分}&& r_{\text{block}}=\max\bigl(0,\ 1-\tfrac{d(H,\overline{ET})}{a}\bigr) \\
+&\text{避捕得分}&& r_{\text{avoid}}=\mathbb{I}[\text{未被捕}] \\
+&\text{拉伸惩罚}&& r_{\text{stretch}}=-\lambda_s\sum_{i} \bigl|\|x_i-x_{i-1}\|-\ell\bigr| \\
+&\text{尾距惩罚}&& r_{\text{tail}}=-\lambda_t\,\|x_T-x_H\| \\
+&\text{边界惩罚}&& r_{\text{bound}}=-\lambda_b\,\mathbb{I}[\text{越界}] \\
+&\text{生存奖励}&& r_{\text{survive}}=\alpha
+\end{align}
+令 \(R_H=\alpha_1 r_{\text{block}}+\alpha_2 r_{\text{avoid}}+\alpha_3 r_{\text{survive}}+r_{\text{stretch}}+r_{\text{tail}}+r_{\text{bound}}\)。
+
+老鹰阶段的总奖励 \(R_E\) 包含：
+\begin{align}
+&\text{抓捕奖励}&& r_{\text{catch}}=\kappa\,\mathbb{I}[\text{捕获}] \\
+&\text{逼近潜在}&& r_{\text{pot}}=\beta\,(\|x_{T}^{t-1}-x_{E}^{t-1}\|-\|x_T^{t}-x_E^{t}\|) \\
+&\text{拉伸抑制}&& r_{\text{stretch}}=+\eta\sum_{i}\bigl(\ell-\|x_i-x_{i-1}\|\bigr)_{+} \\
+&\text{边界惩罚}&& r_{\text{bound}}=-\lambda_b\,\mathbb{I}[\text{越界}] \\
+&\text{绕后与速度}&& r_{\text{pace}}=\rho\,\|v_E\|-\rho'\,\mathbb{I}[\text{重复围捕}] \\
+&\text{时间饥饿}&& r_{\text{time}}=-\zeta
+\end{align}
+令 \(R_E=r_{\text{catch}}+r_{\text{pot}}+r_{\text{stretch}}+r_{\text{bound}}+r_{\text{pace}}+r_{\text{time}}\)。
+
+碰撞与反弹采用统一处理：当主体与边界或“翅膀带”发生碰撞时，速度分解到法向与切向并进行法向反射与能量损失，位置沿法向弹开以避免穿透，保证仿真稳定与策略可解释。
+
+\subsection{训练与评估}
+阶段一训练采用并行环境配置（如 \(n\_envs=16\)、每环境步数 \(n\_steps=256\)、批大小 \(512\)、学习率 \(3\times10^{-4}\)、折扣因子 \(\gamma=0.995\)）。阶段二在冻结母鸡策略的条件下进行老鹰训练，参数设置与阶段一一致。评估回定期保存最优模型至指定输出目录。
+
+\subsection{可视化窗口}
+策略在物理环境中的行为通过可视化脚本以 Matplotlib 渲染。角色观测与奖励在引言中已概述。
+\begin{figure}[h]
+\centering
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\linewidth]{figs/stage_1/Stage1_gui.jpg}
+\caption{阶段一行为可视化快照（母鸡防守）}
+\end{subfigure}
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\linewidth]{figs/stage_2/Stage2_gui.jpg}
+\caption{阶段二行为可视化快照（老鹰逼近）}
+\end{subfigure}
+\caption{阶段行为可视化示例}
+\end{figure}
+
+
+\section{成果与分析}
+\subsection{游戏规则}
+二维世界内存在世界边界与最大步数限制；老鹰目标为在 \(\texttt{max\_steps}\) 内捕获链尾，小鸡被捕触发回合事件；母鸡目标为护卫链条并优先保护尾端，挡在老鹰与尾端连线之间可获得高奖励；越界触发反弹与惩罚；老鹰重复围捕受罚。初始位置与速度在合理范围内随机化，确保对抗非平凡与训练稳定。
+\subsection{结果数据处理}
+训练过程中记录 \texttt{ep\_rew\_mean}、损失与熵、解释方差等指标。为提高分析稳定性与可读性，我们进行如下预处理：
+\begin{itemize}
+\item 指标平滑：采用指数移动平均 \(m_t=(1-\beta) m_{t-1}+\beta x_t\)（如 \(\beta=0.1\)）以降低高方差波动。
+\item 统一采样步长：将不同并行环境产生的事件对齐到统一的时间步，进行重采样与插值以保证曲线可比较。
+\item 暖启动剔除：去除早期若干回合的非稳态样本（如前 \(N\) 个评估点），避免初始化随机性影响结论。
+\item 指标归一化：对不同量纲的指标进行零均值单位方差或区间缩放，以便联合展示与对比。
+\end{itemize}
+
+\subsection{训练结果曲线}
+\begin{figure}[h]
+\centering
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\linewidth]{figs/stage_1/ep_rew_mean.png}
+\caption{阶段一平均回合回报}
+\end{subfigure}
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\linewidth]{figs/stage_1/explained_variance.png}
+\caption{阶段一价值函数解释方差}
+\end{subfigure}
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\linewidth]{figs/stage_1/entropy_loss.png}
+\caption{阶段一策略熵损失}
+\end{subfigure}
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\linewidth]{figs/stage_1/loss.png}
+\caption{阶段一总损失函数}
+\end{subfigure}
+\caption{阶段一训练指标曲线汇总}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\linewidth]{figs/stage_2/rew_mean.png}
+\caption{阶段二平均回合回报}
+\end{subfigure}
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\linewidth]{figs/stage_2/explained_variance.png}
+\caption{阶段二价值函数解释方差}
+\end{subfigure}
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\linewidth]{figs/stage_2/entropy_loss.png}
+\caption{阶段二策略熵损失}
+\end{subfigure}
+\begin{subfigure}{0.48\textwidth}
+\includegraphics[width=\linewidth]{figs/stage_2/loss.png}
+\caption{阶段二总损失函数}
+\end{subfigure}
+\caption{阶段二训练指标曲线汇总}
+\end{figure}
+
+% 可视化窗口已移至“项目设计与实现”章节
+
+%
+
+\subsection{成果分析}
+阶段一中，平均回报随训练迭代稳步提升，解释方差接近 1，熵损失逐步降低，显示策略从探索向确定性过渡且价值函数拟合良好。阶段二中，潜在逼近奖励推动老鹰持续缩短与链尾距离，抓捕事件带来稀疏正回报，整体损失曲线平稳。行为可视化显示母鸡在链条惯性作用下保持居中防守并通过翅膀阻挡老鹰，老鹰在冻结母鸡下学会从侧后绕行与加速逼近。与预期目标对比，两个阶段目标均达成。
+
+\section{结论与展望}
+\subsection{结论}
+总结：本项目以课程学习拆解多智能体对抗训练的冷启动难题，通过视角规范化、物理反弹与几何得分设计、并行采样与评估回调实现稳定训练与可视化验证，输出可重复的实验管线与模型成果。创新点包括冻结对手内联推理、挡线几何评分与统一反弹机制。局限性包括奖励设计仍需人工调参、策略在极端参数下可能过拟合物理边界。展望：引入联合微调阶段与自博弈，使用更丰富的潜在奖励或逆强化学习提高泛化；扩展到更复杂的障碍物与地图；将评估指标系统化并加入统计显著性检验。
+\newpage
+\section{附录：运行与复现实验}
+依赖安装使用 \texttt{pip} 与 \texttt{conda}，训练脚本分别为 \texttt{python src/train\_hen.py} 与 \texttt{python src/train\_eagle.py}，可视化脚本为 \texttt{python src/visualize\_hen\_stage1.py} 与 \texttt{python src/visualize\_eagle\_stage2.py}。日志查看使用 \texttt{tensorboard --logdir results/curriculum}。相关源码位置在文中已注明，以确保复现路径可见与实验可重复。
+
+代码入口与结构：物理环境与课程学习逻辑位于 \texttt{src/curriculum\_env.py}；训练脚本为 \texttt{src/train\_hen.py} 与 \texttt{src/train\_eagle.py}；可视化工具见 \texttt{src/visualize\_hen\_stage1.py} 与 \texttt{src/visualize\_eagle\_stage2.py}。
+
+\newpage
+\nocite{schulman2017ppo,lillicrap2016ddpg,cai2023multiphase,bengio2009curriculum,foerster2016learning,nguyen2020deep,haarnoja2018sac,raffin2022stable,tassa2018deepmind}
+\bibliographystyle{unsrt}
+\bibliography{references}
+
+\end{document}

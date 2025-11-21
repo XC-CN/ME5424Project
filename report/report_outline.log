@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex 2025.4.28)  20 NOV 2025 23:18
+This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex 2025.4.28)  21 NOV 2025 01:17
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -717,17 +717,20 @@ Package hyperref Info: Link coloring OFF on input line 17.
 \@outlinefile=\write3
 \openout3 = `report_outline.out'.
 
+Package hyperref Info: Option `pageanchor' set `false' on input line 18.
 
 
 [1
 
-] (./report_outline.toc
-LaTeX Font Info:    Trying to load font information for U+msa on input line 4.
+]
+Package hyperref Info: Option `pageanchor' set `true' on input line 33.
+ (./report_outline.toc
+LaTeX Font Info:    Trying to load font information for U+msa on input line 3.
 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 4.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 3.
 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
@@ -737,15 +740,17 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 
 
 
-LaTeX Font Info:    Font shape `TU/SongtiSCLight(0)/m/sl' in size <12> not avai
-lable
-(Font)              Font shape `TU/SongtiSCLight(0)/m/it' tried instead on inpu
-t line 30.
 [1]
 
 [2]
 
 [3]
+Overfull \hbox (1.53215pt too wide) in paragraph at lines 69--70
+[]\TU/lmr/m/n/12 Adversarial multi-agent tasks are common in robotics cooperati
+on and game-theoretic
+ []
+
+
 
 [4]
 
@@ -782,41 +787,73 @@ Package fontspec Info:
 (fontspec)             <->"STFangsong/OT:script=hani;language=dflt;"
 
 
+Overfull \hbox (7.74548pt too wide) in paragraph at lines 94--95
+\TU/lmr/m/n/12 temporal correlation and increase sampling throughput. Environme
+nts step asynchronously
+ []
+
+
 
 [5]
 
 [6]
-Overfull \hbox (37.64856pt too wide) in paragraph at lines 148--149
-[]\TU/SongtiSCLight(0)/m/n/12 物 理 参 数 由 统 一 配 置 管 理，|  包 含 \TU/lmtt/m/n/12 worl
-d_size\TU/SongtiSCLight(0)/m/n/12 、| \TU/lmtt/m/n/12 dt\TU/SongtiSCLight(0)/m/n
-/12 、| \TU/lmtt/m/n/12 max_steps\TU/SongtiSCLight(0)/m/n/12 、| \TU/lmtt/m/n/12 
-chain_links\TU/SongtiSCLight(0)/m/n/12 、| \TU/lmtt/m/n/12 chain_spacing\TU/Song
-tiSCLight(0)/m/n/12 、|
+Overfull \hbox (50.59299pt too wide) in paragraph at lines 130--131
+\TU/lmtt/m/n/12 dt\TU/lmr/m/n/12 , \TU/lmtt/m/n/12 max_steps\TU/lmr/m/n/12 , \T
+U/lmtt/m/n/12 chain_links\TU/lmr/m/n/12 , \TU/lmtt/m/n/12 chain_spacing\TU/lmr/
+m/n/12 , \TU/lmtt/m/n/12 hen_max_speed\TU/lmr/m/n/12 , \TU/lmtt/m/n/12 eagle_ma
+x_speed\TU/lmr/m/n/12 , \TU/lmtt/m/n/12 catch_radius\TU/lmr/m/n/12 ,
  []
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
+
+
+Overfull \hbox (7.49593pt too wide) in paragraph at lines 162--163
+[]\TU/lmr/m/n/12 The parameter choices balance physical plausibility and traini
+ng stability: \TU/lmtt/m/n/12 world_size
+ []
 
 
 
 [7]
-File: figs/stage_1/Stage1_gui.jpg Graphic file (type bmp)
-<figs/stage_1/Stage1_gui.jpg>
-File: figs/stage_2/Stage2_gui.jpg Graphic file (type bmp)
-<figs/stage_2/Stage2_gui.jpg>
+Overfull \hbox (34.91594pt too wide) in paragraph at lines 183--184
+[]\TU/lmr/m/n/12 Hyperparameters were tuned for stability and throughput: \TU/l
+mtt/m/n/12 n_envs\TU/lmr/m/n/12 =16 with \TU/lmtt/m/n/12 SubprocVecEnv
+ []
+
+
+
+[8]
+Overfull \hbox (23.6501pt too wide) in paragraph at lines 206--207
+[]\TU/lmr/m/n/12 Example coefficients used in experiments: $\OML/cmm/m/it/12 R[
+]$ \TU/lmr/m/n/12 combines $\OT1/cmr/m/n/12 0\OML/cmm/m/it/12 :\OT1/cmr/m/n/12 
+7 \OML/cmm/m/it/12 r[] \OT1/cmr/m/n/12 + 0\OML/cmm/m/it/12 :\OT1/cmr/m/n/12 3 \
+OML/cmm/m/it/12 r[] \OMS/cmsy/m/n/12 ^^@ \OT1/cmr/m/n/12 0\OML/cmm/m/it/12 :\OT
+1/cmr/m/n/12 05 [] \OMS/cmsy/m/n/12 ^^@
+ []
+
+
+
+[9]
+File: figs/stage_1/Stage2_gui.jpg Graphic file (type bmp)
+<figs/stage_1/Stage2_gui.jpg>
+File: figs/stage_2/Stage1_gui.jpg Graphic file (type bmp)
+<figs/stage_2/Stage1_gui.jpg>
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 
 
-[8]
-Overfull \hbox (11.69612pt too wide) in paragraph at lines 223--224
-[]\TU/SongtiSCLight(0)/m/n/12 阶 段 一 最 优 母 鸡 策 略 文 件 \TU/lmtt/m/n/12 hen_stage_1
-.zip \TU/SongtiSCLight(0)/m/n/12 与 评 估 最 优 \TU/lmtt/m/n/12 best_hen/best_model.
-zip 
+[10]
+Overfull \hbox (10.64813pt too wide) in paragraph at lines 251--252
+[]\TU/lmr/m/n/12 Metric normalization: zero-mean unit-variance or interval scal
+ing for mixed-dimension
  []
 
+
+
+[11]
 File: figs/stage_1/ep_rew_mean.png Graphic file (type bmp)
 <figs/stage_1/ep_rew_mean.png>
 File: figs/stage_1/explained_variance.png Graphic file (type bmp)
@@ -825,9 +862,6 @@ File: figs/stage_1/entropy_loss.png Graphic file (type bmp)
 <figs/stage_1/entropy_loss.png>
 File: figs/stage_1/loss.png Graphic file (type bmp)
 <figs/stage_1/loss.png>
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
 File: figs/stage_2/rew_mean.png Graphic file (type bmp)
 <figs/stage_2/rew_mean.png>
 File: figs/stage_2/explained_variance.png Graphic file (type bmp)
@@ -837,62 +871,51 @@ File: figs/stage_2/entropy_loss.png Graphic file (type bmp)
 File: figs/stage_2/loss.png Graphic file (type bmp)
 <figs/stage_2/loss.png>
 
+
 LaTeX Warning: `h' float specifier changed to `ht'.
 
 
 
-[9]
+[12]
 
-[10]
-
-[11]
-Overfull \hbox (1.2201pt too wide) in paragraph at lines 289--290
-[]\TU/SongtiSCLight(0)/m/n/12 依 赖 安 装 使 用 \TU/lmtt/m/n/12 pip \TU/SongtiSCLight
-(0)/m/n/12 与 \TU/lmtt/m/n/12 conda\TU/SongtiSCLight(0)/m/n/12 ，|  训 练 脚 本 分 别 为
- \TU/lmtt/m/n/12 python src/train_hen.py \TU/SongtiSCLight(0)/m/n/12 与 \TU/lmtt
-/m/n/12 python
+[13]
+Overfull \hbox (49.15327pt too wide) in paragraph at lines 309--310
+[]\TU/lmr/m/n/12 Dependencies are installed via \TU/lmtt/m/n/12 pip \TU/lmr/m/n
+/12 and \TU/lmtt/m/n/12 conda\TU/lmr/m/n/12 . Training scripts are \TU/lmtt/m/n
+/12 python src/train_hen.py
  []
 
 
-Overfull \hbox (3.17609pt too wide) in paragraph at lines 289--290
-\TU/lmtt/m/n/12 src/train_eagle.py\TU/SongtiSCLight(0)/m/n/12 ，|  可 视 化 脚 本 为 \
-TU/lmtt/m/n/12 python src/visualize_hen_stage1.py \TU/SongtiSCLight(0)/m/n/12 与
- \TU/lmtt/m/n/12 python
+Overfull \hbox (60.79858pt too wide) in paragraph at lines 309--310
+\TU/lmr/m/n/12 and \TU/lmtt/m/n/12 python src/train_eagle.py\TU/lmr/m/n/12 ; vi
+sualization scripts are \TU/lmtt/m/n/12 python src/visualize_hen_stage1.py
  []
 
 
-Overfull \hbox (52.28412pt too wide) in paragraph at lines 289--290
-\TU/lmtt/m/n/12 src/visualize_eagle_stage2.py\TU/SongtiSCLight(0)/m/n/12 。|  日 
-志 查 看 使 用 \TU/lmtt/m/n/12 tensorboard --logdir results/curriculum\TU/SongtiSCLi
-ght(0)/m/n/12 。|
+Overfull \hbox (92.53618pt too wide) in paragraph at lines 311--312
+[]\TU/lmr/m/n/12 Entry points and structure: physical environment and curriculu
+m logic are in \TU/lmtt/m/n/12 src/curriculum_env.py\TU/lmr/m/n/12 ;
  []
 
 
-Overfull \hbox (48.49188pt too wide) in paragraph at lines 291--292
-\TU/SongtiSCLight(0)/m/n/12 本 为 \TU/lmtt/m/n/12 src/train_hen.py \TU/SongtiSCLi
-ght(0)/m/n/12 与 \TU/lmtt/m/n/12 src/train_eagle.py\TU/SongtiSCLight(0)/m/n/12 ；
-|  可 视 化 工 具 见 \TU/lmtt/m/n/12 src/visualize_hen_stage1.py
- []
 
-(./report_outline.bbl
+[14] (./report_outline.bbl)
 
-[12])
-
-[13] (./report_outline.aux)
+[15] (./report_outline.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2022/07/14>
  ***********
 Package rerunfilecheck Info: File `report_outline.out' has not changed.
-(rerunfilecheck)             Checksum: 3302BE6A0698A49CE482F5BCA0B0CADC;3591.
+(rerunfilecheck)             Checksum: 438915CDB6D5349D35406F1EC10FF59E;5861.
  ) 
 Here is how much of TeX's memory you used:
- 21811 strings out of 473832
- 522830 string characters out of 5729481
- 877084 words of memory out of 5000000
- 44600 multiletter control sequences out of 15000+600000
- 565764 words of font info for 92 fonts, out of 8000000 for 9000
+ 21489 strings out of 473832
+ 500759 string characters out of 5729481
+ 869397 words of memory out of 5000000
+ 44282 multiletter control sequences out of 15000+600000
+ 565732 words of font info for 88 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
- 93i,10n,114p,463b,1047s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 93i,12n,114p,1230b,1041s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on report_outline.pdf (14 pages).
+Output written on report_outline.xdv (16 pages, 295640 bytes).
