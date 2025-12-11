@@ -1,18 +1,18 @@
 # Fdb version 4
-["bibtex report_outline"] 0 "report_outline.aux" "report_outline.bbl" "report_outline" 1763659062.90682 0
-  "/usr/local/texlive/2025/texmf-dist/bibtex/bst/base/unsrt.bst" 1292289607 18030 1376b4b231b50c66211e47e42eda2875 ""
-  "references.bib" 0 -1 0 ""
-  "report_outline.aux" 0 -1 0 "xelatex"
+["bibtex report_outline"] 1763733073.7646 "report_outline.aux" "report_outline.bbl" "report_outline" 1763733182.31321 0
+  "./references.bib" 1763732701.42985 2981 ec03363ed15c0825d6833450520f9d54 ""
+  "/usr/local/texlive/2025/texmf-dist/bibtex/bst/base/ieeetr.bst" 1292289607 18361 1a00e58565e7f19bf2b3e1bfb82254ae ""
+  "report_outline.aux" 1763733181.57055 5913 4c873022d001827483230b5b08847279 "xelatex"
   (generated)
   "report_outline.bbl"
   "report_outline.blg"
   (rewritten before read)
-["xdvipdfmx"] 1763659062.37963 "report_outline.xdv" "report_outline.pdf" "report_outline" 1763659062.90812 0
-  "report_outline.xdv" 1763659062.16723 295640 2443e3588a23f91e204df5018d3d32e9 "xelatex"
+["xdvipdfmx"] 1763733181.80137 "report_outline.xdv" "report_outline.pdf" "report_outline" 1763733182.31429 0
+  "report_outline.xdv" 1763733181.57674 295172 177d0ffc943b4e75713e07d33f909e73 "xelatex"
   (generated)
   "report_outline.pdf"
   (rewritten before read)
-["xelatex"] 1763659061.22214 "report_outline.tex" "report_outline.xdv" "report_outline" 1763659062.90693 0
+["xelatex"] 1763733180.51972 "report_outline.tex" "report_outline.xdv" "report_outline" 1763733182.3133 0
   "/System/Library/Fonts/Menlo.ttc" 1721358532 2156036 ec05dfca6821d85440da0899493002c3 ""
   "/System/Library/Fonts/PingFang.ttc" 1721358532 77913936 fbbb35ac2c1edab8242d84cc60900322 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
@@ -133,11 +133,11 @@
   "figs/stage_2/explained_variance.png" 1763632070 15484 18c8bcb63644bc1fa5b0abe47415daa3 ""
   "figs/stage_2/loss.png" 1763632105 15858 dd5b63ff82648f8b54f205508207784a ""
   "figs/stage_2/rew_mean.png" 1763631989 22935 3e4511ea1f60f9fe3d6a46e28705b168 ""
-  "report_outline.aux" 1763659062.16592 5912 3c77c48633e9fb71c56c9db2a817d325 "xelatex"
-  "report_outline.bbl" 1763656217.03909 2467 190cb6a1dc0788e36c03b7d7a31ee956 "bibtex report_outline"
-  "report_outline.out" 1763659062.1668 5861 438915cdb6d5349d35406f1ec10ff59e "xelatex"
-  "report_outline.tex" 1763659057.51551 27531 e11d16f3b6645c109daaf16f9fde2423 ""
-  "report_outline.toc" 1763659062.16717 2677 618422bd9ed7702ef39b55d8c15c08e3 "xelatex"
+  "report_outline.aux" 1763733181.57055 5913 4c873022d001827483230b5b08847279 "xelatex"
+  "report_outline.bbl" 1763733073.85026 2215 60e9ba35f779dcd81ab82a3f2a79159a "bibtex report_outline"
+  "report_outline.out" 1763733181.57351 5861 438915cdb6d5349d35406f1ec10ff59e "xelatex"
+  "report_outline.tex" 1763733178.32111 27472 f136c2bd5c898d4e3abd2a253929c37c ""
+  "report_outline.toc" 1763733181.57665 2677 618422bd9ed7702ef39b55d8c15c08e3 "xelatex"
   (generated)
   "report_outline.aux"
   "report_outline.log"

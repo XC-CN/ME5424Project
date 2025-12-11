@@ -10,9 +10,7 @@
 \usepackage{hyperref}
 \usepackage{cite}
 
-\title{ME5424 Course Project Report: Phase-Based Reinforcement Learning for the Eagle–Hen Chain Adversarial Task}
-\author{项目组}
-\date{\today}
+
 
 \begin{document}
 \hypersetup{pageanchor=false}
@@ -23,11 +21,10 @@
 \renewcommand{\tablename}{Table}
 \begin{titlepage}
 \centering
-{\LARGE ME5424 Course Project Report: Phase-Based Reinforcement Learning for the Eagle–Hen Chain Adversarial Task\\[12pt]}
-{\large Contributors: Project Team\\}
-{\large Advisor: —\\}
-{\large Affiliation: —\\}
-{\large Submission Date: \today\\}
+\title{ME5424 Course Project: Aerial Pursuit: Multi-UAV Swarm for Predator–Prey Games}
+\author{\textbf{Team Members:}\\Wu Zining (A0294373W)\\Chen Haoran (A0317907X)\\Zhao Jinqiu (A0326936U)\\Peng Yifeng (A0318595N)}
+\date{National University of Singapore\\November 21, 2025}
+\maketitle
 \vfill
 \end{titlepage}
 \hypersetup{pageanchor=true}
@@ -301,6 +298,8 @@ During training we log \texttt{ep\_rew\_mean}, losses and entropy, explained var
 \subsection{Results Analysis}
 In Stage 1, mean return steadily increases, explained variance approaches 1, and entropy loss decreases, indicating a transition from exploration to more deterministic behavior and a well-fit value function. In Stage 2, the approach potential drives continuous reductions in eagle–tail distance, capture events yield sparse positive returns, and overall loss curves remain smooth. Visualizations show hens staying centered under chain inertia and blocking the eagle, while the eagle learns side/rear detours and accelerated approach under a frozen hen policy. Both stages achieve their expected objectives.
 
+% References moved to the end of the document
+
 \section{Conclusion}
 \subsection{Conclusion}
 This project decomposes the cold-start challenge in adversarial MARL via curriculum learning. With viewpoint normalization, physical bounce and geometric scoring, parallel sampling, and evaluation callbacks, we achieve stable training and visual verification, delivering a reproducible pipeline and model artifacts. Innovations include frozen-opponent inference within the curriculum, geometric blocking scores, and unified bounce mechanics. Limitations include manual tuning of reward weights and physical parameters, and potential overfitting to boundaries under extreme settings. Future work: introduce joint fine-tuning and self-play, explore richer potentials or inverse RL for better generalization, extend to more complex obstacles/maps, and systematize evaluation metrics with statistical significance testing.
@@ -311,8 +310,10 @@ Dependencies are installed via \texttt{pip} and \texttt{conda}. Training scripts
 Entry points and structure: physical environment and curriculum logic are in \texttt{src/curriculum\_env.py}; training scripts in \texttt{src/train\_hen.py} and \texttt{src/train\_eagle.py}; visualization tools in \texttt{src/visualize\_hen\_stage1.py} and \texttt{src/visualize\_eagle\_stage2.py}.
 
 \newpage
+
+
 \nocite{schulman2017ppo,lillicrap2016ddpg,cai2023multiphase,bengio2009curriculum,foerster2016learning,nguyen2020deep,haarnoja2018sac,raffin2022stable,tassa2018deepmind}
-\bibliographystyle{unsrt}
+\bibliographystyle{ieeetr}
 \bibliography{references}
 
 \end{document}

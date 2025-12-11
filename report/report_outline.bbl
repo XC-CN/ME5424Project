@@ -1,59 +1,49 @@
 \begin{thebibliography}{1}
 
-\bibitem{nguyen2020deep}
-Thanh~Thi Nguyen, Ngoc~Duy Nguyen, and Saeid Nahavandi.
-\newblock Deep reinforcement learning for multiagent systems: A review of
-  challenges, solutions, and applications.
-\newblock {\em IEEE Transactions on Cybernetics}, 50(9):3826--3839, 2020.
-
-\bibitem{foerster2016learning}
-Jakob Foerster, Yannis~M Assael, Nando de~Freitas, and Shimon Whiteson.
-\newblock Learning to communicate with deep multi-agent reinforcement learning.
-\newblock In {\em Advances in Neural Information Processing Systems (NeurIPS)},
-  pages 2137--2145, 2016.
-
-\bibitem{lillicrap2016ddpg}
-Timothy~P Lillicrap, Jonathan~J Hunt, Alexander Pritzel, Nicolas Heess, Tom
-  Erez, Yuval Tassa, David Silver, and Daan Wierstra.
-\newblock Continuous control with deep reinforcement learning.
-\newblock In {\em International Conference on Learning Representations (ICLR)},
-  2016.
+\bibitem{raffin2022stable}
+A.~Raffin, A.~Hill, A.~Gleave, A.~Kanervisto, M.~Ernestus, and N.~Dormann,
+  ``Stable-baselines3: Reliable reinforcement learning implementations,'' {\em
+  Journal of Machine Learning Research}, vol.~23, no.~268, pp.~1--8, 2022.
 
 \bibitem{haarnoja2018sac}
-Tuomas Haarnoja, Aurick Zhou, Pieter Abbeel, and Sergey Levine.
-\newblock Soft actor-critic: Off-policy maximum entropy deep reinforcement
-  learning with a stochastic actor.
-\newblock In {\em International Conference on Machine Learning (ICML)}, pages
-  1861--1870. PMLR, 2018.
-
-\bibitem{raffin2022stable}
-Antonin Raffin, Ashley Hill, Adam Gleave, Anssi Kanervisto, Maximilian
-  Ernestus, and Noah Dormann.
-\newblock Stable-baselines3: Reliable reinforcement learning implementations.
-\newblock {\em Journal of Machine Learning Research}, 23(268):1--8, 2022.
+T.~Haarnoja, A.~Zhou, P.~Abbeel, and S.~Levine, ``Soft actor-critic: Off-policy
+  maximum entropy deep reinforcement learning with a stochastic actor,'' in
+  {\em International Conference on Machine Learning (ICML)}, pp.~1861--1870,
+  PMLR, 2018.
 
 \bibitem{bengio2009curriculum}
-Yoshua Bengio, J{\'e}r{\^o}me Louradour, Ronan Collobert, and Jason Weston.
-\newblock Curriculum learning.
-\newblock In {\em Proceedings of the 26th Annual International Conference on
-  Machine Learning (ICML)}, pages 41--48, 2009.
+Y.~Bengio, J.~Louradour, R.~Collobert, and J.~Weston, ``Curriculum learning,''
+  in {\em Proceedings of the 26th Annual International Conference on Machine
+  Learning (ICML)}, pp.~41--48, 2009.
+
+\bibitem{nguyen2020deep}
+T.~T. Nguyen, N.~D. Nguyen, and S.~Nahavandi, ``Deep reinforcement learning for
+  multiagent systems: A review of challenges, solutions, and applications,''
+  {\em IEEE Transactions on Cybernetics}, vol.~50, no.~9, pp.~3826--3839, 2020.
+
+\bibitem{foerster2016learning}
+J.~Foerster, Y.~M. Assael, N.~de~Freitas, and S.~Whiteson, ``Learning to
+  communicate with deep multi-agent reinforcement learning,'' in {\em Advances
+  in Neural Information Processing Systems (NeurIPS)}, pp.~2137--2145, 2016.
+
+\bibitem{lillicrap2016ddpg}
+T.~P. Lillicrap, J.~J. Hunt, A.~Pritzel, N.~Heess, T.~Erez, Y.~Tassa,
+  D.~Silver, and D.~Wierstra, ``Continuous control with deep reinforcement
+  learning,'' in {\em International Conference on Learning Representations
+  (ICLR)}, 2016.
 
 \bibitem{cai2023multiphase}
-Hongliang Cai, Yugang Luo, Hongli Gao, et~al.
-\newblock A multiphase semistatic training method for swarm confrontation using
-  multiagent deep reinforcement learning.
-\newblock {\em Computational Intelligence and Neuroscience}, 2023:2955442,
-  2023.
+H.~Cai, Y.~Luo, H.~Gao, {\em et~al.}, ``A multiphase semistatic training method
+  for swarm confrontation using multiagent deep reinforcement learning,'' {\em
+  Computational Intelligence and Neuroscience}, vol.~2023, p.~2955442, 2023.
 
 \bibitem{tassa2018deepmind}
-Yuval Tassa, Yotam Doron, Alistair Muldal, Joel~Z Leibo, Tom Erez, and Yuval
-  Li.
-\newblock Deepmind control suite.
-\newblock {\em arXiv preprint arXiv:1801.00690}, 2018.
+Y.~Tassa, Y.~Doron, A.~Muldal, J.~Z. Leibo, T.~Erez, and Y.~Li, ``Deepmind
+  control suite,'' {\em arXiv preprint arXiv:1801.00690}, 2018.
 
 \bibitem{schulman2017ppo}
-John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov.
-\newblock Proximal policy optimization algorithms.
-\newblock {\em arXiv preprint arXiv:1707.06347}, 2017.
+J.~Schulman, F.~Wolski, P.~Dhariwal, A.~Radford, and O.~Klimov, ``Proximal
+  policy optimization algorithms,'' {\em arXiv preprint arXiv:1707.06347},
+  2017.
 
 \end{thebibliography}
