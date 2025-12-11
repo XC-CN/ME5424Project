@@ -1,3 +1,351 @@
+# Eagle-Hen Chain Competition: Phased Training with Gymnasium + Stable-Baselines3
+
+> The current main focus of this repository is: In a Box2D physics environment, train a hen and an eagle in two phases using **Curriculum Learning** to address the cold-start problem of "both agents being too weak to converge."
+
+## Project Overview
+
+- **Physics Engine**: `Box2D`, simulating the inertia and swing of the chick chain behind the hen using distance joints.
+- **Reinforcement Learning Framework**: `Gymnasium` + `Stable-Baselines3 (PPO)`.
+- **Core Environment Files**:
+  - `src/curriculum_env.py`
+    - `PhysicsConfig`: Unified physical parameter configuration (time step, world size, radii, chain length, etc.).
+    - `BasePhysicsEnv`: Shared Box2D infrastructure (world, rigid bodies, distance joints, observation construction).
+    - `HenTrainingEnv`: Phase 1 — Train the hen against a heuristic-controlled eagle.
+    - `EagleTrainingEnv`: Phase 2 — Train the eagle against a **frozen hen policy**.
+- **Training Scripts**:
+  - `src/train_hen.py`: Train the hen and output `hen_stage_1.zip`.
+  - `src/train_eagle.py`: Load `hen_stage_1` as a training partner, train the eagle, and output `eagle_stage_1.zip`.
+
+The previous multi-agent MAAC / MAAC-R approach is no longer the main focus of the project. Relevant code is retained in `src/` for traceability but will not be documented in this README.
+
+---
+
+## Environment and Dependencies
+
+- **Recommended Python Version**: 3.9 or higher (3.10/3.11 are preferred for better performance).
+- **Key Dependencies**:
+  - Numerical Computing & Visualization: `numpy`, `scipy`, `matplotlib`, `pillow`, `imageio`, `tqdm`.
+  - Deep Learning & Logging: `torch`, `torchvision`, `torchaudio`, `tensorboard`.
+  - Reinforcement Learning & Physics: `gymnasium`, `stable-baselines3`, `pybox2d` (install via Conda).
+
+### Installation Steps
+
+Execute the following commands in the project root directory (a virtual environment or Conda environment is recommended):
+
+```bash
+pip install -r requirements.txt
+```
+
+If encountering missing Box2D-related modules (e.g., `Box2D` or `pybox2d`), install via Conda:
+
+```bash
+conda install -c conda-forge pybox2d
+```
+
+For Conda users, activate the environment first (example):
+
+```bash
+conda activate ME5424Project
+```
+
+---
+
+## Physics Environment and State Space
+
+### Physics Configuration (`PhysicsConfig`)
+
+`PhysicsConfig` defines critical parameters for the Box2D world. Key fields include:
+
+- `world_size`: Half-side length of the world; the simulation space is \[-world_size, world_size\]^2.
+- `dt`: Simulation time step (e.g., `1/30` seconds).
+- `max_steps`: Maximum steps per episode.
+- `hen_radius` / `eagle_radius` / `chick_radius`: Radii of rigid bodies for the hen, eagle, and chicks.
+- `chain_links`: Number of segments in the chick chain.
+- `chain_spacing`: Static distance between adjacent chicks.
+- `hen_max_speed` / `eagle_max_speed`: Maximum linear speed for each agent.
+- `max_force`: Maximum force applied to the center of a rigid body per step (controls acceleration).
+- `catch_radius`: Distance threshold for the eagle to "catch the tail of the chick chain."
+
+Physical properties (e.g., map size, chain length, movement speed) can be adjusted by modifying default values in `PhysicsConfig`, with all environment instances sharing this underlying logic.
+
+### Action and Observation Space (`BasePhysicsEnv`)
+
+- **Action Space**
+  - Type: `gymnasium.spaces.Box`
+  - Shape: `shape=(2,)`
+  - Interpretation: 2D acceleration direction (x, y) with values in `[-1, 1]`, internally mapped to `max_force` with speed clipping.
+
+- **Observation Space**
+  - Type: `gymnasium.spaces.Box`, `shape=(12,)`.
+  - Normalized vectors in the current agent's (hen/eagle) local coordinate system, including:
+    - Self-position (x, y), normalized by `world_size`.
+    - Self-velocity vector, normalized by the corresponding `*_max_speed`.
+    - Opponent's relative position vector.
+    - Relative position vector of the chain's tail.
+    - Tail velocity.
+    - Average chain stretch degree.
+    - Ratio of current step to `max_steps`.
+
+During training:
+- **Hen training**: The environment returns observations from the **hen's perspective**.
+- **Eagle training**: The environment returns observations from the **eagle's perspective**, while additionally constructing hen-perspective observations for the frozen policy when required.
+
+---
+
+## Phase 1: Train the Hen (`HenTrainingEnv` + `train_hen.py`)
+
+### Training Objective
+
+- Maintain the hen's position between the eagle and the chick chain to delay the eagle's approach to the chain's tail.
+- Ensure stability while moving the physical chain, avoiding excessive stretching and violent swings.
+
+The eagle in the environment is controlled by heuristic rules, pursuing the chain's tail with simple lateral perturbations (serving as a "rule-based training partner").
+
+### Execution Command
+
+Run in the project root directory:
+
+```bash
+python src/train_hen.py --total-steps 1000000
+```
+
+Or:
+
+```bash
+python src/train_hen.py --total-steps 300000 --eval-freq 10000 --save-dir results/curriculum --seed 42
+```
+
+Key Parameter Explanations:
+- `--total-steps`: Total training steps for PPO (corresponding to `model.learn(total_timesteps=...)`).
+- `--eval-freq`: Interval (in steps) for evaluation and best-model saving via `EvalCallback`.
+- `--save-dir`: Output directory for models and logs (default: `results/curriculum`).
+- `--seed`: Random seed (for environment and PPO).
+
+### Phase 1 Behavior Visualization
+
+To intuitively observe how the hen defends against the heuristic eagle while moving the chick chain, a visualization script is provided:
+
+```bash
+python src/visualize_hen_stage1.py --episodes 1 --fps 90
+```
+
+By default, the script loads `results/curriculum/best_model.zip` as the hen's policy (the highest-scoring model during training). Adjust the number of episodes with `--episodes` and frame rate with `--fps`; specify a custom model path with `--model`. The program exits after closing the visualization window.
+
+- **Hen**: Orange circle.
+- **Eagle**: Blue circle.
+- **Chick Chain**: Green small circles (all chicks in the chain are rendered).
+- Coordinate range matches the physics world (\[-world_size, world_size\]^2), with x/y axes representing position.
+
+### Parallel Training and Hardware Acceleration
+
+To leverage multi-core CPUs (e.g., i7-14700KF) and enhance data diversity (IID), `src/train_hen.py` defaults to **parallel training mode**:
+
+- **Multi-environment Parallelism (`n_envs=16`)**: Uses `SubprocVecEnv` to launch 16 independent processes for simultaneous data collection, significantly improving sampling speed (FPS).
+- **Decorrelating Data**: Parallel sampling effectively reduces temporal correlation in single-environment data, leading to more uniform data distribution and improved PPO stability.
+- **GPU Acceleration Optimization**: For high-performance GPUs (e.g., RTX 5080), `batch_size=512` and `n_steps=256` are configured to balance memory throughput and update frequency.
+
+> **Note**: For machines with fewer CPU cores, reduce `n_envs` in `src/train_hen.py` (e.g., to 4 or 8).
+
+### Output Results
+
+By default, the Phase 1 script generates:
+- **Best Hen Model**:
+  - Automatically saved by `EvalCallback` in `--save-dir`.
+  - Explicitly saved upon script completion: `results/curriculum/hen_stage_1.zip`.
+- **TensorBoard Logs**:
+  - Path: `results/curriculum/tb`.
+- Visualization Command:
+  ```bash
+  tensorboard --logdir results/curriculum
+  ```
+
+---
+
+## Phase 2: Train the Eagle (`EagleTrainingEnv` + `train_eagle.py`)
+
+### Training Objective
+
+- Enable the eagle to learn effective approach and breakthrough strategies against a defensive-trained hen.
+- Reliably capture the chain's tail despite the hen's interference.
+
+In this phase, the hen's policy is **frozen (no parameter updates)** and only participates as part of the environment; the eagle's PPO is trained from scratch.
+
+### Execution Command
+
+Ensure Phase 1 is completed and `result/curriculum/hen_stage_1.zip` is generated, then run:
+
+```bash
+python src/train_eagle.py
+```
+
+Key Parameter Explanations:
+- `--hen-model`: Path to the hen's PPO model trained in Phase 1.
+- Other parameters are consistent with Phase 1: `--total-steps`, `--eval-freq`, `--save-dir`, `--seed`.
+
+### Phase 2 Behavior Visualization
+
+To observe the eagle's offensive behavior against the frozen defensive hen, use the Phase 2 visualization script:
+
+```bash
+python src/visualize_eagle_stage2.py --episodes 1 --fps 60
+```
+
+- **Eagle**: Blue circle (controlled by the Phase 2-trained policy).
+- **Hen**: Orange circle (using the frozen Phase 1 policy).
+- **Chick Chain**: Green small circles; the tail turns red when captured by the eagle.
+- **Hen's Wings**: Red line segments indicating the blocking zone width (determined by `block_margin`).
+
+Optional Parameters:
+- `--model`: Path to the eagle's policy model (default: `results/curriculum/eagle_stage_1.zip`).
+- `--hen-model`: Path to the hen's policy model (default: `results/curriculum/hen_stage_1.zip`).
+- `--episodes`: Number of visualization episodes.
+- `--fps`: Frame rate.
+
+### Frozen Hen Policy and Perspective Switching
+
+The internal logic of `EagleTrainingEnv.step()` is as follows:
+1. Construct **hen-perspective observations** from the current physical state: `hen_obs = self._get_obs(role="hen")`.
+2. Inference with the frozen hen model: `hen_action, _ = self.hen_model.predict(hen_obs, deterministic=True)`.
+3. Update the hen's rigid body state using `hen_action` (no network parameter updates).
+4. Update the eagle's rigid body state using the externally provided `action`.
+5. Advance the Box2D world by one step, construct observations and rewards from the **eagle's perspective**, and return them.
+
+For the training eagle, the opponent is simply "a challenging hen policy" with no need to concern itself with internal implementation details.
+
+### Output Results
+
+The Phase 2 script generates:
+- **Best Eagle Model**: Automatically saved to `--save-dir` by `EvalCallback`.
+- **Phase 2 Model Snapshot**: Saved as `results/curriculum/eagle_stage_1.zip` upon script completion for potential subsequent joint fine-tuning.
+- **TensorBoard Logs**: Reuses the `results/curriculum/tb` directory.
+
+---
+
+## Phase 3 (Optional): Joint Fine-Tuning of Hen + Eagle
+
+This repository **only provides training scripts for Phases 1 and 2**. Phase 3 is an optional extension:
+- Load models from Phases 1 and 2: `hen_stage_1.zip` and `eagle_stage_1.zip`.
+- Allow simultaneous parameter updates for both the hen and eagle in a joint environment, with moderate learning rate increases or shortened training steps for small-scale fine-tuning.
+- Reward design can reuse Phase-specific objectives:
+  - Hen: Protect the chain's tail and block the eagle.
+  - Eagle: Capture the tail efficiently.
+
+To implement Phase 3, create `train_stage3.py` reusing the physical environment in `curriculum_env.py`, and alternately call `predict` and `learn` for both PPO policies in a loop.
+
+---
+
+## Result Analysis and Visualization
+
+### TensorBoard Curves
+
+- Both Phases 1 and 2 generate TensorBoard logs in `--save-dir`.
+- Example default path: `results/curriculum/tb`.
+
+Launch Command Example:
+```bash
+tensorboard --logdir results/curriculum
+```
+
+Monitored Metrics:
+- Average reward per step/episode.
+- Loss function trends and other training indicators.
+
+### Terminal Output Parameter Explanations
+
+During training, the terminal periodically outputs log tables with the following parameter interpretations:
+
+```text
+------------------------------------------
+| rollout/                |              |
+|    ep_len_mean          | 287          |  <-- Average number of steps per episode
+|    ep_rew_mean          | 1.68         |  <-- Average cumulative reward per episode (higher is better)
+| time/                   |              |
+|    fps                  | 3500         |  <-- Frames Per Second (training speed, steps sampled per second)
+|    iterations           | 74           |  <-- Number of main PPO algorithm iterations
+|    time_elapsed         | 86           |  <-- Total training time elapsed (seconds)
+|    total_timesteps      | 303104       |  <-- Total number of environment steps sampled
+| train/                  |              |
+|    approx_kl            | 0.00417      |  <-- Approximate KL divergence (measures policy update magnitude; excessive values indicate overly aggressive updates)
+|    clip_fraction        | 0.0267       |  <-- Fraction of samples clipped by PPO's clipping mechanism
+|    clip_range           | 0.2          |  <-- PPO clipping threshold (hyperparameter)
+|    entropy_loss         | -2.44        |  <-- Negative policy entropy (larger absolute values indicate more random actions/exploration)
+|    explained_variance   | 0.87         |  <-- Explained variance of the value function (closer to 1 indicates better Value Net predictions)
+|    learning_rate        | 0.0003       |  <-- Current learning rate
+|    loss                 | 0.651        |  <-- Total loss (Policy Loss + Value Loss + Entropy Loss)
+|    n_updates            | 730          |  <-- Total number of gradient updates
+|    policy_gradient_loss | -0.00234     |  <-- Policy gradient loss component
+|    std                  | 0.82         |  <-- Standard deviation of the action distribution (reflects exploration; larger initially, decreasing over time)
+|    value_loss           | 1.54         |  <-- Value function loss component (Critic network error)
+------------------------------------------
+```
+
+**Key Metrics to Monitor**:
+1. **`ep_rew_mean`**: Most intuitive performance indicator; should gradually increase with training.
+2. **`explained_variance`**: If persistently near 0 or negative, the Value Network fails to fit rewards—adjust network architecture or hyperparameters.
+3. **`entropy_loss`**: Maintain moderate values early for exploration; decreasing absolute values indicate policy convergence. Prematurely approaching 0 suggests early convergence.
+
+### Custom Evaluation and Playback Example
+
+No standalone evaluation script is included, but custom evaluation/playback can be implemented as follows (example code):
+
+```python
+from stable_baselines3 import PPO
+from curriculum_env import HenTrainingEnv, PhysicsConfig
+
+cfg = PhysicsConfig()
+env = HenTrainingEnv(config=cfg, seed=0)
+model = PPO.load("results/curriculum/hen_stage_1.zip")
+
+obs, _ = env.reset()
+for _ in range(cfg.max_steps):
+    action, _ = model.predict(obs, deterministic=True)
+    obs, reward, terminated, truncated, info = env.step(action)
+    # Add custom rendering or data logging logic here
+    if terminated or truncated:
+        break
+```
+
+Extend this code with rendering, statistics, or video recording to create an evaluation pipeline tailored to specific experimental needs.
+
+---
+
+## Frequently Asked Questions (FAQ)
+
+- **Dependency Installation Failures (especially Box2D-related)**
+  - Update `pip` first: `pip install --upgrade pip`.
+  - Install separately: `pip install "gymnasium[box2d]" box2d-py`.
+  - Avoid overly new Python versions; prioritize 3.9–3.11.
+
+- **TensorBoard Cannot Load Logs**
+  - Ensure `--save-dir` in the training command matches `tensorboard --logdir`.
+  - Verify event files (`events.out.tfevents.*`) exist in `results/curriculum/tb`.
+
+- **Training Divergence or High Volatility**
+  - Increase `--total-steps` to extend training duration.
+  - Adjust `PhysicsConfig` (e.g., `max_steps`, `catch_radius`) to match task difficulty.
+  - Tune PPO hyperparameters (`learning_rate`, `gamma`, `batch_size`, etc.) in `train_hen.py`/`train_eagle.py` as needed.
+
+- **OMP Library Conflict (`OMP: Error #15`)**
+  - Set the environment variable in Windows PowerShell first:
+    ```powershell
+    $env:KMP_DUPLICATE_LIB_OK = "TRUE"
+    python src/train_hen.py ...
+    ```
+
+---
+
+## Directory Structure Relevant to This README
+
+- `src/curriculum_env.py`
+  - `PhysicsConfig`, `BasePhysicsEnv`
+  - `HenTrainingEnv`: Hen training environment.
+  - `EagleTrainingEnv`: Eagle training environment.
+- `src/train_hen.py`: Phase 1 training script.
+- `src/train_eagle.py`: Phase 2 training script.
+- `requirements.txt`: Dependency list for the curriculum learning pipeline.
+
+Other files (e.g., `src/environment.py`, `src/main.py`, `results/MAAC*`) are legacy implementations of the previous multi-agent approach and are not part of the current recommended workflow—retained only for reference.
+
 ## 老鹰–母鸡链条对抗：基于 Gymnasium + Stable-Baselines3 的分阶段训练
 
 > 本仓库当前主线为：在 Box2D 物理环境中，通过 **课程学习（Curriculum Learning）** 分两阶段训练母鸡与老鹰，解决“双方都太弱、难以收敛”的冷启动问题。
