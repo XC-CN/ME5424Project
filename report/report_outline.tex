@@ -1,4 +1,4 @@
-\documentclass[12pt]{ctexart}
+\documentclass[12pt]{article}
 \usepackage{geometry}
 \geometry{a4paper,margin=1in}
 \usepackage{graphicx}
@@ -121,7 +121,7 @@ Our pipeline centers on reproducibility: two derived training stages on a unifie
 \item Use the evaluation callback to save the best model
 \item Provide visualization scripts for behavior inspection
 \end{itemize}
-
+z
 
 \subsection{Physical Environment Implementation}
 Physical parameters are managed via a unified configuration, including \texttt{world\_size}, \texttt{dt}, \texttt{max\_steps}, \texttt{chain\_links}, \texttt{chain\_spacing}, \texttt{hen\_max\_speed}, \texttt{eagle\_max\_speed}, \texttt{catch\_radius}, and \texttt{block\_margin}. World construction and chain/joint setup use dedicated builders, and forces with velocity clipping are applied during action to maintain simulation stability.
