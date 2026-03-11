@@ -120,7 +120,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--latex-output",
         type=str,
-        default="results/latex_tables.tex",
+        default="AeroPursuit-Predator-Prey-for-EERC2026/generated/latex_tables.tex",
         help="LaTeX table path generated from summaries.",
     )
     parser.add_argument(

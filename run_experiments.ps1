@@ -144,10 +144,10 @@ Invoke-Python -ArgsList $finalEvalArgs -Label "Final evaluation" -ExpectedPaths 
     "results/eval_episode.csv",
     "results/eval_seed_summary.csv",
     "results/eval_run_summary.csv",
-    "results/latex_tables.tex"
+    "AeroPursuit-Predator-Prey-for-EERC2026/generated/latex_tables.tex"
 )
 
 Write-Host "=========================================================="
 Write-Host "Experiments finished."
-Write-Host "Check results/eval_run_summary.csv and results/latex_tables.tex."
+Write-Host "Check results/eval_run_summary.csv and AeroPursuit-Predator-Prey-for-EERC2026/generated/latex_tables.tex."
 Write-Host "=========================================================="
