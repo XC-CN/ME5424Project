@@ -1,0 +1,95 @@
+# （修正版）评估指标修改方案：响应评委及 Code Review
+
+## 问题诊断 (基于 Codex Review)
+
+前一版评估方案虽然输出了数值并写入了论文，但在学术有效性上存在严重缺陷（被 Codex 指出）：
+
+1. **Baseline 定义错误**：旧版的 [evaluate_random](file:///d:/OneDrive/NUS/EECR2026/src/evaluate.py#113-160) 和 [evaluate_heuristic](file:///d:/OneDrive/NUS/EECR2026/src/evaluate.py#162-210) 实例化了同样的 [HenTrainingEnv](file:///d:/OneDrive/NUS/EECR2026/src/curriculum_env.py#400-562)，导致老鹰行为在两组中均为相同的启发式策略，并不是真正的“Random”对照组。
+2. **指标不可比 (Incomparable Returns)**：`Hen Return` 和 `Eagle Return` 在不同方法下的定义途径完全不同（一部分是环境变量，一部分是代理的存活值），强行放在同一张表里比较毫无说服力。
+3. **统计口径错误 (Pseudo-replication)**：将 500 个 episode 当作相互独立的样本进行 t-test 是统计学上的伪重复（Pseudo-replication）。正确做法应按种子(seed)聚合计算均值后，比较 5 个种子的分布。
+4. **缺失核心对照组**：评委明确要求对比 "joint training or self-play"，虽然我们有 [train_stage3.py](file:///d:/OneDrive/NUS/EECR2026/src/train_stage3.py)，但未加入评估对照。
+
+---
+
+## 修正版方案概览
+
+### 方案一：重构代码端 [src/evaluate.py](file:///d:/OneDrive/NUS/EECR2026/src/evaluate.py)
+
+彻底重写 [evaluate.py](file:///d:/OneDrive/NUS/EECR2026/src/evaluate.py)，确保：
+
+1. **废弃 Return 比较**：移除不可比的 `Hen Return` 和 `Eagle Return`。仅保留纯任务级客观指标：
+   - `Capture Rate (%)`: 捕捉率（越低说明母鸡防守越好）
+   - `Episode Length`: 存活步数（越高防守越好）
+   - `Avg Dist`: 平均老鹰与队尾距离（越高防守越舒适）
+
+2. **建立四个严谨的 Baseline**：
+   - **True Random (Untrained)**：双方都使用随机动作。
+   - **Heuristic Eagle vs Random Hen**：使用环境内置的启发式老鹰，随机母鸡。
+   - **Co-training (Self-Play)**：加载 `save_dir/stage3/hen_stage_3_final.zip` 和 `eagle_stage_3_final.zip`，作为 Joint Training 的代表。
+   - **Curriculum (Ours)**：加载 `best_hen/best_model.zip` 和 `best_eagle/best_model.zip`。
+
+3. **修正统计检验 (Seed-level Aggregation)**：
+   - 每个种子 (seed) 跑 N 取均值，拿到 5 个种子的独立宏观指标。
+   - t-test 的样本量 N=5（对比不同种子下策略的稳定性），这才是真正衡量算法稳定性的标准做法。
+
+### 方案二：重写论文端 [AeroPursuit-Predator-Prey.tex](file:///d:/OneDrive/NUS/EECR2026/AeroPursuit-Predator-Prey-for-EERC2026/AeroPursuit-Predator-Prey.tex)
+
+#### 1. 删旧增新
+删除第一版中所有关于 `Return` 比较的文字和数值，避免误导读者。
+
+#### 2. 新增 Table I：定量对比结果表
+
+```latex
+\begin{table}[t]
+\centering
+\caption{Quantitative comparison across base and trained methods. Metrics are aggregated across 5 independent seeds (100 episodes per seed). Mean $\pm$ std over seeds is reported.}
+\label{tab:baseline_comparison}
+\resizebox{\linewidth}{!}{
+\begin{tabular}{lccc}
+\toprule
+\textbf{Method} & \textbf{Capture Rate (\%)} $\downarrow$ & \textbf{Avg Tail Dist (m)} $\uparrow$ & \textbf{Episode Length} $\uparrow$ \\
+\midrule
+True Random        & $x \pm y$ & $x \pm y$ & $x \pm y$ \\
+Heuristic \& Random& $x \pm y$ & $x \pm y$ & $x \pm y$ \\
+Co-training (Self-Play) & $x \pm y$ & $x \pm y$ & $x \pm y$ \\
+Curriculum (Ours)  & $\mathbf{x \pm y}$ & $\mathbf{x \pm y}$ & $\mathbf{x \pm y}$ \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+```
+
+#### 3. 新增 Table II：真正的统计显著性检验
+
+```latex
+\begin{table}[t]
+\centering
+\caption{Welch's t-test p-values comparing Curriculum (Ours) against Co-training (Self-Play) on key metrics across 5 seeds.}
+\label{tab:significance}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Comparison} & \textbf{Capture Rate} & \textbf{Avg Tail Dist} & \textbf{Episode Length} \\
+\midrule
+Ours vs Co-training & $p = xxx$ & $p = xxx$ & $p = xxx$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+```
+
+#### 4. 重写 Results Analysis 文本
+重点放在：
+- 我们的课程学习方法（Curriculum）比纯交替训练（Co-training/Self-Play）在减少捕获率和推迟被捕获时间上，表现更稳定（通过种间标准差体现）。
+- 陈述 t-test 的结果（比较 Curriculum 和 Co-training）。
+
+---
+
+## 具体实施步骤
+
+### Step 1：运行 Stage 3 以获得 Baseline 模型
+在 `D:\OneDrive\NUS\EECR2026` 目录下运行 `python src/train_stage3.py --rounds 3 --steps-per-round 20000` 快速训练出一个 Self-Play 组模型。（如果已存在，可跳过或直接使用现有大模型）。
+
+### Step 2：重写并运行 `src/evaluate.py`
+重写该脚本以满足上述 1、2、3 点纠正。执行该脚本，跑出新数据。
+
+### Step 3：更新论文并编译
+根据新数据重写 `.tex` 并生成最终版 PDF，最后覆盖 `.antigravity` 目录内的报告。

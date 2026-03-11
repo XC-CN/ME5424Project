@@ -1,491 +1,579 @@
 """
-Unified evaluation script for AeroPursuit predator-prey project.
+Corrected evaluation pipeline for AeroPursuit.
 
-Provides:
-  1. Multi-seed evaluation of trained models (Curriculum method)
-  2. Baseline comparisons (Random, Heuristic-only)
-  3. Statistical significance testing (Welch's t-test)
-
-Usage:
-  python src/evaluate.py                       # run all methods
-  python src/evaluate.py --method curriculum    # run only curriculum
-  python src/evaluate.py --method random        # run only random baseline
-  python src/evaluate.py --method heuristic     # run only heuristic baseline
+Key design choices:
+  1. Compare only task-level metrics: capture rate, average eagle-tail distance,
+     and episode length.
+  2. Keep random and heuristic sanity baselines separate.
+  3. Aggregate episodes by evaluation seed, then by independent training run.
+  4. Run significance tests only on per-run summaries, never on raw episodes.
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
-import json
-import os
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Sequence
 
 import numpy as np
 from scipy import stats
 
-# Ensure the src directory is on the path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from curriculum_env import (
-    EagleTrainingEnv,
-    HenTrainingEnv,
-    PhysicsConfig,
-)
+from curriculum_env import EagleTrainingEnv, HenTrainingEnv, PhysicsConfig
 from stable_baselines3 import PPO
 
-
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
-SEEDS = [0, 42, 123, 456, 789]
-EPISODES_PER_SEED = 100
-HEN_MODEL_DEFAULT = "results/curriculum/best_hen/best_model.zip"
-EAGLE_MODEL_DEFAULT = "results/curriculum/best_eagle/best_model.zip"
+DEFAULT_EVAL_SEEDS = [0, 42, 123, 456, 789]
+DEFAULT_EPISODES_PER_SEED = 100
+DEFAULT_CURRICULUM_HEN = Path("results/curriculum/best_hen/best_model.zip")
+DEFAULT_CURRICULUM_EAGLE = Path("results/curriculum/best_eagle/best_model.zip")
+METHOD_ORDER = ["True Random", "Heuristic + Random", "Co-training", "Curriculum"]
+METRICS = ["capture_rate", "avg_tail_dist", "episode_length"]
 
 
-# ---------------------------------------------------------------------------
-# Evaluation helpers
-# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class PolicyPair:
+    method: str
+    run_id: str
+    hen_model_path: Path
+    eagle_model_path: Path
 
-def evaluate_curriculum(
-    hen_model_path: str,
-    eagle_model_path: str,
-    cfg: PhysicsConfig,
-    seeds: List[int],
-    n_episodes: int,
-) -> Dict[str, List[float]]:
-    """Evaluate the curriculum-trained hen + eagle pair."""
-    hen_model = PPO.load(hen_model_path, device="cpu")
-    eagle_model = PPO.load(eagle_model_path, device="cpu")
 
-    results: Dict[str, List[float]] = {
-        "hen_return": [],
-        "eagle_return": [],
-        "capture": [],
-        "episode_length": [],
-        "avg_dist": [],
-    }
+class RandomVsRandomEnv(HenTrainingEnv):
+    """Sanity-check environment: both agents act randomly."""
 
-    for seed in seeds:
-        env = EagleTrainingEnv(
-            hen_policy_path=hen_model_path, config=cfg, seed=seed, device="cpu"
+    def step(self, action: np.ndarray):
+        self._apply_action(self.hen, action, self.cfg.hen_max_speed, self.cfg.max_force)
+        eagle_action = self.rng.uniform(-1.0, 1.0, size=(2,)).astype(np.float32)
+        self._apply_action(
+            self.eagle,
+            eagle_action,
+            self.cfg.eagle_max_speed,
+            self.cfg.eagle_max_force,
         )
-        for ep in range(n_episodes):
-            obs, _ = env.reset(seed=seed * 10000 + ep)
-            hen_return = 0.0
-            eagle_return = 0.0
-            done = False
-            total_dist = 0.0
-            steps = 0
-            captured = False
 
-            while not done:
-                # Eagle action from trained model
-                eagle_action, _ = eagle_model.predict(obs, deterministic=True)
-                obs, eagle_reward, terminated, truncated, info = env.step(eagle_action)
-                eagle_return += eagle_reward
-                total_dist += info.get("dist_to_tail", 0.0)
-                steps += 1
-                done = terminated or truncated
-                if terminated and steps < cfg.max_steps:
-                    captured = True
+        self.world.Step(self.cfg.dt, 6, 2)
+        self._enforce_bounds()
+        self._handle_eagle_bounce_physics()
+        self.step_count += 1
 
-            # For hen return, we use a separate env run
-            # But since they are coupled, we approximate hen_return from eagle perspective
-            # Hen "wins" if not captured; compute a proxy return
-            hen_return = 0.0 if captured else 1.0  # simplified: survival = success
-
-            results["eagle_return"].append(eagle_return)
-            results["hen_return"].append(hen_return)
-            results["capture"].append(1.0 if captured else 0.0)
-            results["episode_length"].append(float(steps))
-            results["avg_dist"].append(total_dist / max(steps, 1))
-
-        env.close()
-
-    return results
+        reward, done = self._compute_reward_done()
+        obs = self._get_obs(role="hen")
+        terminated = done and (self.step_count < self.cfg.max_steps)
+        truncated = self.step_count >= self.cfg.max_steps
+        info = {"dist_to_tail": float((self.eagle.position - self.chicks[-1].position).length)}
+        return obs, reward, terminated, truncated, info
 
 
-def evaluate_random(
-    cfg: PhysicsConfig,
-    seeds: List[int],
-    n_episodes: int,
-) -> Dict[str, List[float]]:
-    """Evaluate with both agents taking random actions."""
-    results: Dict[str, List[float]] = {
-        "hen_return": [],
-        "eagle_return": [],
-        "capture": [],
-        "episode_length": [],
-        "avg_dist": [],
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Evaluate AeroPursuit methods with corrected task metrics.")
+    parser.add_argument(
+        "--method",
+        choices=["all", "curriculum", "cotraining", "heuristic", "random"],
+        default="all",
+        help="Subset of methods to evaluate.",
+    )
+    parser.add_argument(
+        "--eval-seeds",
+        nargs="*",
+        type=int,
+        default=DEFAULT_EVAL_SEEDS,
+        help="Evaluation seeds used to build per-seed summaries.",
+    )
+    parser.add_argument(
+        "--episodes-per-seed",
+        type=int,
+        default=DEFAULT_EPISODES_PER_SEED,
+        help="Number of episodes evaluated for each evaluation seed.",
+    )
+    parser.add_argument(
+        "--curriculum-pair",
+        action="append",
+        metavar="HEN::EAGLE",
+        help="Model pair for a curriculum run. Repeat the flag for multiple training runs.",
+    )
+    parser.add_argument(
+        "--cotraining-pair",
+        action="append",
+        metavar="HEN::EAGLE",
+        help="Model pair for a from-scratch co-training run. Repeat the flag for multiple training runs.",
+    )
+    parser.add_argument(
+        "--episode-output",
+        type=str,
+        default="results/eval_episode.csv",
+        help="CSV path for episode-level records.",
+    )
+    parser.add_argument(
+        "--seed-output",
+        type=str,
+        default="results/eval_seed_summary.csv",
+        help="CSV path for evaluation-seed summaries.",
+    )
+    parser.add_argument(
+        "--run-output",
+        type=str,
+        default="results/eval_run_summary.csv",
+        help="CSV path for independent-run summaries.",
+    )
+    parser.add_argument(
+        "--latex-output",
+        type=str,
+        default="results/latex_tables.tex",
+        help="LaTeX table path generated from run summaries.",
+    )
+    return parser.parse_args()
+
+
+def mean_std(values: Sequence[float]) -> tuple[float, float]:
+    arr = np.asarray(values, dtype=float)
+    if arr.size == 0:
+        return 0.0, 0.0
+    return float(arr.mean()), float(arr.std())
+
+
+def parse_pair_specs(
+    raw_specs: Sequence[str] | None,
+    default_pair: tuple[Path, Path] | None,
+    method_name: str,
+) -> list[PolicyPair]:
+    specs = list(raw_specs or [])
+    if not specs and default_pair is not None:
+        if default_pair[0].exists() and default_pair[1].exists():
+            specs = [f"{default_pair[0].as_posix()}::{default_pair[1].as_posix()}"]
+
+    pairs: list[PolicyPair] = []
+    for idx, raw_spec in enumerate(specs):
+        if "::" not in raw_spec:
+            raise ValueError(f"Expected pair spec in HEN::EAGLE format, got: {raw_spec}")
+        hen_str, eagle_str = raw_spec.split("::", maxsplit=1)
+        hen_path = Path(hen_str)
+        eagle_path = Path(eagle_str)
+        if not hen_path.exists():
+            raise FileNotFoundError(f"Hen model not found: {hen_path}")
+        if not eagle_path.exists():
+            raise FileNotFoundError(f"Eagle model not found: {eagle_path}")
+
+        if hen_path.parent == eagle_path.parent and hen_path.parent.name:
+            run_id = hen_path.parent.name
+        else:
+            run_id = f"run_{idx}"
+
+        pairs.append(
+            PolicyPair(
+                method=method_name,
+                run_id=run_id,
+                hen_model_path=hen_path,
+                eagle_model_path=eagle_path,
+            )
+        )
+    return pairs
+
+
+def run_policy_episode(env: EagleTrainingEnv, eagle_model: PPO, reset_seed: int) -> dict:
+    obs, _ = env.reset(seed=reset_seed)
+    total_dist = 0.0
+    steps = 0
+    terminated = False
+    truncated = False
+
+    while not (terminated or truncated):
+        eagle_action, _ = eagle_model.predict(obs, deterministic=True)
+        obs, _, terminated, truncated, info = env.step(eagle_action)
+        total_dist += info.get("dist_to_tail", 0.0)
+        steps += 1
+
+    return {
+        "capture": 1.0 if terminated else 0.0,
+        "episode_length": float(steps),
+        "avg_tail_dist": total_dist / max(steps, 1),
     }
 
-    for seed in seeds:
-        env = HenTrainingEnv(config=cfg, seed=seed)
-        rng = np.random.default_rng(seed)
 
-        for ep in range(n_episodes):
-            obs, _ = env.reset(seed=seed * 10000 + ep)
-            hen_return = 0.0
-            done = False
-            total_dist = 0.0
-            steps = 0
-            captured = False
+def run_random_hen_episode(env: HenTrainingEnv, reset_seed: int) -> dict:
+    obs, _ = env.reset(seed=reset_seed)
+    hen_rng = np.random.default_rng(reset_seed)
+    total_dist = 0.0
+    steps = 0
+    terminated = False
+    truncated = False
 
-            while not done:
-                # Random hen action
-                action = rng.uniform(-1, 1, size=(2,)).astype(np.float32)
-                obs, reward, terminated, truncated, info = env.step(action)
-                hen_return += reward
-                total_dist += info.get("dist_to_tail", 0.0)
-                steps += 1
-                done = terminated or truncated
-                if terminated and steps < cfg.max_steps:
-                    captured = True
+    while not (terminated or truncated):
+        hen_action = hen_rng.uniform(-1.0, 1.0, size=(2,)).astype(np.float32)
+        obs, _, terminated, truncated, info = env.step(hen_action)
+        total_dist += info.get("dist_to_tail", 0.0)
+        steps += 1
 
-            results["hen_return"].append(hen_return)
-            # Eagle "return" proxy: positive if captured, negative otherwise
-            results["eagle_return"].append(100.0 if captured else -float(steps) * 0.01)
-            results["capture"].append(1.0 if captured else 0.0)
-            results["episode_length"].append(float(steps))
-            results["avg_dist"].append(total_dist / max(steps, 1))
-
-        env.close()
-
-    return results
-
-
-def evaluate_heuristic(
-    cfg: PhysicsConfig,
-    seeds: List[int],
-    n_episodes: int,
-) -> Dict[str, List[float]]:
-    """Evaluate heuristic eagle vs random hen (no training)."""
-    # This uses HenTrainingEnv which already has a heuristic eagle built-in.
-    # The hen takes random actions to simulate an untrained agent.
-    results: Dict[str, List[float]] = {
-        "hen_return": [],
-        "eagle_return": [],
-        "capture": [],
-        "episode_length": [],
-        "avg_dist": [],
+    return {
+        "capture": 1.0 if terminated else 0.0,
+        "episode_length": float(steps),
+        "avg_tail_dist": total_dist / max(steps, 1),
     }
 
-    for seed in seeds:
-        env = HenTrainingEnv(config=cfg, seed=seed)
-        rng = np.random.default_rng(seed)
 
-        for ep in range(n_episodes):
-            obs, _ = env.reset(seed=seed * 10000 + ep)
-            hen_return = 0.0
-            done = False
-            total_dist = 0.0
-            steps = 0
-            captured = False
+def evaluate_policy_pair(
+    spec: PolicyPair,
+    cfg: PhysicsConfig,
+    eval_seeds: Sequence[int],
+    episodes_per_seed: int,
+) -> list[dict]:
+    print(f"Evaluating {spec.method} run '{spec.run_id}'...")
+    env = EagleTrainingEnv(
+        hen_policy_path=str(spec.hen_model_path),
+        config=cfg,
+        seed=0,
+        device="cpu",
+    )
+    eagle_model = PPO.load(spec.eagle_model_path, device="cpu")
 
-            while not done:
-                # Random hen action (untrained hen)
-                action = rng.uniform(-1, 1, size=(2,)).astype(np.float32)
-                obs, reward, terminated, truncated, info = env.step(action)
-                hen_return += reward
-                total_dist += info.get("dist_to_tail", 0.0)
-                steps += 1
-                done = terminated or truncated
-                if terminated and steps < cfg.max_steps:
-                    captured = True
-
-            results["hen_return"].append(hen_return)
-            results["eagle_return"].append(100.0 if captured else -float(steps) * 0.01)
-            results["capture"].append(1.0 if captured else 0.0)
-            results["episode_length"].append(float(steps))
-            results["avg_dist"].append(total_dist / max(steps, 1))
-
+    rows: list[dict] = []
+    try:
+        for eval_seed in eval_seeds:
+            for episode_idx in range(episodes_per_seed):
+                reset_seed = eval_seed * 10000 + episode_idx
+                metrics = run_policy_episode(env, eagle_model, reset_seed)
+                rows.append(
+                    {
+                        "method": spec.method,
+                        "run_id": spec.run_id,
+                        "eval_seed": eval_seed,
+                        "episode_idx": episode_idx,
+                        **metrics,
+                    }
+                )
+    finally:
         env.close()
 
-    return results
+    return rows
 
 
-# ---------------------------------------------------------------------------
-# Statistical testing
-# ---------------------------------------------------------------------------
-
-def welch_ttest(a: List[float], b: List[float]) -> Tuple[float, float]:
-    """Welch's t-test (unequal variance). Returns (t_stat, p_value)."""
-    a_arr = np.array(a)
-    b_arr = np.array(b)
-    t_stat, p_val = stats.ttest_ind(a_arr, b_arr, equal_var=False)
-    return float(t_stat), float(p_val)
-
-
-def compute_stats(data: List[float]) -> Tuple[float, float]:
-    """Return (mean, std)."""
-    arr = np.array(data)
-    return float(np.mean(arr)), float(np.std(arr))
-
-
-# ---------------------------------------------------------------------------
-# Output helpers
-# ---------------------------------------------------------------------------
-
-def print_summary_table(all_results: Dict[str, Dict[str, List[float]]]) -> None:
-    """Print a formatted comparison table to console."""
-    metrics = ["hen_return", "eagle_return", "capture", "episode_length", "avg_dist"]
-    header = f"{'Method':<20}"
-    for m in metrics:
-        header += f" {m:>20}"
-    print("\n" + "=" * 120)
-    print("QUANTITATIVE COMPARISON")
-    print("=" * 120)
-    print(header)
-    print("-" * 120)
-
-    for method, results in all_results.items():
-        row = f"{method:<20}"
-        for m in metrics:
-            mean, std = compute_stats(results[m])
-            if m == "capture":
-                row += f" {mean*100:>8.1f}% +/- {std*100:>5.1f}%"
-            else:
-                row += f" {mean:>9.2f} +/- {std:>6.2f}"
-        print(row)
-    print("=" * 120)
+def evaluate_random_baseline(
+    cfg: PhysicsConfig,
+    eval_seeds: Sequence[int],
+    episodes_per_seed: int,
+) -> list[dict]:
+    print("Evaluating True Random baseline...")
+    env = RandomVsRandomEnv(config=cfg, seed=0)
+    rows: list[dict] = []
+    try:
+        for eval_seed in eval_seeds:
+            for episode_idx in range(episodes_per_seed):
+                reset_seed = eval_seed * 10000 + episode_idx
+                metrics = run_random_hen_episode(env, reset_seed)
+                rows.append(
+                    {
+                        "method": "True Random",
+                        "run_id": "analytic_baseline",
+                        "eval_seed": eval_seed,
+                        "episode_idx": episode_idx,
+                        **metrics,
+                    }
+                )
+    finally:
+        env.close()
+    return rows
 
 
-def print_significance_table(
-    all_results: Dict[str, Dict[str, List[float]]], ours_key: str = "Curriculum"
-) -> None:
-    """Print statistical significance results."""
-    if ours_key not in all_results:
-        print("Curriculum results not available, skipping significance tests.")
+def evaluate_heuristic_baseline(
+    cfg: PhysicsConfig,
+    eval_seeds: Sequence[int],
+    episodes_per_seed: int,
+) -> list[dict]:
+    print("Evaluating Heuristic + Random baseline...")
+    env = HenTrainingEnv(config=cfg, seed=0)
+    rows: list[dict] = []
+    try:
+        for eval_seed in eval_seeds:
+            for episode_idx in range(episodes_per_seed):
+                reset_seed = eval_seed * 10000 + episode_idx
+                metrics = run_random_hen_episode(env, reset_seed)
+                rows.append(
+                    {
+                        "method": "Heuristic + Random",
+                        "run_id": "analytic_baseline",
+                        "eval_seed": eval_seed,
+                        "episode_idx": episode_idx,
+                        **metrics,
+                    }
+                )
+    finally:
+        env.close()
+    return rows
+
+
+def aggregate_seed_rows(episode_rows: Sequence[dict]) -> list[dict]:
+    grouped: dict[tuple[str, str, int], list[dict]] = {}
+    for row in episode_rows:
+        key = (row["method"], row["run_id"], int(row["eval_seed"]))
+        grouped.setdefault(key, []).append(row)
+
+    seed_rows: list[dict] = []
+    for (method, run_id, eval_seed), rows in sorted(grouped.items()):
+        captures = [float(row["capture"]) for row in rows]
+        episode_lengths = [float(row["episode_length"]) for row in rows]
+        avg_tail_dists = [float(row["avg_tail_dist"]) for row in rows]
+        seed_rows.append(
+            {
+                "method": method,
+                "run_id": run_id,
+                "eval_seed": eval_seed,
+                "capture_rate": float(np.mean(captures)),
+                "episode_length": float(np.mean(episode_lengths)),
+                "avg_tail_dist": float(np.mean(avg_tail_dists)),
+                "episode_count": len(rows),
+            }
+        )
+    return seed_rows
+
+
+def aggregate_run_rows(seed_rows: Sequence[dict]) -> list[dict]:
+    grouped: dict[tuple[str, str], list[dict]] = {}
+    for row in seed_rows:
+        key = (row["method"], row["run_id"])
+        grouped.setdefault(key, []).append(row)
+
+    run_rows: list[dict] = []
+    for (method, run_id), rows in sorted(grouped.items()):
+        run_rows.append(
+            {
+                "method": method,
+                "run_id": run_id,
+                "capture_rate": float(np.mean([float(row["capture_rate"]) for row in rows])),
+                "episode_length": float(np.mean([float(row["episode_length"]) for row in rows])),
+                "avg_tail_dist": float(np.mean([float(row["avg_tail_dist"]) for row in rows])),
+                "eval_seed_count": len(rows),
+            }
+        )
+    return run_rows
+
+
+def summarize_methods(run_rows: Sequence[dict]) -> dict[str, dict[str, tuple[float, float]]]:
+    grouped: dict[str, dict[str, list[float]]] = {}
+    for row in run_rows:
+        method = row["method"]
+        grouped.setdefault(method, {metric: [] for metric in METRICS})
+        for metric in METRICS:
+            grouped[method][metric].append(float(row[metric]))
+
+    summary: dict[str, dict[str, tuple[float, float]]] = {}
+    for method, metric_values in grouped.items():
+        summary[method] = {
+            metric: mean_std(values) for metric, values in metric_values.items()
+        }
+    return summary
+
+
+def welch_ttest(run_rows: Sequence[dict], method_a: str, method_b: str, metric: str) -> tuple[float, float] | None:
+    values_a = [float(row[metric]) for row in run_rows if row["method"] == method_a]
+    values_b = [float(row[metric]) for row in run_rows if row["method"] == method_b]
+    if len(values_a) < 2 or len(values_b) < 2:
+        return None
+    t_stat, p_value = stats.ttest_ind(values_a, values_b, equal_var=False)
+    return float(t_stat), float(p_value)
+
+
+def save_csv(rows: Sequence[dict], fieldnames: Sequence[str], path_str: str) -> None:
+    path = Path(path_str)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"Saved {path}")
+
+
+def print_method_summary(run_rows: Sequence[dict]) -> None:
+    if not run_rows:
+        print("No run summaries available.")
         return
 
-    ours = all_results[ours_key]
-    print("\n" + "=" * 90)
-    print("STATISTICAL SIGNIFICANCE (Welch's t-test)")
-    print("=" * 90)
-    print(f"{'Comparison':<30} {'Metric':<20} {'t-stat':>10} {'p-value':>12} {'Significant?':>14}")
-    print("-" * 90)
-
-    for method, results in all_results.items():
-        if method == ours_key:
+    summary = summarize_methods(run_rows)
+    print("\nMethod-level summary (mean +/- std over independent runs)")
+    print("-" * 96)
+    print(f"{'Method':<24} {'Capture Rate (%)':>18} {'Avg Tail Dist (m)':>20} {'Episode Length':>18}")
+    print("-" * 96)
+    for method in METHOD_ORDER:
+        if method not in summary:
             continue
-        for metric in ["hen_return", "eagle_return", "capture"]:
-            t_stat, p_val = welch_ttest(ours[metric], results[metric])
-            sig = "YES (p<0.05)" if p_val < 0.05 else "NO"
-            label = f"Ours vs {method}"
-            print(f"{label:<30} {metric:<20} {t_stat:>10.3f} {p_val:>12.2e} {sig:>14}")
-    print("=" * 90)
+        capture_mean, capture_std = summary[method]["capture_rate"]
+        dist_mean, dist_std = summary[method]["avg_tail_dist"]
+        length_mean, length_std = summary[method]["episode_length"]
+        print(
+            f"{method:<24} "
+            f"{capture_mean * 100:>8.2f} +/- {capture_std * 100:<7.2f} "
+            f"{dist_mean:>9.2f} +/- {dist_std:<8.2f} "
+            f"{length_mean:>9.2f} +/- {length_std:<8.2f}"
+        )
+    print("-" * 96)
 
 
-def save_results_csv(
-    all_results: Dict[str, Dict[str, List[float]]], output_path: str
-) -> None:
-    """Save per-episode raw results to CSV."""
-    path = Path(output_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+def print_significance(run_rows: Sequence[dict]) -> None:
+    result_rows = []
+    for metric in METRICS:
+        test_result = welch_ttest(run_rows, "Curriculum", "Co-training", metric)
+        if test_result is None:
+            result_rows.append((metric, None, None))
+        else:
+            result_rows.append((metric, test_result[0], test_result[1]))
 
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["method", "episode_idx", "hen_return", "eagle_return",
-                         "capture", "episode_length", "avg_dist"])
-        for method, results in all_results.items():
-            n = len(results["hen_return"])
-            for i in range(n):
-                writer.writerow([
-                    method, i,
-                    results["hen_return"][i],
-                    results["eagle_return"][i],
-                    results["capture"][i],
-                    results["episode_length"][i],
-                    results["avg_dist"][i],
-                ])
-    print(f"\nRaw results saved to: {path}")
+    print("\nCurriculum vs Co-training significance")
+    print("-" * 72)
+    print(f"{'Metric':<18} {'t-stat':>12} {'p-value':>14} {'Status':>18}")
+    print("-" * 72)
+    for metric, t_stat, p_value in result_rows:
+        if t_stat is None or p_value is None:
+            print(f"{metric:<18} {'N/A':>12} {'N/A':>14} {'need >=2 runs':>18}")
+            continue
+        status = "p < 0.05" if p_value < 0.05 else "not significant"
+        print(f"{metric:<18} {t_stat:>12.3f} {p_value:>14.3e} {status:>18}")
+    print("-" * 72)
 
 
-def save_latex_tables(
-    all_results: Dict[str, Dict[str, List[float]]],
-    output_path: str,
-    ours_key: str = "Curriculum",
-) -> None:
-    """Generate LaTeX table snippets ready to paste into the paper."""
-    path = Path(output_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+def save_latex_tables(run_rows: Sequence[dict], output_path: str) -> None:
+    summary = summarize_methods(run_rows)
+    lines: list[str] = []
 
-    lines = []
-
-    # Table 1: Quantitative comparison
-    lines.append("% === Table: Quantitative Comparison ===")
+    lines.append("% Generated by src/evaluate.py")
     lines.append("\\begin{table}[t]")
     lines.append("\\centering")
-    lines.append("\\caption{Quantitative comparison across methods "
-                 "(mean $\\pm$ std over 5 seeds, 100 episodes each).}")
+    lines.append(
+        "\\caption{Quantitative comparison across sanity baselines and trained methods. Metrics are reported as mean $\\pm$ std over independent training runs; when only one run is available, no significance claim is made.}"
+    )
     lines.append("\\label{tab:baseline_comparison}")
     lines.append("\\resizebox{\\linewidth}{!}{")
-    lines.append("\\begin{tabular}{lccccc}")
+    lines.append("\\begin{tabular}{lccc}")
     lines.append("\\toprule")
-    lines.append("\\textbf{Method} & \\textbf{Hen Return} & \\textbf{Eagle Return} "
-                 "& \\textbf{Capture Rate (\\%)} & \\textbf{Avg Dist} & \\textbf{Ep. Length} \\\\")
+    lines.append(
+        "\\textbf{Method} & \\textbf{Capture Rate (\\%)} $\\downarrow$ & \\textbf{Avg Tail Dist (m)} $\\uparrow$ & \\textbf{Episode Length} $\\uparrow$ \\\\" 
+    )
     lines.append("\\midrule")
-
-    for method, results in all_results.items():
-        hr_m, hr_s = compute_stats(results["hen_return"])
-        er_m, er_s = compute_stats(results["eagle_return"])
-        cr_m, cr_s = compute_stats(results["capture"])
-        ad_m, ad_s = compute_stats(results["avg_dist"])
-        el_m, el_s = compute_stats(results["episode_length"])
-
-        bold = method == ours_key
-        fmt = "\\mathbf{" if bold else ""
-        end = "}" if bold else ""
-
+    for method in METHOD_ORDER:
+        if method not in summary:
+            continue
+        capture_mean, capture_std = summary[method]["capture_rate"]
+        dist_mean, dist_std = summary[method]["avg_tail_dist"]
+        length_mean, length_std = summary[method]["episode_length"]
+        bold_open = "\\mathbf{" if method == "Curriculum" else ""
+        bold_close = "}" if method == "Curriculum" else ""
         lines.append(
-            f"{method} & ${fmt}{hr_m:.2f} \\pm {hr_s:.2f}{end}$ "
-            f"& ${fmt}{er_m:.2f} \\pm {er_s:.2f}{end}$ "
-            f"& ${fmt}{cr_m*100:.1f} \\pm {cr_s*100:.1f}{end}$ "
-            f"& ${fmt}{ad_m:.2f} \\pm {ad_s:.2f}{end}$ "
-            f"& ${fmt}{el_m:.1f} \\pm {el_s:.1f}{end}$ \\\\"
+            f"{method} & ${bold_open}{capture_mean * 100:.2f} \\pm {capture_std * 100:.2f}{bold_close}$ & "
+            f"${bold_open}{dist_mean:.2f} \\pm {dist_std:.2f}{bold_close}$ & "
+            f"${bold_open}{length_mean:.2f} \\pm {length_std:.2f}{bold_close}$ \\\\" 
         )
-
     lines.append("\\bottomrule")
     lines.append("\\end{tabular}")
     lines.append("}")
     lines.append("\\end{table}")
     lines.append("")
 
-    # Table 2: Statistical significance
-    if ours_key in all_results:
-        ours = all_results[ours_key]
-        lines.append("% === Table: Statistical Significance ===")
-        lines.append("\\begin{table}[t]")
-        lines.append("\\centering")
-        lines.append("\\caption{Statistical significance (Welch's t-test) comparing "
-                     "Curriculum (Ours) against baselines on key metrics.}")
-        lines.append("\\label{tab:significance}")
-        lines.append("\\begin{tabular}{lccc}")
-        lines.append("\\toprule")
-        lines.append("\\textbf{Comparison} & \\textbf{Hen Return} & "
-                     "\\textbf{Eagle Return} & \\textbf{Capture Rate} \\\\")
-        lines.append("\\midrule")
+    lines.append("\\begin{table}[t]")
+    lines.append("\\centering")
+    lines.append(
+        "\\caption{Welch's t-test on per-run summaries for Curriculum vs from-scratch Co-training. Statistical claims are reported only when both methods contain at least two independent runs.}"
+    )
+    lines.append("\\label{tab:significance}")
+    lines.append("\\begin{tabular}{lcc}")
+    lines.append("\\toprule")
+    lines.append("\\textbf{Metric} & \\textbf{p-value} & \\textbf{Status} \\\\" )
+    lines.append("\\midrule")
+    for metric in METRICS:
+        test_result = welch_ttest(run_rows, "Curriculum", "Co-training", metric)
+        if test_result is None:
+            lines.append(f"{metric.replace('_', ' ')} & N/A & need at least 2 runs/method \\\\" )
+            continue
+        _, p_value = test_result
+        status = "significant" if p_value < 0.05 else "not significant"
+        lines.append(f"{metric.replace('_', ' ')} & ${p_value:.3e}$ & {status} \\\\" )
+    lines.append("\\bottomrule")
+    lines.append("\\end{tabular}")
+    lines.append("\\end{table}")
 
-        for method, results in all_results.items():
-            if method == ours_key:
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text("\n".join(lines), encoding="utf-8")
+    print(f"Saved {output}")
+
+
+def evaluate_methods(args: argparse.Namespace) -> tuple[list[dict], list[dict], list[dict]]:
+    cfg = PhysicsConfig()
+    episode_rows: list[dict] = []
+
+    methods_to_run = [args.method] if args.method != "all" else ["random", "heuristic", "cotraining", "curriculum"]
+
+    curriculum_pairs = parse_pair_specs(
+        args.curriculum_pair,
+        (DEFAULT_CURRICULUM_HEN, DEFAULT_CURRICULUM_EAGLE),
+        "Curriculum",
+    )
+    cotraining_pairs = parse_pair_specs(
+        args.cotraining_pair,
+        None,
+        "Co-training",
+    )
+
+    for method in methods_to_run:
+        if method == "random":
+            episode_rows.extend(
+                evaluate_random_baseline(cfg, args.eval_seeds, args.episodes_per_seed)
+            )
+        elif method == "heuristic":
+            episode_rows.extend(
+                evaluate_heuristic_baseline(cfg, args.eval_seeds, args.episodes_per_seed)
+            )
+        elif method == "curriculum":
+            if not curriculum_pairs:
+                print("Skipping Curriculum: no valid model pair available.")
                 continue
-            vals = []
-            for metric in ["hen_return", "eagle_return", "capture"]:
-                _, p_val = welch_ttest(ours[metric], results[metric])
-                if p_val < 0.001:
-                    vals.append(f"$p < 0.001$")
-                else:
-                    vals.append(f"$p = {p_val:.3f}$")
-            lines.append(f"Ours vs {method} & {vals[0]} & {vals[1]} & {vals[2]} \\\\")
+            for pair in curriculum_pairs:
+                episode_rows.extend(
+                    evaluate_policy_pair(pair, cfg, args.eval_seeds, args.episodes_per_seed)
+                )
+        elif method == "cotraining":
+            if not cotraining_pairs:
+                print("Skipping Co-training: no valid model pair available.")
+                continue
+            for pair in cotraining_pairs:
+                episode_rows.extend(
+                    evaluate_policy_pair(pair, cfg, args.eval_seeds, args.episodes_per_seed)
+                )
 
-        lines.append("\\bottomrule")
-        lines.append("\\end{tabular}")
-        lines.append("\\end{table}")
-
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
-    print(f"LaTeX table snippets saved to: {path}")
-
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Evaluate AeroPursuit methods and generate comparison data."
-    )
-    parser.add_argument(
-        "--method",
-        type=str,
-        choices=["all", "curriculum", "random", "heuristic"],
-        default="all",
-        help="Which method to evaluate (default: all).",
-    )
-    parser.add_argument(
-        "--hen-model",
-        type=str,
-        default=HEN_MODEL_DEFAULT,
-        help="Path to trained hen model (.zip).",
-    )
-    parser.add_argument(
-        "--eagle-model",
-        type=str,
-        default=EAGLE_MODEL_DEFAULT,
-        help="Path to trained eagle model (.zip).",
-    )
-    parser.add_argument(
-        "--n-episodes",
-        type=int,
-        default=EPISODES_PER_SEED,
-        help="Number of episodes per seed.",
-    )
-    parser.add_argument(
-        "--output",
-        type=str,
-        default="results/evaluation_results.csv",
-        help="CSV output path for raw results.",
-    )
-    parser.add_argument(
-        "--latex-output",
-        type=str,
-        default="results/latex_tables.tex",
-        help="LaTeX table snippet output path.",
-    )
-    return parser.parse_args()
+    seed_rows = aggregate_seed_rows(episode_rows)
+    run_rows = aggregate_run_rows(seed_rows)
+    return episode_rows, seed_rows, run_rows
 
 
 def main() -> None:
     args = parse_args()
-    cfg = PhysicsConfig()
-    all_results: Dict[str, Dict[str, List[float]]] = {}
+    episode_rows, seed_rows, run_rows = evaluate_methods(args)
 
-    methods_to_run = (
-        ["random", "heuristic", "curriculum"] if args.method == "all"
-        else [args.method]
+    if not episode_rows:
+        print("No evaluation records were produced.")
+        return
+
+    print_method_summary(run_rows)
+    print_significance(run_rows)
+
+    save_csv(
+        episode_rows,
+        ["method", "run_id", "eval_seed", "episode_idx", "capture", "episode_length", "avg_tail_dist"],
+        args.episode_output,
     )
+    save_csv(
+        seed_rows,
+        ["method", "run_id", "eval_seed", "capture_rate", "avg_tail_dist", "episode_length", "episode_count"],
+        args.seed_output,
+    )
+    save_csv(
+        run_rows,
+        ["method", "run_id", "capture_rate", "avg_tail_dist", "episode_length", "eval_seed_count"],
+        args.run_output,
+    )
+    save_latex_tables(run_rows, args.latex_output)
 
-    for method in methods_to_run:
-        print(f"\n>>> Evaluating: {method.upper()} <<<")
-        if method == "curriculum":
-            if not Path(args.hen_model).exists():
-                print(f"  [SKIP] Hen model not found: {args.hen_model}")
-                continue
-            if not Path(args.eagle_model).exists():
-                print(f"  [SKIP] Eagle model not found: {args.eagle_model}")
-                continue
-            results = evaluate_curriculum(
-                args.hen_model, args.eagle_model, cfg, SEEDS, args.n_episodes
-            )
-            all_results["Curriculum"] = results
-        elif method == "random":
-            results = evaluate_random(cfg, SEEDS, args.n_episodes)
-            all_results["Random"] = results
-        elif method == "heuristic":
-            results = evaluate_heuristic(cfg, SEEDS, args.n_episodes)
-            all_results["Heuristic"] = results
-
-        # Quick stats
-        for metric in ["hen_return", "eagle_return", "capture"]:
-            mean, std = compute_stats(results[metric])
-            label = f"{metric}" if metric != "capture" else "capture_rate"
-            if metric == "capture":
-                print(f"  {label}: {mean*100:.1f}% +/- {std*100:.1f}%")
-            else:
-                print(f"  {label}: {mean:.2f} +/- {std:.2f}")
-
-    if len(all_results) > 0:
-        print_summary_table(all_results)
-        print_significance_table(all_results)
-        save_results_csv(all_results, args.output)
-        save_latex_tables(all_results, args.latex_output)
-
-    print("\nDone!")
+    print("\nDone.")
 
 
 if __name__ == "__main__":
