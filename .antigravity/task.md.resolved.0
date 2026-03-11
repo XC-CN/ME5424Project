@@ -1,0 +1,6 @@
+# 补充统计显著性检验与基线定量对比
+
+- [/] 编写评估脚本 `src/evaluate.py`
+- [ ] 运行评估脚本获取数据
+- [ ] 修改论文 [.tex](file:///d:/OneDrive/NUS/EECR2026/AeroPursuit-Predator-Prey-for-EERC2026/AeroPursuit-Predator-Prey.tex) 文件（新增表格 + 改写 Results + 更新 Conclusion）
+- [ ] 验证论文编译

@@ -1,0 +1,135 @@
+# 评估指标修改方案：补充统计显著性检验与基线定量对比
+
+## 问题诊断
+
+评委指出：**"Evaluation metrics: Missing statistical significance testing and quantitative comparisons against baselines (e.g., joint training or self-play)"**
+
+当前论文存在以下不足：
+1. **无统计显著性检验**：训练曲线仅展示单次运行的 EMA 平滑结果，无多种子(multi-seed)实验，无置信区间或假设检验
+2. **无基线对比**：未与 Joint Training（双方同时训练）或 Self-Play 等方法做定量比较
+3. **无量化评估表格**：Results 部分只有定性描述("steadily increases", "approaches 1")，缺乏具体数值
+
+---
+
+## 修改方案概览
+
+### 方案一：代码端 — 新增评估脚本 `src/evaluate.py`
+
+编写一个统一的评估脚本，功能包括：
+
+1. **多种子评估**（Multi-seed Evaluation）
+   - 用 5 个不同随机种子（如 0, 42, 123, 456, 789）分别运行已训练模型 100 个 episode
+   - 记录每个 episode 的：`episode_return`、`episode_length`、`capture_success`（是否成功捕获）、`avg_eagle_tail_dist`（平均鹰-尾距离）
+   - 计算均值 ± 标准差
+
+2. **基线对比**：实现并评估以下 3 种方法
+
+   | 方法 | 描述 | 实现方式 |
+   |------|------|----------|
+   | **Random** | 双方随机动作 | 动作从 `action_space.sample()` 采样 |
+   | **Heuristic-only** | 启发式老鹰 vs 无训练母鸡 | 使用 [HenTrainingEnv](file:///d:/OneDrive/NUS/EECR2026/src/curriculum_env.py#400-562) 中已有的启发式逻辑，母鸡随机动作 |
+   | **Curriculum (Ours)** | 两阶段课程训练 | 加载 `best_hen` + `best_eagle` 模型 |
+
+   > [!NOTE]
+   > 评委建议的 "joint training" 和 "self-play" 对比，在项目中已有 [train_stage3.py](file:///d:/OneDrive/NUS/EECR2026/src/train_stage3.py)（交替训练）。如果已有 Stage 3 训练结果，可直接加载评估；若无，可以用较少步数（如 200K）快速训练一个作为对比。
+
+3. **统计检验**
+   - 对 Curriculum 方法 vs 各基线，使用 **Welch's t-test**（不等方差 t 检验）或 **Mann-Whitney U test** 比较 episode return 分布
+   - 报告 p-value，以 p < 0.05 为显著性阈值
+
+### 方案二：论文端 — 修改 [AeroPursuit-Predator-Prey.tex](file:///d:/OneDrive/NUS/EECR2026/AeroPursuit-Predator-Prey-for-EERC2026/AeroPursuit-Predator-Prey.tex)
+
+#### 1. 新增 Table：定量对比结果表
+
+在 Results 部分新增一个表格（建议放在 Section IV-C "Results Analysis" 之前或之中）：
+
+```latex
+\begin{table}[t]
+\centering
+\caption{Quantitative comparison across methods (mean $\pm$ std over 5 seeds, 100 episodes each).}
+\label{tab:baseline_comparison}
+\resizebox{\linewidth}{!}{
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Method} & \textbf{Hen Return} & \textbf{Eagle Return} & \textbf{Capture Rate (\%)} & \textbf{Avg Dist} & \textbf{Ep. Length} \\
+\midrule
+Random         & $x \pm y$ & $x \pm y$ & $x \pm y$ & $x \pm y$ & $x \pm y$ \\
+Heuristic-only & $x \pm y$ & $x \pm y$ & $x \pm y$ & $x \pm y$ & $x \pm y$ \\
+Curriculum (Ours) & $\mathbf{x \pm y}$ & $\mathbf{x \pm y}$ & $\mathbf{x \pm y}$ & $\mathbf{x \pm y}$ & $\mathbf{x \pm y}$ \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+```
+
+#### 2. 新增 Table：统计显著性检验结果
+
+```latex
+\begin{table}[t]
+\centering
+\caption{Statistical significance (Welch's t-test p-values) comparing Curriculum (Ours) against baselines on episode return.}
+\label{tab:significance}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Comparison} & \textbf{Hen Return p-value} & \textbf{Eagle Return p-value} \\
+\midrule
+Ours vs Random         & $p = xxx$ & $p = xxx$ \\
+Ours vs Heuristic-only & $p = xxx$ & $p = xxx$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+```
+
+#### 3. 修改 Results Analysis 小节
+
+将当前纯定性描述改为包含具体数值的分析，例如：
+- "Stage 1 hen achieves a mean return of **X +/- Y** over 500 episodes across 5 seeds"
+- "The capture rate of the curriculum-trained eagle reaches **X% +/- Y%**, significantly outperforming the heuristic baseline (Z% +/- W%, p < 0.05)"
+
+#### 4. 修改 Conclusion
+
+将 "Future work will ... systematize evaluation metrics with statistical significance testing" 改为陈述已完成的工作。
+
+#### 5. 训练曲线添加阴影区间（可选）
+
+如果时间允许，对训练曲线用多种子运行，绘制均值 +/- 标准差的阴影区域（shaded area），替代当前单次运行的曲线。
+
+---
+
+## 具体实施步骤
+
+### Step 1：编写 `src/evaluate.py`
+- 加载环境和模型
+- 实现 `run_episodes(env, model, n_episodes, seeds)` 函数
+- 实现基线策略（Random、Heuristic-only）
+- 输出 CSV 结果文件和统计检验结果
+
+### Step 2：运行评估
+```bash
+python src/evaluate.py --method curriculum --hen-model results/curriculum/best_hen/best_model.zip --eagle-model results/curriculum/best_eagle/best_model.zip
+python src/evaluate.py --method random
+python src/evaluate.py --method heuristic
+```
+
+### Step 3：更新论文
+- 在 [.tex](file:///d:/OneDrive/NUS/EECR2026/AeroPursuit-Predator-Prey-for-EERC2026/AeroPursuit-Predator-Prey.tex) 文件中插入两个新表格
+- 更新 Results Analysis 文本
+- 更新 Conclusion
+
+---
+
+## 验证计划
+
+### 自动化验证
+```bash
+# 运行评估脚本，确认输出 CSV 和统计检验结果
+python src/evaluate.py --all-methods --output results/evaluation_results.csv
+```
+
+### 手动验证
+- 检查生成的 CSV 文件中数据是否合理（返回值范围、捕获率范围等）
+- 将数据填入 LaTeX 表格后编译论文，检查表格排版
+- 确认 p-value 计算正确（可用 Python 交叉验证）
+
+> [!IMPORTANT]
+> 此方案只需要你已经训练好的模型（`best_hen/best_model.zip` 和 `best_eagle/best_model.zip`），不需要重新训练。评估脚本只做推理，运行速度很快（几分钟内完成）。

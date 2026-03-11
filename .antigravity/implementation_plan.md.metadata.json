@@ -1,0 +1,5 @@
+{
+  "artifactType": "ARTIFACT_TYPE_IMPLEMENTATION_PLAN",
+  "summary": "中文修改方案，针对评委提出的缺少统计显著性检验和基线定量对比问题。包含三个层面的修改：1) 代码端新增 evaluate.py 评估脚本，支持多种子评估、基线对比（Random/Heuristic/Curriculum）和统计检验（Welch's t-test）；2) 论文端新增两个表格（定量对比表 + 统计显著性表）、修改 Results Analysis 为包含具体数值的描述、更新 Conclusion；3) 可选的训练曲线多种子阴影区域可视化。",
+  "updatedAt": "2026-03-11T08:02:24.136903700Z"
+}
