@@ -6,6 +6,8 @@ $TOTAL_STEPS = 1000000
 $DEVICE = "auto"
 $env:PYTHONUNBUFFERED = "1"
 $PythonExe = "D:\Work\Miniconda\envs\default\python.exe"
+$EVAL_SEEDS = @(0, 42, 123, 456, 789, 1024, 2048, 4096, 8192, 16384)
+$EPISODES_PER_SEED = 50
 
 function Write-Status {
     param(
@@ -121,7 +123,17 @@ Write-Host "=========================================================="
 
 $finalEvalArgs = @(
     "src/evaluate.py",
-    "--method", "all"
+    "--method", "all",
+    "--eval-seeds"
+)
+
+foreach ($evalSeed in $EVAL_SEEDS) {
+    $finalEvalArgs += [string]$evalSeed
+}
+
+$finalEvalArgs += @(
+    "--episodes-per-seed", [string]$EPISODES_PER_SEED,
+    "--device", $DEVICE
 )
 
 foreach ($pair in $curriculumPairs) {

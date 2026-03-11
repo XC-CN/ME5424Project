@@ -1,0 +1,1501 @@
+method,run_id,eval_seed,episode_idx,capture,episode_length,avg_tail_dist
+True Random,analytic_baseline,0,0,0.0,600.0,17.008756363789242
+True Random,analytic_baseline,0,1,1.0,288.0,15.486457518612346
+True Random,analytic_baseline,0,2,0.0,600.0,14.751009717782338
+True Random,analytic_baseline,0,3,0.0,600.0,15.598107934395472
+True Random,analytic_baseline,0,4,0.0,600.0,17.559847227235636
+True Random,analytic_baseline,0,5,0.0,600.0,14.624305287003518
+True Random,analytic_baseline,0,6,0.0,600.0,18.024131729602814
+True Random,analytic_baseline,0,7,0.0,600.0,15.035504566431046
+True Random,analytic_baseline,0,8,0.0,600.0,16.510726553996403
+True Random,analytic_baseline,0,9,0.0,600.0,14.514067913095156
+True Random,analytic_baseline,0,10,0.0,600.0,16.30583890289068
+True Random,analytic_baseline,0,11,0.0,600.0,15.911686107317607
+True Random,analytic_baseline,0,12,0.0,600.0,15.00527730812629
+True Random,analytic_baseline,0,13,1.0,523.0,14.145092802681384
+True Random,analytic_baseline,0,14,0.0,600.0,16.904166643619536
+True Random,analytic_baseline,0,15,0.0,600.0,21.775527114073437
+True Random,analytic_baseline,0,16,0.0,600.0,17.21843852241834
+True Random,analytic_baseline,0,17,0.0,600.0,15.42552837918202
+True Random,analytic_baseline,0,18,0.0,600.0,19.66113651692867
+True Random,analytic_baseline,0,19,0.0,600.0,18.188579426407813
+True Random,analytic_baseline,0,20,0.0,600.0,17.657088693579038
+True Random,analytic_baseline,0,21,0.0,600.0,16.795876820286114
+True Random,analytic_baseline,0,22,0.0,600.0,19.86520250280698
+True Random,analytic_baseline,0,23,0.0,600.0,17.77992314140002
+True Random,analytic_baseline,0,24,0.0,600.0,19.400666157404583
+True Random,analytic_baseline,0,25,0.0,600.0,15.160942631363868
+True Random,analytic_baseline,0,26,0.0,600.0,15.651406151652337
+True Random,analytic_baseline,0,27,0.0,600.0,17.32295724113782
+True Random,analytic_baseline,0,28,0.0,600.0,18.647943419218063
+True Random,analytic_baseline,0,29,0.0,600.0,13.51636613368988
+True Random,analytic_baseline,0,30,0.0,600.0,16.83797942042351
+True Random,analytic_baseline,0,31,0.0,600.0,17.584436701536177
+True Random,analytic_baseline,0,32,0.0,600.0,17.0383840717872
+True Random,analytic_baseline,0,33,0.0,600.0,15.83852779140075
+True Random,analytic_baseline,0,34,0.0,600.0,20.213507655858994
+True Random,analytic_baseline,0,35,0.0,600.0,15.743154587348302
+True Random,analytic_baseline,0,36,0.0,600.0,14.34052469442288
+True Random,analytic_baseline,0,37,0.0,600.0,20.439520450433097
+True Random,analytic_baseline,0,38,0.0,600.0,14.341475886503856
+True Random,analytic_baseline,0,39,1.0,228.0,18.37176038063409
+True Random,analytic_baseline,0,40,0.0,600.0,15.911931892434756
+True Random,analytic_baseline,0,41,0.0,600.0,18.558187219699224
+True Random,analytic_baseline,0,42,0.0,600.0,18.80471082687378
+True Random,analytic_baseline,0,43,0.0,600.0,15.620990677277247
+True Random,analytic_baseline,0,44,0.0,600.0,13.90106529434522
+True Random,analytic_baseline,0,45,0.0,600.0,19.14728734811147
+True Random,analytic_baseline,0,46,0.0,600.0,19.052650073369342
+True Random,analytic_baseline,0,47,1.0,164.0,20.943583471564256
+True Random,analytic_baseline,0,48,0.0,600.0,16.20854361931483
+True Random,analytic_baseline,0,49,0.0,600.0,15.767624625762304
+True Random,analytic_baseline,42,0,0.0,600.0,17.10824023723602
+True Random,analytic_baseline,42,1,0.0,600.0,16.155290820201238
+True Random,analytic_baseline,42,2,0.0,600.0,17.22734657943249
+True Random,analytic_baseline,42,3,0.0,600.0,17.005058051844436
+True Random,analytic_baseline,42,4,0.0,600.0,14.764875603119533
+True Random,analytic_baseline,42,5,0.0,600.0,8.682338557640712
+True Random,analytic_baseline,42,6,0.0,600.0,18.28241227199634
+True Random,analytic_baseline,42,7,0.0,600.0,16.097383418480554
+True Random,analytic_baseline,42,8,0.0,600.0,20.118396883408227
+True Random,analytic_baseline,42,9,0.0,600.0,18.68141139149666
+True Random,analytic_baseline,42,10,0.0,600.0,16.55483588476976
+True Random,analytic_baseline,42,11,0.0,600.0,14.108844374020894
+True Random,analytic_baseline,42,12,0.0,600.0,18.06377029955387
+True Random,analytic_baseline,42,13,0.0,600.0,17.44147432645162
+True Random,analytic_baseline,42,14,1.0,377.0,15.925717370105358
+True Random,analytic_baseline,42,15,0.0,600.0,15.604825863639514
+True Random,analytic_baseline,42,16,0.0,600.0,16.47569668451945
+True Random,analytic_baseline,42,17,0.0,600.0,17.333814335664112
+True Random,analytic_baseline,42,18,0.0,600.0,19.2271172640721
+True Random,analytic_baseline,42,19,1.0,452.0,10.20610602028602
+True Random,analytic_baseline,42,20,1.0,105.0,19.574212506271543
+True Random,analytic_baseline,42,21,0.0,600.0,15.656582528750102
+True Random,analytic_baseline,42,22,1.0,18.0,4.494889126883613
+True Random,analytic_baseline,42,23,0.0,600.0,13.758277918895086
+True Random,analytic_baseline,42,24,0.0,600.0,17.450049313704174
+True Random,analytic_baseline,42,25,0.0,600.0,16.93358878135681
+True Random,analytic_baseline,42,26,0.0,600.0,19.789552696148554
+True Random,analytic_baseline,42,27,1.0,108.0,10.284718856215477
+True Random,analytic_baseline,42,28,0.0,600.0,16.20133168061574
+True Random,analytic_baseline,42,29,0.0,600.0,13.301112359960873
+True Random,analytic_baseline,42,30,0.0,600.0,19.22931025862694
+True Random,analytic_baseline,42,31,0.0,600.0,14.119341636200746
+True Random,analytic_baseline,42,32,0.0,600.0,21.30179216702779
+True Random,analytic_baseline,42,33,0.0,600.0,17.364697320461275
+True Random,analytic_baseline,42,34,0.0,600.0,17.617819478114445
+True Random,analytic_baseline,42,35,1.0,334.0,12.02177710197643
+True Random,analytic_baseline,42,36,0.0,600.0,16.719774642487366
+True Random,analytic_baseline,42,37,1.0,77.0,10.052478716745005
+True Random,analytic_baseline,42,38,1.0,394.0,13.00347702190053
+True Random,analytic_baseline,42,39,1.0,178.0,16.597160645415276
+True Random,analytic_baseline,42,40,0.0,600.0,14.476384485960006
+True Random,analytic_baseline,42,41,0.0,600.0,17.327365146080652
+True Random,analytic_baseline,42,42,0.0,600.0,16.836413596868514
+True Random,analytic_baseline,42,43,0.0,600.0,16.64438206076622
+True Random,analytic_baseline,42,44,0.0,600.0,20.020577487150828
+True Random,analytic_baseline,42,45,1.0,203.0,11.987055333670725
+True Random,analytic_baseline,42,46,0.0,600.0,16.285539614756903
+True Random,analytic_baseline,42,47,1.0,437.0,16.658629308166983
+True Random,analytic_baseline,42,48,1.0,255.0,17.374088998168123
+True Random,analytic_baseline,42,49,0.0,600.0,14.488652238647143
+True Random,analytic_baseline,123,0,0.0,600.0,14.569427701830865
+True Random,analytic_baseline,123,1,0.0,600.0,16.264139497677487
+True Random,analytic_baseline,123,2,0.0,600.0,19.24590010126432
+True Random,analytic_baseline,123,3,1.0,467.0,13.158942611110287
+True Random,analytic_baseline,123,4,1.0,194.0,21.049494123335965
+True Random,analytic_baseline,123,5,0.0,600.0,18.20986541012923
+True Random,analytic_baseline,123,6,0.0,600.0,14.56382650812467
+True Random,analytic_baseline,123,7,0.0,600.0,20.28629771232605
+True Random,analytic_baseline,123,8,0.0,600.0,17.153033981323244
+True Random,analytic_baseline,123,9,0.0,600.0,19.701109249393145
+True Random,analytic_baseline,123,10,1.0,151.0,14.533764938250282
+True Random,analytic_baseline,123,11,0.0,600.0,15.981048524777094
+True Random,analytic_baseline,123,12,1.0,8.0,2.339878164231777
+True Random,analytic_baseline,123,13,0.0,600.0,17.504751608371734
+True Random,analytic_baseline,123,14,0.0,600.0,16.312280497749647
+True Random,analytic_baseline,123,15,0.0,600.0,11.029296870330969
+True Random,analytic_baseline,123,16,0.0,600.0,21.65312173843384
+True Random,analytic_baseline,123,17,0.0,600.0,19.212572797735533
+True Random,analytic_baseline,123,18,1.0,81.0,16.694534092773626
+True Random,analytic_baseline,123,19,0.0,600.0,17.48914602001508
+True Random,analytic_baseline,123,20,0.0,600.0,15.582465649843217
+True Random,analytic_baseline,123,21,0.0,600.0,18.23094203352928
+True Random,analytic_baseline,123,22,0.0,600.0,13.964588111042977
+True Random,analytic_baseline,123,23,0.0,600.0,14.219329112569492
+True Random,analytic_baseline,123,24,0.0,600.0,19.56368304272493
+True Random,analytic_baseline,123,25,0.0,600.0,16.931882430315017
+True Random,analytic_baseline,123,26,0.0,600.0,13.931277756492296
+True Random,analytic_baseline,123,27,1.0,114.0,9.801131235925775
+True Random,analytic_baseline,123,28,1.0,100.0,10.568440440893173
+True Random,analytic_baseline,123,29,0.0,600.0,15.33732612391313
+True Random,analytic_baseline,123,30,0.0,600.0,17.259247516592342
+True Random,analytic_baseline,123,31,0.0,600.0,15.2249376531442
+True Random,analytic_baseline,123,32,0.0,600.0,15.291326559583347
+True Random,analytic_baseline,123,33,0.0,600.0,24.008959747950236
+True Random,analytic_baseline,123,34,0.0,600.0,16.1187083586057
+True Random,analytic_baseline,123,35,0.0,600.0,18.60377167344093
+True Random,analytic_baseline,123,36,0.0,600.0,20.618917088111242
+True Random,analytic_baseline,123,37,0.0,600.0,15.830089118878046
+True Random,analytic_baseline,123,38,0.0,600.0,17.276816424528757
+True Random,analytic_baseline,123,39,0.0,600.0,16.155992143948872
+True Random,analytic_baseline,123,40,0.0,600.0,12.895671076178552
+True Random,analytic_baseline,123,41,0.0,600.0,13.046424401104451
+True Random,analytic_baseline,123,42,0.0,600.0,18.03070365746816
+True Random,analytic_baseline,123,43,1.0,284.0,16.81396728544168
+True Random,analytic_baseline,123,44,0.0,600.0,16.377795692284902
+True Random,analytic_baseline,123,45,0.0,600.0,16.403984046975772
+True Random,analytic_baseline,123,46,0.0,600.0,15.178746630350748
+True Random,analytic_baseline,123,47,1.0,353.0,17.00566681392132
+True Random,analytic_baseline,123,48,0.0,600.0,17.538988485336304
+True Random,analytic_baseline,123,49,0.0,600.0,13.618440767526627
+True Random,analytic_baseline,456,0,1.0,124.0,14.495814401536219
+True Random,analytic_baseline,456,1,0.0,600.0,20.229117792447408
+True Random,analytic_baseline,456,2,0.0,600.0,17.419954037070273
+True Random,analytic_baseline,456,3,1.0,494.0,14.656512214466629
+True Random,analytic_baseline,456,4,0.0,600.0,13.291821681161721
+True Random,analytic_baseline,456,5,0.0,600.0,11.165077630281449
+True Random,analytic_baseline,456,6,0.0,600.0,20.70841085513433
+True Random,analytic_baseline,456,7,0.0,600.0,15.090308570464453
+True Random,analytic_baseline,456,8,0.0,600.0,20.174292576313018
+True Random,analytic_baseline,456,9,0.0,600.0,18.657468110720316
+True Random,analytic_baseline,456,10,0.0,600.0,19.957322379748028
+True Random,analytic_baseline,456,11,0.0,600.0,18.613698501586914
+True Random,analytic_baseline,456,12,1.0,426.0,18.01707607262851
+True Random,analytic_baseline,456,13,0.0,600.0,21.531987375418346
+True Random,analytic_baseline,456,14,0.0,600.0,17.03976523677508
+True Random,analytic_baseline,456,15,0.0,600.0,14.657885163625082
+True Random,analytic_baseline,456,16,0.0,600.0,13.302419310808181
+True Random,analytic_baseline,456,17,0.0,600.0,18.093504097958405
+True Random,analytic_baseline,456,18,0.0,600.0,15.365895136793455
+True Random,analytic_baseline,456,19,0.0,600.0,17.26975852072239
+True Random,analytic_baseline,456,20,0.0,600.0,16.183959897756576
+True Random,analytic_baseline,456,21,0.0,600.0,15.452873981396356
+True Random,analytic_baseline,456,22,0.0,600.0,17.34879638771216
+True Random,analytic_baseline,456,23,0.0,600.0,19.514590671658517
+True Random,analytic_baseline,456,24,1.0,479.0,14.523681135540965
+True Random,analytic_baseline,456,25,0.0,600.0,13.224681320389111
+True Random,analytic_baseline,456,26,0.0,600.0,16.114752394954362
+True Random,analytic_baseline,456,27,0.0,600.0,16.45913958032926
+True Random,analytic_baseline,456,28,0.0,600.0,15.896823496023814
+True Random,analytic_baseline,456,29,0.0,600.0,17.494990389148395
+True Random,analytic_baseline,456,30,0.0,600.0,13.94566515604655
+True Random,analytic_baseline,456,31,0.0,600.0,16.92099533041318
+True Random,analytic_baseline,456,32,0.0,600.0,17.228608916203182
+True Random,analytic_baseline,456,33,0.0,600.0,16.702370220522084
+True Random,analytic_baseline,456,34,0.0,600.0,19.059180041948956
+True Random,analytic_baseline,456,35,0.0,600.0,19.476804091533026
+True Random,analytic_baseline,456,36,0.0,600.0,15.32887738029162
+True Random,analytic_baseline,456,37,1.0,578.0,18.52813802633731
+True Random,analytic_baseline,456,38,1.0,477.0,12.714904038911095
+True Random,analytic_baseline,456,39,0.0,600.0,15.49821557601293
+True Random,analytic_baseline,456,40,0.0,600.0,19.102823948462802
+True Random,analytic_baseline,456,41,0.0,600.0,17.00180176695188
+True Random,analytic_baseline,456,42,1.0,305.0,10.3762887074322
+True Random,analytic_baseline,456,43,0.0,600.0,15.303156580527624
+True Random,analytic_baseline,456,44,0.0,600.0,23.48672852396965
+True Random,analytic_baseline,456,45,0.0,600.0,12.353027518192928
+True Random,analytic_baseline,456,46,1.0,111.0,11.989332869514689
+True Random,analytic_baseline,456,47,0.0,600.0,19.05341987053553
+True Random,analytic_baseline,456,48,0.0,600.0,20.35184434890747
+True Random,analytic_baseline,456,49,0.0,600.0,17.246614721020062
+True Random,analytic_baseline,789,0,0.0,600.0,15.587598174413046
+True Random,analytic_baseline,789,1,0.0,600.0,18.80351031780243
+True Random,analytic_baseline,789,2,0.0,600.0,15.962949910163879
+True Random,analytic_baseline,789,3,0.0,600.0,17.698241134385267
+True Random,analytic_baseline,789,4,0.0,600.0,18.395671486059825
+True Random,analytic_baseline,789,5,0.0,600.0,17.189824562072754
+True Random,analytic_baseline,789,6,0.0,600.0,16.80181865433852
+True Random,analytic_baseline,789,7,0.0,600.0,19.65489777882894
+True Random,analytic_baseline,789,8,0.0,600.0,19.93445322672526
+True Random,analytic_baseline,789,9,0.0,600.0,15.529452229738235
+True Random,analytic_baseline,789,10,0.0,600.0,14.347020902434984
+True Random,analytic_baseline,789,11,0.0,600.0,13.163112899462382
+True Random,analytic_baseline,789,12,0.0,600.0,15.498451739251614
+True Random,analytic_baseline,789,13,0.0,600.0,15.852891272306442
+True Random,analytic_baseline,789,14,0.0,600.0,17.073823646406332
+True Random,analytic_baseline,789,15,0.0,600.0,15.825480554401874
+True Random,analytic_baseline,789,16,0.0,600.0,18.25434461871783
+True Random,analytic_baseline,789,17,0.0,600.0,18.051551356514295
+True Random,analytic_baseline,789,18,0.0,600.0,15.408374612728755
+True Random,analytic_baseline,789,19,0.0,600.0,11.165746909379958
+True Random,analytic_baseline,789,20,0.0,600.0,17.13192571779092
+True Random,analytic_baseline,789,21,0.0,600.0,20.548403712908428
+True Random,analytic_baseline,789,22,1.0,597.0,12.294566738670396
+True Random,analytic_baseline,789,23,0.0,600.0,19.42111364006996
+True Random,analytic_baseline,789,24,0.0,600.0,22.601482511758803
+True Random,analytic_baseline,789,25,0.0,600.0,13.541810641288757
+True Random,analytic_baseline,789,26,0.0,600.0,17.572166189750035
+True Random,analytic_baseline,789,27,0.0,600.0,16.413134927749635
+True Random,analytic_baseline,789,28,1.0,144.0,8.409269802686241
+True Random,analytic_baseline,789,29,0.0,600.0,12.850508380134901
+True Random,analytic_baseline,789,30,0.0,600.0,16.206175657908123
+True Random,analytic_baseline,789,31,0.0,600.0,17.904472212791443
+True Random,analytic_baseline,789,32,0.0,600.0,19.310987937053046
+True Random,analytic_baseline,789,33,0.0,600.0,17.507436061302823
+True Random,analytic_baseline,789,34,0.0,600.0,16.216586014827094
+True Random,analytic_baseline,789,35,0.0,600.0,15.06774486084779
+True Random,analytic_baseline,789,36,0.0,600.0,15.448489797512691
+True Random,analytic_baseline,789,37,1.0,277.0,14.098354160462906
+True Random,analytic_baseline,789,38,0.0,600.0,16.580858375231426
+True Random,analytic_baseline,789,39,0.0,600.0,18.60367356657982
+True Random,analytic_baseline,789,40,1.0,339.0,14.511246262838004
+True Random,analytic_baseline,789,41,0.0,600.0,17.819569759368896
+True Random,analytic_baseline,789,42,0.0,600.0,15.034339615503947
+True Random,analytic_baseline,789,43,0.0,600.0,15.635171033938725
+True Random,analytic_baseline,789,44,0.0,600.0,17.76524361292521
+True Random,analytic_baseline,789,45,0.0,600.0,17.79408051252365
+True Random,analytic_baseline,789,46,0.0,600.0,17.781593579451243
+True Random,analytic_baseline,789,47,0.0,600.0,13.932263716657957
+True Random,analytic_baseline,789,48,0.0,600.0,15.45130292892456
+True Random,analytic_baseline,789,49,1.0,347.0,14.723904266609926
+True Random,analytic_baseline,1024,0,0.0,600.0,18.059663484493893
+True Random,analytic_baseline,1024,1,0.0,600.0,16.18276721139749
+True Random,analytic_baseline,1024,2,0.0,600.0,18.55227102915446
+True Random,analytic_baseline,1024,3,0.0,600.0,17.01137767225504
+True Random,analytic_baseline,1024,4,0.0,600.0,19.02107996503512
+True Random,analytic_baseline,1024,5,0.0,600.0,17.366970820426943
+True Random,analytic_baseline,1024,6,0.0,600.0,15.196850985884666
+True Random,analytic_baseline,1024,7,0.0,600.0,13.367928202350935
+True Random,analytic_baseline,1024,8,1.0,325.0,14.201082741664006
+True Random,analytic_baseline,1024,9,0.0,600.0,18.994024716615677
+True Random,analytic_baseline,1024,10,0.0,600.0,15.138343242009482
+True Random,analytic_baseline,1024,11,0.0,600.0,16.00157827893893
+True Random,analytic_baseline,1024,12,0.0,600.0,18.345606721838315
+True Random,analytic_baseline,1024,13,0.0,600.0,18.78029888312022
+True Random,analytic_baseline,1024,14,0.0,600.0,19.510218624472618
+True Random,analytic_baseline,1024,15,0.0,600.0,13.212021658321222
+True Random,analytic_baseline,1024,16,1.0,243.0,16.03851370507307
+True Random,analytic_baseline,1024,17,0.0,600.0,14.082548506259918
+True Random,analytic_baseline,1024,18,0.0,600.0,19.82411286751429
+True Random,analytic_baseline,1024,19,0.0,600.0,19.067363624572753
+True Random,analytic_baseline,1024,20,0.0,600.0,17.759903499682743
+True Random,analytic_baseline,1024,21,0.0,600.0,13.859938052296638
+True Random,analytic_baseline,1024,22,0.0,600.0,17.318700637022655
+True Random,analytic_baseline,1024,23,1.0,22.0,10.14269501783631
+True Random,analytic_baseline,1024,24,0.0,600.0,18.661360902786257
+True Random,analytic_baseline,1024,25,0.0,600.0,15.806548981865246
+True Random,analytic_baseline,1024,26,1.0,596.0,18.403834377359225
+True Random,analytic_baseline,1024,27,0.0,600.0,15.430108010967572
+True Random,analytic_baseline,1024,28,1.0,178.0,16.655950123339558
+True Random,analytic_baseline,1024,29,0.0,600.0,19.706790097554524
+True Random,analytic_baseline,1024,30,0.0,600.0,20.638326599796613
+True Random,analytic_baseline,1024,31,0.0,600.0,15.998005012273788
+True Random,analytic_baseline,1024,32,0.0,600.0,14.991901482741039
+True Random,analytic_baseline,1024,33,0.0,600.0,17.058782184918723
+True Random,analytic_baseline,1024,34,0.0,600.0,19.82160339951515
+True Random,analytic_baseline,1024,35,0.0,600.0,19.887321432232856
+True Random,analytic_baseline,1024,36,0.0,600.0,13.305226303537687
+True Random,analytic_baseline,1024,37,0.0,600.0,18.151479413906735
+True Random,analytic_baseline,1024,38,0.0,600.0,19.452949670155842
+True Random,analytic_baseline,1024,39,0.0,600.0,21.993451337019604
+True Random,analytic_baseline,1024,40,0.0,600.0,17.00799817999204
+True Random,analytic_baseline,1024,41,0.0,600.0,19.888229866425196
+True Random,analytic_baseline,1024,42,0.0,600.0,20.804267096122107
+True Random,analytic_baseline,1024,43,1.0,327.0,16.041127367121728
+True Random,analytic_baseline,1024,44,0.0,600.0,17.16916079878807
+True Random,analytic_baseline,1024,45,1.0,207.0,15.580995617857301
+True Random,analytic_baseline,1024,46,0.0,600.0,20.479078297913073
+True Random,analytic_baseline,1024,47,0.0,600.0,16.94802426258723
+True Random,analytic_baseline,1024,48,0.0,600.0,21.09583139340083
+True Random,analytic_baseline,1024,49,0.0,600.0,18.33178468565146
+True Random,analytic_baseline,2048,0,0.0,600.0,13.633240447441738
+True Random,analytic_baseline,2048,1,1.0,197.0,16.502039223152973
+True Random,analytic_baseline,2048,2,0.0,600.0,17.90757518271605
+True Random,analytic_baseline,2048,3,1.0,186.0,12.852354965963832
+True Random,analytic_baseline,2048,4,0.0,600.0,16.06128170053164
+True Random,analytic_baseline,2048,5,1.0,170.0,16.746831816960782
+True Random,analytic_baseline,2048,6,0.0,600.0,16.468048021396
+True Random,analytic_baseline,2048,7,0.0,600.0,18.15750096201897
+True Random,analytic_baseline,2048,8,0.0,600.0,15.429885178804398
+True Random,analytic_baseline,2048,9,1.0,51.0,6.943170476047432
+True Random,analytic_baseline,2048,10,0.0,600.0,18.751804122726124
+True Random,analytic_baseline,2048,11,0.0,600.0,18.265287825663883
+True Random,analytic_baseline,2048,12,0.0,600.0,19.12160306652387
+True Random,analytic_baseline,2048,13,0.0,600.0,17.926333411137264
+True Random,analytic_baseline,2048,14,0.0,600.0,18.440756116310755
+True Random,analytic_baseline,2048,15,0.0,600.0,15.869264674782753
+True Random,analytic_baseline,2048,16,0.0,600.0,16.52217291514079
+True Random,analytic_baseline,2048,17,0.0,600.0,20.780942942500115
+True Random,analytic_baseline,2048,18,0.0,600.0,19.28199653784434
+True Random,analytic_baseline,2048,19,0.0,600.0,15.397513087590536
+True Random,analytic_baseline,2048,20,1.0,388.0,16.788102005099514
+True Random,analytic_baseline,2048,21,1.0,551.0,15.562910841619038
+True Random,analytic_baseline,2048,22,0.0,600.0,16.975048979918164
+True Random,analytic_baseline,2048,23,0.0,600.0,18.465481956005096
+True Random,analytic_baseline,2048,24,0.0,600.0,16.057123262286186
+True Random,analytic_baseline,2048,25,0.0,600.0,14.772201621731123
+True Random,analytic_baseline,2048,26,0.0,600.0,17.000199409822624
+True Random,analytic_baseline,2048,27,0.0,600.0,18.9103920819362
+True Random,analytic_baseline,2048,28,0.0,600.0,19.654083440303804
+True Random,analytic_baseline,2048,29,0.0,600.0,19.556492154399553
+True Random,analytic_baseline,2048,30,0.0,600.0,19.083892529606818
+True Random,analytic_baseline,2048,31,0.0,600.0,16.882692445516586
+True Random,analytic_baseline,2048,32,0.0,600.0,17.287009278337162
+True Random,analytic_baseline,2048,33,0.0,600.0,17.773316137194634
+True Random,analytic_baseline,2048,34,1.0,430.0,11.11318915597228
+True Random,analytic_baseline,2048,35,0.0,600.0,17.777146554787954
+True Random,analytic_baseline,2048,36,0.0,600.0,17.30343913714091
+True Random,analytic_baseline,2048,37,1.0,540.0,14.385871668711857
+True Random,analytic_baseline,2048,38,0.0,600.0,18.297838941812515
+True Random,analytic_baseline,2048,39,1.0,313.0,13.747381474168156
+True Random,analytic_baseline,2048,40,0.0,600.0,17.660415449937183
+True Random,analytic_baseline,2048,41,0.0,600.0,18.420187868674596
+True Random,analytic_baseline,2048,42,0.0,600.0,14.981202763120333
+True Random,analytic_baseline,2048,43,1.0,160.0,15.465854785218834
+True Random,analytic_baseline,2048,44,0.0,600.0,18.374848270018894
+True Random,analytic_baseline,2048,45,1.0,229.0,15.365704308951265
+True Random,analytic_baseline,2048,46,1.0,396.0,16.106450591725533
+True Random,analytic_baseline,2048,47,0.0,600.0,18.696420276165007
+True Random,analytic_baseline,2048,48,0.0,600.0,18.71187818924586
+True Random,analytic_baseline,2048,49,1.0,44.0,6.305102378129959
+True Random,analytic_baseline,4096,0,0.0,600.0,17.57811914006869
+True Random,analytic_baseline,4096,1,0.0,600.0,14.073073468605678
+True Random,analytic_baseline,4096,2,0.0,600.0,14.853939482172331
+True Random,analytic_baseline,4096,3,0.0,600.0,17.108185692628226
+True Random,analytic_baseline,4096,4,0.0,600.0,20.654281281431516
+True Random,analytic_baseline,4096,5,1.0,365.0,13.629842355969833
+True Random,analytic_baseline,4096,6,0.0,600.0,17.38194141427676
+True Random,analytic_baseline,4096,7,0.0,600.0,15.738678070704141
+True Random,analytic_baseline,4096,8,0.0,600.0,19.582032734354335
+True Random,analytic_baseline,4096,9,0.0,600.0,15.180352999369303
+True Random,analytic_baseline,4096,10,0.0,600.0,15.039256603519123
+True Random,analytic_baseline,4096,11,0.0,600.0,19.19546254793803
+True Random,analytic_baseline,4096,12,0.0,600.0,20.149193816184997
+True Random,analytic_baseline,4096,13,0.0,600.0,19.512393436431886
+True Random,analytic_baseline,4096,14,1.0,395.0,17.103600542605676
+True Random,analytic_baseline,4096,15,0.0,600.0,19.983545399109524
+True Random,analytic_baseline,4096,16,1.0,388.0,12.27697393313511
+True Random,analytic_baseline,4096,17,0.0,600.0,15.825101381937662
+True Random,analytic_baseline,4096,18,0.0,600.0,12.312569407522679
+True Random,analytic_baseline,4096,19,1.0,39.0,5.619035445726835
+True Random,analytic_baseline,4096,20,0.0,600.0,15.971465657552084
+True Random,analytic_baseline,4096,21,0.0,600.0,15.276145050724347
+True Random,analytic_baseline,4096,22,1.0,148.0,12.785240400481868
+True Random,analytic_baseline,4096,23,0.0,600.0,14.666297762791316
+True Random,analytic_baseline,4096,24,0.0,600.0,19.6523898824056
+True Random,analytic_baseline,4096,25,0.0,600.0,18.844298515121142
+True Random,analytic_baseline,4096,26,1.0,164.0,14.678588092327118
+True Random,analytic_baseline,4096,27,0.0,600.0,17.34205841143926
+True Random,analytic_baseline,4096,28,0.0,600.0,14.089446322917938
+True Random,analytic_baseline,4096,29,0.0,600.0,18.507828045686086
+True Random,analytic_baseline,4096,30,0.0,600.0,19.605728421608607
+True Random,analytic_baseline,4096,31,0.0,600.0,22.005854229132336
+True Random,analytic_baseline,4096,32,0.0,600.0,17.53784646987915
+True Random,analytic_baseline,4096,33,0.0,600.0,16.806461856365203
+True Random,analytic_baseline,4096,34,1.0,468.0,10.833421965058033
+True Random,analytic_baseline,4096,35,0.0,600.0,19.966354249318442
+True Random,analytic_baseline,4096,36,0.0,600.0,16.503252526819708
+True Random,analytic_baseline,4096,37,0.0,600.0,17.890499622424443
+True Random,analytic_baseline,4096,38,0.0,600.0,15.80368561943372
+True Random,analytic_baseline,4096,39,0.0,600.0,15.472242079476516
+True Random,analytic_baseline,4096,40,0.0,600.0,17.514494734605154
+True Random,analytic_baseline,4096,41,0.0,600.0,17.719423303604128
+True Random,analytic_baseline,4096,42,0.0,600.0,15.90198429107666
+True Random,analytic_baseline,4096,43,1.0,365.0,15.141737438064732
+True Random,analytic_baseline,4096,44,0.0,600.0,21.38670080979665
+True Random,analytic_baseline,4096,45,0.0,600.0,18.893995663523675
+True Random,analytic_baseline,4096,46,0.0,600.0,19.797178546388945
+True Random,analytic_baseline,4096,47,0.0,600.0,18.725888527234396
+True Random,analytic_baseline,4096,48,0.0,600.0,21.404108624855677
+True Random,analytic_baseline,4096,49,0.0,600.0,13.239970072309177
+True Random,analytic_baseline,8192,0,0.0,600.0,13.738810894091925
+True Random,analytic_baseline,8192,1,0.0,600.0,18.845506509741146
+True Random,analytic_baseline,8192,2,1.0,316.0,18.45705495925644
+True Random,analytic_baseline,8192,3,1.0,535.0,19.427338239188508
+True Random,analytic_baseline,8192,4,0.0,600.0,16.457380599677563
+True Random,analytic_baseline,8192,5,1.0,348.0,17.434985285860368
+True Random,analytic_baseline,8192,6,0.0,600.0,19.987271404663723
+True Random,analytic_baseline,8192,7,0.0,600.0,18.07693215340376
+True Random,analytic_baseline,8192,8,0.0,600.0,19.95628680328528
+True Random,analytic_baseline,8192,9,0.0,600.0,21.633254397710164
+True Random,analytic_baseline,8192,10,1.0,391.0,15.914069919711183
+True Random,analytic_baseline,8192,11,0.0,600.0,17.996670184334118
+True Random,analytic_baseline,8192,12,0.0,600.0,17.471103539864224
+True Random,analytic_baseline,8192,13,0.0,600.0,18.23543278694153
+True Random,analytic_baseline,8192,14,0.0,600.0,19.086257546742758
+True Random,analytic_baseline,8192,15,0.0,600.0,17.24291238407294
+True Random,analytic_baseline,8192,16,1.0,398.0,11.742303412613557
+True Random,analytic_baseline,8192,17,0.0,600.0,15.694013481934865
+True Random,analytic_baseline,8192,18,0.0,600.0,15.295627557635306
+True Random,analytic_baseline,8192,19,0.0,600.0,18.27898812452952
+True Random,analytic_baseline,8192,20,0.0,600.0,19.761757046381632
+True Random,analytic_baseline,8192,21,0.0,600.0,19.373132417201997
+True Random,analytic_baseline,8192,22,1.0,79.0,21.770499098904526
+True Random,analytic_baseline,8192,23,0.0,600.0,22.773639358679453
+True Random,analytic_baseline,8192,24,0.0,600.0,18.52891821662585
+True Random,analytic_baseline,8192,25,1.0,406.0,14.190876617513855
+True Random,analytic_baseline,8192,26,0.0,600.0,14.777737760941188
+True Random,analytic_baseline,8192,27,0.0,600.0,21.200915840466816
+True Random,analytic_baseline,8192,28,0.0,600.0,19.323502317667007
+True Random,analytic_baseline,8192,29,1.0,4.0,1.189902052283287
+True Random,analytic_baseline,8192,30,0.0,600.0,20.375816793839135
+True Random,analytic_baseline,8192,31,0.0,600.0,17.88900115887324
+True Random,analytic_baseline,8192,32,0.0,600.0,14.737961752812067
+True Random,analytic_baseline,8192,33,1.0,492.0,16.418393483128003
+True Random,analytic_baseline,8192,34,0.0,600.0,16.691026260256766
+True Random,analytic_baseline,8192,35,0.0,600.0,17.66216739018758
+True Random,analytic_baseline,8192,36,1.0,100.0,16.92479896724224
+True Random,analytic_baseline,8192,37,0.0,600.0,18.01500718911489
+True Random,analytic_baseline,8192,38,0.0,600.0,17.328974759578706
+True Random,analytic_baseline,8192,39,1.0,377.0,18.731793447498934
+True Random,analytic_baseline,8192,40,0.0,600.0,19.64716074804465
+True Random,analytic_baseline,8192,41,0.0,600.0,17.3913507771492
+True Random,analytic_baseline,8192,42,0.0,600.0,14.1904899062713
+True Random,analytic_baseline,8192,43,0.0,600.0,16.91023200472196
+True Random,analytic_baseline,8192,44,1.0,80.0,14.707599790208041
+True Random,analytic_baseline,8192,45,0.0,600.0,16.94237951040268
+True Random,analytic_baseline,8192,46,0.0,600.0,17.144064203500747
+True Random,analytic_baseline,8192,47,0.0,600.0,14.447232783238093
+True Random,analytic_baseline,8192,48,1.0,381.0,16.840788960143964
+True Random,analytic_baseline,8192,49,0.0,600.0,18.182815850575764
+True Random,analytic_baseline,16384,0,0.0,600.0,13.649359359741212
+True Random,analytic_baseline,16384,1,0.0,600.0,13.183702993392945
+True Random,analytic_baseline,16384,2,0.0,600.0,14.18669524093469
+True Random,analytic_baseline,16384,3,1.0,100.0,12.499096943736076
+True Random,analytic_baseline,16384,4,1.0,152.0,12.52595594642978
+True Random,analytic_baseline,16384,5,0.0,600.0,13.755254491567612
+True Random,analytic_baseline,16384,6,1.0,122.0,11.556136398041835
+True Random,analytic_baseline,16384,7,0.0,600.0,15.278075667619705
+True Random,analytic_baseline,16384,8,0.0,600.0,17.34411406993866
+True Random,analytic_baseline,16384,9,0.0,600.0,13.885996766885121
+True Random,analytic_baseline,16384,10,0.0,600.0,14.386028011540573
+True Random,analytic_baseline,16384,11,0.0,600.0,21.727636640071868
+True Random,analytic_baseline,16384,12,1.0,334.0,16.217261683530435
+True Random,analytic_baseline,16384,13,0.0,600.0,15.515703448752562
+True Random,analytic_baseline,16384,14,0.0,600.0,12.3717215436697
+True Random,analytic_baseline,16384,15,0.0,600.0,15.3438880332311
+True Random,analytic_baseline,16384,16,0.0,600.0,15.755376159151394
+True Random,analytic_baseline,16384,17,0.0,600.0,17.252481610178947
+True Random,analytic_baseline,16384,18,0.0,600.0,18.33305850863457
+True Random,analytic_baseline,16384,19,1.0,531.0,14.550214501873024
+True Random,analytic_baseline,16384,20,0.0,600.0,18.957458048264186
+True Random,analytic_baseline,16384,21,0.0,600.0,20.604492263793944
+True Random,analytic_baseline,16384,22,1.0,437.0,13.47591909936691
+True Random,analytic_baseline,16384,23,1.0,342.0,14.0649052624814
+True Random,analytic_baseline,16384,24,0.0,600.0,22.614387719631196
+True Random,analytic_baseline,16384,25,0.0,600.0,20.462830826441447
+True Random,analytic_baseline,16384,26,0.0,600.0,14.70985004246235
+True Random,analytic_baseline,16384,27,0.0,600.0,13.794312527775764
+True Random,analytic_baseline,16384,28,0.0,600.0,15.034560278256734
+True Random,analytic_baseline,16384,29,0.0,600.0,15.471108836332958
+True Random,analytic_baseline,16384,30,1.0,210.0,12.492837350141434
+True Random,analytic_baseline,16384,31,0.0,600.0,17.316468693216642
+True Random,analytic_baseline,16384,32,0.0,600.0,12.72331426680088
+True Random,analytic_baseline,16384,33,0.0,600.0,16.289655689001084
+True Random,analytic_baseline,16384,34,0.0,600.0,15.385700581272443
+True Random,analytic_baseline,16384,35,1.0,168.0,13.002738018475828
+True Random,analytic_baseline,16384,36,0.0,600.0,14.961869192123412
+True Random,analytic_baseline,16384,37,1.0,18.0,2.236087315612369
+True Random,analytic_baseline,16384,38,0.0,600.0,18.247663815220196
+True Random,analytic_baseline,16384,39,0.0,600.0,17.98611953854561
+True Random,analytic_baseline,16384,40,0.0,600.0,19.214619104862212
+True Random,analytic_baseline,16384,41,0.0,600.0,18.85086393435796
+True Random,analytic_baseline,16384,42,1.0,462.0,18.093513372882363
+True Random,analytic_baseline,16384,43,1.0,161.0,9.136108252202503
+True Random,analytic_baseline,16384,44,1.0,562.0,16.887080281018363
+True Random,analytic_baseline,16384,45,1.0,203.0,14.332420160177305
+True Random,analytic_baseline,16384,46,0.0,600.0,21.768900813261666
+True Random,analytic_baseline,16384,47,0.0,600.0,15.800744340022405
+True Random,analytic_baseline,16384,48,0.0,600.0,17.986498987674715
+True Random,analytic_baseline,16384,49,0.0,600.0,10.698508812785148
+Heuristic + Random,analytic_baseline,0,0,1.0,147.0,9.622398838502209
+Heuristic + Random,analytic_baseline,0,1,1.0,101.0,11.357158393552988
+Heuristic + Random,analytic_baseline,0,2,1.0,200.0,9.826395587921143
+Heuristic + Random,analytic_baseline,0,3,1.0,63.0,9.873891517283424
+Heuristic + Random,analytic_baseline,0,4,1.0,33.0,10.029747800393539
+Heuristic + Random,analytic_baseline,0,5,1.0,30.0,7.562619790434837
+Heuristic + Random,analytic_baseline,0,6,1.0,65.0,10.819957205423941
+Heuristic + Random,analytic_baseline,0,7,1.0,263.0,9.536342278632828
+Heuristic + Random,analytic_baseline,0,8,1.0,34.0,16.597984559395734
+Heuristic + Random,analytic_baseline,0,9,1.0,3.0,1.4358626802762349
+Heuristic + Random,analytic_baseline,0,10,1.0,69.0,10.604602055273194
+Heuristic + Random,analytic_baseline,0,11,1.0,139.0,10.542515637205659
+Heuristic + Random,analytic_baseline,0,12,1.0,95.0,9.899893357879238
+Heuristic + Random,analytic_baseline,0,13,1.0,44.0,8.784644339064306
+Heuristic + Random,analytic_baseline,0,14,1.0,173.0,7.935323894023895
+Heuristic + Random,analytic_baseline,0,15,1.0,100.0,9.093060527443885
+Heuristic + Random,analytic_baseline,0,16,1.0,346.0,10.28522516606171
+Heuristic + Random,analytic_baseline,0,17,1.0,172.0,9.331180418993151
+Heuristic + Random,analytic_baseline,0,18,1.0,205.0,9.763905126583285
+Heuristic + Random,analytic_baseline,0,19,1.0,100.0,10.107180129289628
+Heuristic + Random,analytic_baseline,0,20,1.0,150.0,9.23289779027303
+Heuristic + Random,analytic_baseline,0,21,1.0,31.0,9.495133234127875
+Heuristic + Random,analytic_baseline,0,22,1.0,33.0,14.962779534585549
+Heuristic + Random,analytic_baseline,0,23,1.0,443.0,9.41913521470624
+Heuristic + Random,analytic_baseline,0,24,1.0,31.0,14.589859933622423
+Heuristic + Random,analytic_baseline,0,25,1.0,113.0,8.117057143059451
+Heuristic + Random,analytic_baseline,0,26,1.0,586.0,9.27308756153738
+Heuristic + Random,analytic_baseline,0,27,1.0,102.0,10.638864959133606
+Heuristic + Random,analytic_baseline,0,28,1.0,75.0,8.927925269206366
+Heuristic + Random,analytic_baseline,0,29,1.0,236.0,9.600168762065596
+Heuristic + Random,analytic_baseline,0,30,1.0,11.0,7.708349721675569
+Heuristic + Random,analytic_baseline,0,31,1.0,100.0,9.522367850244045
+Heuristic + Random,analytic_baseline,0,32,1.0,142.0,12.064416478007612
+Heuristic + Random,analytic_baseline,0,33,1.0,228.0,9.964894799809707
+Heuristic + Random,analytic_baseline,0,34,1.0,206.0,9.434820680363664
+Heuristic + Random,analytic_baseline,0,35,1.0,135.0,11.031043108304342
+Heuristic + Random,analytic_baseline,0,36,1.0,7.0,4.839409504617963
+Heuristic + Random,analytic_baseline,0,37,1.0,30.0,11.365285867452622
+Heuristic + Random,analytic_baseline,0,38,1.0,163.0,9.171377401958946
+Heuristic + Random,analytic_baseline,0,39,1.0,64.0,9.760118189267814
+Heuristic + Random,analytic_baseline,0,40,1.0,134.0,8.328239256321494
+Heuristic + Random,analytic_baseline,0,41,1.0,31.0,7.0718742878206315
+Heuristic + Random,analytic_baseline,0,42,1.0,29.0,10.313182228598102
+Heuristic + Random,analytic_baseline,0,43,1.0,63.0,10.137366051711734
+Heuristic + Random,analytic_baseline,0,44,1.0,141.0,9.910723719402409
+Heuristic + Random,analytic_baseline,0,45,1.0,87.0,7.048180665092906
+Heuristic + Random,analytic_baseline,0,46,0.0,600.0,9.019073150555293
+Heuristic + Random,analytic_baseline,0,47,1.0,39.0,8.330016012375172
+Heuristic + Random,analytic_baseline,0,48,0.0,600.0,9.466583372056483
+Heuristic + Random,analytic_baseline,0,49,1.0,88.0,10.929782108996402
+Heuristic + Random,analytic_baseline,42,0,1.0,32.0,9.789399653673172
+Heuristic + Random,analytic_baseline,42,1,1.0,73.0,8.761979770987
+Heuristic + Random,analytic_baseline,42,2,1.0,137.0,11.412977130689326
+Heuristic + Random,analytic_baseline,42,3,1.0,9.0,6.16394716501236
+Heuristic + Random,analytic_baseline,42,4,1.0,30.0,12.850498008728028
+Heuristic + Random,analytic_baseline,42,5,1.0,10.0,6.550282680988312
+Heuristic + Random,analytic_baseline,42,6,1.0,67.0,10.24489798118819
+Heuristic + Random,analytic_baseline,42,7,1.0,268.0,8.851994799811449
+Heuristic + Random,analytic_baseline,42,8,1.0,101.0,10.417856703300288
+Heuristic + Random,analytic_baseline,42,9,1.0,6.0,3.326396922270457
+Heuristic + Random,analytic_baseline,42,10,1.0,137.0,10.155094494784835
+Heuristic + Random,analytic_baseline,42,11,1.0,10.0,7.367466056346894
+Heuristic + Random,analytic_baseline,42,12,1.0,97.0,9.121573646043993
+Heuristic + Random,analytic_baseline,42,13,1.0,80.0,10.37161332294345
+Heuristic + Random,analytic_baseline,42,14,1.0,69.0,10.163201484991157
+Heuristic + Random,analytic_baseline,42,15,1.0,66.0,9.913545448671687
+Heuristic + Random,analytic_baseline,42,16,1.0,179.0,9.584941635251711
+Heuristic + Random,analytic_baseline,42,17,1.0,196.0,10.707338492176971
+Heuristic + Random,analytic_baseline,42,18,1.0,276.0,9.88475294497566
+Heuristic + Random,analytic_baseline,42,19,1.0,4.0,1.2394565492868423
+Heuristic + Random,analytic_baseline,42,20,1.0,310.0,9.951102502307585
+Heuristic + Random,analytic_baseline,42,21,1.0,140.0,9.961021254743848
+Heuristic + Random,analytic_baseline,42,22,1.0,134.0,9.36810790246992
+Heuristic + Random,analytic_baseline,42,23,1.0,200.0,9.299137283861636
+Heuristic + Random,analytic_baseline,42,24,1.0,68.0,11.41630342339768
+Heuristic + Random,analytic_baseline,42,25,1.0,372.0,10.066351133809295
+Heuristic + Random,analytic_baseline,42,26,1.0,48.0,9.300363668551048
+Heuristic + Random,analytic_baseline,42,27,1.0,98.0,9.102591024977821
+Heuristic + Random,analytic_baseline,42,28,1.0,136.0,7.942032926222858
+Heuristic + Random,analytic_baseline,42,29,1.0,31.0,11.179099853961699
+Heuristic + Random,analytic_baseline,42,30,1.0,109.0,10.191384741472541
+Heuristic + Random,analytic_baseline,42,31,1.0,166.0,9.241770711110298
+Heuristic + Random,analytic_baseline,42,32,1.0,30.0,7.364805427690347
+Heuristic + Random,analytic_baseline,42,33,1.0,65.0,10.502204377834614
+Heuristic + Random,analytic_baseline,42,34,1.0,75.0,8.898628353277843
+Heuristic + Random,analytic_baseline,42,35,1.0,208.0,10.438491376546713
+Heuristic + Random,analytic_baseline,42,36,1.0,113.0,8.60161608180641
+Heuristic + Random,analytic_baseline,42,37,1.0,102.0,9.799515799564475
+Heuristic + Random,analytic_baseline,42,38,1.0,68.0,8.427663690903607
+Heuristic + Random,analytic_baseline,42,39,1.0,265.0,9.315555905789699
+Heuristic + Random,analytic_baseline,42,40,1.0,9.0,6.170980681975682
+Heuristic + Random,analytic_baseline,42,41,1.0,102.0,9.707919437803474
+Heuristic + Random,analytic_baseline,42,42,1.0,174.0,9.364413918434888
+Heuristic + Random,analytic_baseline,42,43,1.0,206.0,10.841676484901928
+Heuristic + Random,analytic_baseline,42,44,1.0,27.0,11.580617626508078
+Heuristic + Random,analytic_baseline,42,45,1.0,143.0,8.95706669267241
+Heuristic + Random,analytic_baseline,42,46,1.0,61.0,9.316733084496905
+Heuristic + Random,analytic_baseline,42,47,1.0,9.0,6.223649471998215
+Heuristic + Random,analytic_baseline,42,48,1.0,99.0,10.513090164372414
+Heuristic + Random,analytic_baseline,42,49,1.0,363.0,9.246118174439948
+Heuristic + Random,analytic_baseline,123,0,1.0,40.0,7.788218918442726
+Heuristic + Random,analytic_baseline,123,1,1.0,66.0,9.689021694840807
+Heuristic + Random,analytic_baseline,123,2,1.0,204.0,10.276510962668587
+Heuristic + Random,analytic_baseline,123,3,1.0,136.0,9.841462353573126
+Heuristic + Random,analytic_baseline,123,4,1.0,112.0,10.101594292824823
+Heuristic + Random,analytic_baseline,123,5,1.0,32.0,8.090069955214858
+Heuristic + Random,analytic_baseline,123,6,1.0,71.0,9.68677799802431
+Heuristic + Random,analytic_baseline,123,7,1.0,67.0,10.853579643946976
+Heuristic + Random,analytic_baseline,123,8,1.0,66.0,9.477994227951223
+Heuristic + Random,analytic_baseline,123,9,1.0,9.0,5.847297353876962
+Heuristic + Random,analytic_baseline,123,10,1.0,68.0,11.340025524882709
+Heuristic + Random,analytic_baseline,123,11,1.0,96.0,10.6509695922335
+Heuristic + Random,analytic_baseline,123,12,1.0,248.0,8.806899964328736
+Heuristic + Random,analytic_baseline,123,13,1.0,7.0,4.494956557239805
+Heuristic + Random,analytic_baseline,123,14,1.0,30.0,12.456528105338414
+Heuristic + Random,analytic_baseline,123,15,1.0,3.0,2.008069316546122
+Heuristic + Random,analytic_baseline,123,16,1.0,48.0,8.27870810776949
+Heuristic + Random,analytic_baseline,123,17,1.0,64.0,10.182707125786692
+Heuristic + Random,analytic_baseline,123,18,1.0,135.0,9.22144583022153
+Heuristic + Random,analytic_baseline,123,19,1.0,30.0,8.395722770194213
+Heuristic + Random,analytic_baseline,123,20,1.0,168.0,8.741540952097802
+Heuristic + Random,analytic_baseline,123,21,1.0,175.0,9.948254169225693
+Heuristic + Random,analytic_baseline,123,22,1.0,164.0,9.915943128942716
+Heuristic + Random,analytic_baseline,123,23,1.0,32.0,6.977981504052877
+Heuristic + Random,analytic_baseline,123,24,1.0,101.0,11.656162982529933
+Heuristic + Random,analytic_baseline,123,25,1.0,32.0,14.618579357862473
+Heuristic + Random,analytic_baseline,123,26,1.0,42.0,9.71572704400335
+Heuristic + Random,analytic_baseline,123,27,1.0,69.0,11.799929650365442
+Heuristic + Random,analytic_baseline,123,28,1.0,30.0,13.191217160224914
+Heuristic + Random,analytic_baseline,123,29,1.0,5.0,2.0469253420829774
+Heuristic + Random,analytic_baseline,123,30,1.0,135.0,9.580331256213011
+Heuristic + Random,analytic_baseline,123,31,1.0,8.0,5.238272124901414
+Heuristic + Random,analytic_baseline,123,32,1.0,66.0,9.07631657475775
+Heuristic + Random,analytic_baseline,123,33,1.0,199.0,7.874097022878464
+Heuristic + Random,analytic_baseline,123,34,1.0,208.0,8.70935281380438
+Heuristic + Random,analytic_baseline,123,35,1.0,6.0,3.7061328863104186
+Heuristic + Random,analytic_baseline,123,36,1.0,237.0,9.958706346493733
+Heuristic + Random,analytic_baseline,123,37,1.0,197.0,8.6349613330691
+Heuristic + Random,analytic_baseline,123,38,1.0,11.0,7.633005288514224
+Heuristic + Random,analytic_baseline,123,39,1.0,32.0,9.761733336374164
+Heuristic + Random,analytic_baseline,123,40,1.0,225.0,8.873450736204783
+Heuristic + Random,analytic_baseline,123,41,1.0,275.0,9.387509052103216
+Heuristic + Random,analytic_baseline,123,42,1.0,101.0,11.196938888271257
+Heuristic + Random,analytic_baseline,123,43,1.0,64.0,8.977362791076303
+Heuristic + Random,analytic_baseline,123,44,1.0,66.0,11.608742464220885
+Heuristic + Random,analytic_baseline,123,45,1.0,233.0,9.477840608793267
+Heuristic + Random,analytic_baseline,123,46,1.0,174.0,10.82645041093059
+Heuristic + Random,analytic_baseline,123,47,1.0,44.0,8.665938025171107
+Heuristic + Random,analytic_baseline,123,48,1.0,466.0,9.426176941605853
+Heuristic + Random,analytic_baseline,123,49,0.0,600.0,9.460076345304648
+Heuristic + Random,analytic_baseline,456,0,1.0,273.0,10.001973165915562
+Heuristic + Random,analytic_baseline,456,1,1.0,46.0,10.192695462185403
+Heuristic + Random,analytic_baseline,456,2,1.0,65.0,8.250877734330984
+Heuristic + Random,analytic_baseline,456,3,1.0,6.0,3.934005598227183
+Heuristic + Random,analytic_baseline,456,4,1.0,99.0,10.653599555444236
+Heuristic + Random,analytic_baseline,456,5,1.0,32.0,16.548991564661264
+Heuristic + Random,analytic_baseline,456,6,1.0,46.0,10.6233928307243
+Heuristic + Random,analytic_baseline,456,7,1.0,165.0,8.693908299641176
+Heuristic + Random,analytic_baseline,456,8,1.0,170.0,9.379871033395037
+Heuristic + Random,analytic_baseline,456,9,1.0,29.0,10.225995865361444
+Heuristic + Random,analytic_baseline,456,10,1.0,35.0,15.323079300778252
+Heuristic + Random,analytic_baseline,456,11,1.0,14.0,9.770495874541146
+Heuristic + Random,analytic_baseline,456,12,1.0,31.0,8.65949136018753
+Heuristic + Random,analytic_baseline,456,13,1.0,31.0,14.341962923926692
+Heuristic + Random,analytic_baseline,456,14,1.0,67.0,11.367911999572568
+Heuristic + Random,analytic_baseline,456,15,1.0,64.0,9.142825353890657
+Heuristic + Random,analytic_baseline,456,16,1.0,32.0,7.548523982055485
+Heuristic + Random,analytic_baseline,456,17,1.0,66.0,9.477615993131291
+Heuristic + Random,analytic_baseline,456,18,1.0,32.0,8.07617693953216
+Heuristic + Random,analytic_baseline,456,19,1.0,67.0,10.089578092098236
+Heuristic + Random,analytic_baseline,456,20,1.0,170.0,9.360418831600862
+Heuristic + Random,analytic_baseline,456,21,1.0,95.0,7.804639986314272
+Heuristic + Random,analytic_baseline,456,22,1.0,101.0,9.691489409692217
+Heuristic + Random,analytic_baseline,456,23,1.0,34.0,6.969919690314462
+Heuristic + Random,analytic_baseline,456,24,1.0,201.0,9.131343322755093
+Heuristic + Random,analytic_baseline,456,25,1.0,6.0,4.034817372759183
+Heuristic + Random,analytic_baseline,456,26,1.0,5.0,3.3797868728637694
+Heuristic + Random,analytic_baseline,456,27,1.0,131.0,10.406865149963902
+Heuristic + Random,analytic_baseline,456,28,1.0,76.0,8.323740260381447
+Heuristic + Random,analytic_baseline,456,29,1.0,30.0,14.35520148674647
+Heuristic + Random,analytic_baseline,456,30,1.0,7.0,4.942723538194384
+Heuristic + Random,analytic_baseline,456,31,1.0,277.0,9.846917049333937
+Heuristic + Random,analytic_baseline,456,32,1.0,199.0,8.998122210478662
+Heuristic + Random,analytic_baseline,456,33,1.0,9.0,5.994374159309599
+Heuristic + Random,analytic_baseline,456,34,1.0,209.0,10.33285422473433
+Heuristic + Random,analytic_baseline,456,35,1.0,38.0,13.102262794971466
+Heuristic + Random,analytic_baseline,456,36,1.0,36.0,11.277080597149002
+Heuristic + Random,analytic_baseline,456,37,1.0,65.0,10.45121166568536
+Heuristic + Random,analytic_baseline,456,38,1.0,133.0,10.228186189680171
+Heuristic + Random,analytic_baseline,456,39,1.0,129.0,10.34916665988375
+Heuristic + Random,analytic_baseline,456,40,1.0,133.0,10.02596345767939
+Heuristic + Random,analytic_baseline,456,41,1.0,33.0,10.249200051481074
+Heuristic + Random,analytic_baseline,456,42,1.0,97.0,10.68555597914863
+Heuristic + Random,analytic_baseline,456,43,1.0,68.0,9.838841656551642
+Heuristic + Random,analytic_baseline,456,44,1.0,82.0,7.256999711437923
+Heuristic + Random,analytic_baseline,456,45,1.0,203.0,8.551443509574007
+Heuristic + Random,analytic_baseline,456,46,1.0,344.0,10.10151913918035
+Heuristic + Random,analytic_baseline,456,47,1.0,134.0,10.100930718454853
+Heuristic + Random,analytic_baseline,456,48,1.0,207.0,10.40110876450792
+Heuristic + Random,analytic_baseline,456,49,1.0,66.0,7.377571872689507
+Heuristic + Random,analytic_baseline,789,0,1.0,31.0,7.8478023784775885
+Heuristic + Random,analytic_baseline,789,1,1.0,29.0,8.664344978743586
+Heuristic + Random,analytic_baseline,789,2,1.0,321.0,9.551356804333743
+Heuristic + Random,analytic_baseline,789,3,1.0,96.0,9.238074066117406
+Heuristic + Random,analytic_baseline,789,4,1.0,105.0,9.744621866089958
+Heuristic + Random,analytic_baseline,789,5,1.0,62.0,10.77752609406748
+Heuristic + Random,analytic_baseline,789,6,1.0,6.0,3.524228408932686
+Heuristic + Random,analytic_baseline,789,7,1.0,102.0,10.91467049834775
+Heuristic + Random,analytic_baseline,789,8,1.0,98.0,8.403431661883179
+Heuristic + Random,analytic_baseline,789,9,1.0,135.0,10.769292847315471
+Heuristic + Random,analytic_baseline,789,10,1.0,32.0,14.081268814392388
+Heuristic + Random,analytic_baseline,789,11,1.0,8.0,5.61323156952858
+Heuristic + Random,analytic_baseline,789,12,1.0,30.0,8.096296648184458
+Heuristic + Random,analytic_baseline,789,13,1.0,33.0,8.639509229949027
+Heuristic + Random,analytic_baseline,789,14,1.0,135.0,8.806892311352271
+Heuristic + Random,analytic_baseline,789,15,1.0,30.0,13.501476953426996
+Heuristic + Random,analytic_baseline,789,16,1.0,73.0,9.768708900229571
+Heuristic + Random,analytic_baseline,789,17,1.0,140.0,10.624682850922857
+Heuristic + Random,analytic_baseline,789,18,1.0,219.0,9.590381255432895
+Heuristic + Random,analytic_baseline,789,19,1.0,30.0,7.764528365929921
+Heuristic + Random,analytic_baseline,789,20,1.0,42.0,8.873289910100755
+Heuristic + Random,analytic_baseline,789,21,1.0,5.0,2.2574366331100464
+Heuristic + Random,analytic_baseline,789,22,1.0,161.0,8.808958190568486
+Heuristic + Random,analytic_baseline,789,23,1.0,5.0,3.4096324771642683
+Heuristic + Random,analytic_baseline,789,24,1.0,75.0,10.590530573527019
+Heuristic + Random,analytic_baseline,789,25,1.0,31.0,9.935314846615638
+Heuristic + Random,analytic_baseline,789,26,1.0,133.0,10.206517010254968
+Heuristic + Random,analytic_baseline,789,27,1.0,448.0,8.62397798310433
+Heuristic + Random,analytic_baseline,789,28,1.0,12.0,8.569045469164848
+Heuristic + Random,analytic_baseline,789,29,1.0,207.0,9.527778674438956
+Heuristic + Random,analytic_baseline,789,30,1.0,7.0,5.183026658637183
+Heuristic + Random,analytic_baseline,789,31,1.0,75.0,10.424082296291987
+Heuristic + Random,analytic_baseline,789,32,1.0,10.0,7.057948736846447
+Heuristic + Random,analytic_baseline,789,33,1.0,65.0,9.714849947966062
+Heuristic + Random,analytic_baseline,789,34,1.0,135.0,8.962668163246578
+Heuristic + Random,analytic_baseline,789,35,1.0,134.0,8.566215034741074
+Heuristic + Random,analytic_baseline,789,36,1.0,103.0,10.108445409432198
+Heuristic + Random,analytic_baseline,789,37,1.0,142.0,8.794668284100545
+Heuristic + Random,analytic_baseline,789,38,1.0,143.0,10.91644588696373
+Heuristic + Random,analytic_baseline,789,39,1.0,30.0,8.115518740812938
+Heuristic + Random,analytic_baseline,789,40,1.0,134.0,10.381118511530891
+Heuristic + Random,analytic_baseline,789,41,1.0,109.0,10.639926547304206
+Heuristic + Random,analytic_baseline,789,42,1.0,243.0,9.19708501286958
+Heuristic + Random,analytic_baseline,789,43,1.0,226.0,8.7714385978416
+Heuristic + Random,analytic_baseline,789,44,1.0,46.0,8.965077055537183
+Heuristic + Random,analytic_baseline,789,45,1.0,70.0,8.250638630560466
+Heuristic + Random,analytic_baseline,789,46,1.0,366.0,9.387581504596387
+Heuristic + Random,analytic_baseline,789,47,1.0,31.0,7.573144685356848
+Heuristic + Random,analytic_baseline,789,48,1.0,371.0,9.81053104944467
+Heuristic + Random,analytic_baseline,789,49,1.0,63.0,7.673625394465431
+Heuristic + Random,analytic_baseline,1024,0,1.0,69.0,12.44258107136989
+Heuristic + Random,analytic_baseline,1024,1,1.0,29.0,8.661367854167676
+Heuristic + Random,analytic_baseline,1024,2,1.0,166.0,10.882788413978485
+Heuristic + Random,analytic_baseline,1024,3,1.0,3.0,1.4420498410860698
+Heuristic + Random,analytic_baseline,1024,4,1.0,30.0,11.20496275027593
+Heuristic + Random,analytic_baseline,1024,5,1.0,215.0,9.260125073721243
+Heuristic + Random,analytic_baseline,1024,6,1.0,33.0,11.863915197777025
+Heuristic + Random,analytic_baseline,1024,7,1.0,399.0,9.411549417297344
+Heuristic + Random,analytic_baseline,1024,8,1.0,67.0,11.387889398567712
+Heuristic + Random,analytic_baseline,1024,9,1.0,151.0,9.348008459569602
+Heuristic + Random,analytic_baseline,1024,10,1.0,268.0,9.760501996794744
+Heuristic + Random,analytic_baseline,1024,11,1.0,140.0,11.009463589532034
+Heuristic + Random,analytic_baseline,1024,12,1.0,32.0,8.1601239759475
+Heuristic + Random,analytic_baseline,1024,13,1.0,32.0,8.392256082035601
+Heuristic + Random,analytic_baseline,1024,14,1.0,31.0,7.758978306285797
+Heuristic + Random,analytic_baseline,1024,15,1.0,34.0,8.40907077929553
+Heuristic + Random,analytic_baseline,1024,16,1.0,33.0,12.119641426837806
+Heuristic + Random,analytic_baseline,1024,17,1.0,10.0,6.711251780390739
+Heuristic + Random,analytic_baseline,1024,18,1.0,32.0,8.84816724807024
+Heuristic + Random,analytic_baseline,1024,19,1.0,167.0,10.08979475640965
+Heuristic + Random,analytic_baseline,1024,20,1.0,115.0,9.398495425089546
+Heuristic + Random,analytic_baseline,1024,21,1.0,141.0,9.887791473814781
+Heuristic + Random,analytic_baseline,1024,22,1.0,45.0,7.833245048920314
+Heuristic + Random,analytic_baseline,1024,23,1.0,33.0,13.472927658846885
+Heuristic + Random,analytic_baseline,1024,24,1.0,138.0,10.403920626726704
+Heuristic + Random,analytic_baseline,1024,25,1.0,66.0,12.077408954049602
+Heuristic + Random,analytic_baseline,1024,26,1.0,146.0,9.09323071923158
+Heuristic + Random,analytic_baseline,1024,27,1.0,172.0,10.2751479491938
+Heuristic + Random,analytic_baseline,1024,28,1.0,202.0,9.290445299284293
+Heuristic + Random,analytic_baseline,1024,29,1.0,181.0,8.82575316554275
+Heuristic + Random,analytic_baseline,1024,30,1.0,31.0,16.183613936747275
+Heuristic + Random,analytic_baseline,1024,31,1.0,8.0,4.594813488423824
+Heuristic + Random,analytic_baseline,1024,32,1.0,65.0,8.16259640271847
+Heuristic + Random,analytic_baseline,1024,33,1.0,66.0,12.40388099939534
+Heuristic + Random,analytic_baseline,1024,34,1.0,7.0,4.501456831182752
+Heuristic + Random,analytic_baseline,1024,35,1.0,7.0,4.077707929270608
+Heuristic + Random,analytic_baseline,1024,36,1.0,130.0,10.094927475544123
+Heuristic + Random,analytic_baseline,1024,37,1.0,10.0,7.350629693269729
+Heuristic + Random,analytic_baseline,1024,38,1.0,29.0,9.5806306621124
+Heuristic + Random,analytic_baseline,1024,39,1.0,30.0,10.555866815646489
+Heuristic + Random,analytic_baseline,1024,40,1.0,176.0,10.295937155796723
+Heuristic + Random,analytic_baseline,1024,41,1.0,68.0,13.47749850241577
+Heuristic + Random,analytic_baseline,1024,42,1.0,98.0,7.8804347940853665
+Heuristic + Random,analytic_baseline,1024,43,1.0,130.0,9.251316622128854
+Heuristic + Random,analytic_baseline,1024,44,1.0,242.0,10.072407248591588
+Heuristic + Random,analytic_baseline,1024,45,1.0,32.0,7.670051405206323
+Heuristic + Random,analytic_baseline,1024,46,1.0,65.0,10.909043007630569
+Heuristic + Random,analytic_baseline,1024,47,1.0,110.0,10.221735101125457
+Heuristic + Random,analytic_baseline,1024,48,1.0,244.0,9.696374354731352
+Heuristic + Random,analytic_baseline,1024,49,1.0,8.0,5.092208072543144
+Heuristic + Random,analytic_baseline,2048,0,1.0,243.0,10.198303494679093
+Heuristic + Random,analytic_baseline,2048,1,1.0,103.0,9.71656916673901
+Heuristic + Random,analytic_baseline,2048,2,1.0,64.0,8.039701046422124
+Heuristic + Random,analytic_baseline,2048,3,1.0,32.0,7.419638952240348
+Heuristic + Random,analytic_baseline,2048,4,1.0,33.0,8.8844768892635
+Heuristic + Random,analytic_baseline,2048,5,1.0,101.0,10.615313130440098
+Heuristic + Random,analytic_baseline,2048,6,1.0,115.0,9.569328000752822
+Heuristic + Random,analytic_baseline,2048,7,1.0,310.0,10.432297807162808
+Heuristic + Random,analytic_baseline,2048,8,1.0,237.0,10.147857940901181
+Heuristic + Random,analytic_baseline,2048,9,1.0,33.0,9.548593741474729
+Heuristic + Random,analytic_baseline,2048,10,1.0,64.0,10.172525776550174
+Heuristic + Random,analytic_baseline,2048,11,1.0,97.0,9.551421296043495
+Heuristic + Random,analytic_baseline,2048,12,1.0,97.0,10.732648310587578
+Heuristic + Random,analytic_baseline,2048,13,1.0,8.0,5.136377230286598
+Heuristic + Random,analytic_baseline,2048,14,1.0,147.0,11.397601243995485
+Heuristic + Random,analytic_baseline,2048,15,1.0,32.0,9.325516456738114
+Heuristic + Random,analytic_baseline,2048,16,1.0,69.0,10.94441159674223
+Heuristic + Random,analytic_baseline,2048,17,1.0,104.0,10.271115060036
+Heuristic + Random,analytic_baseline,2048,18,1.0,46.0,9.606607346431069
+Heuristic + Random,analytic_baseline,2048,19,1.0,62.0,9.561596467610329
+Heuristic + Random,analytic_baseline,2048,20,1.0,8.0,4.700162746012211
+Heuristic + Random,analytic_baseline,2048,21,1.0,66.0,11.622927272861654
+Heuristic + Random,analytic_baseline,2048,22,1.0,396.0,10.144490096755701
+Heuristic + Random,analytic_baseline,2048,23,1.0,34.0,8.276793341426288
+Heuristic + Random,analytic_baseline,2048,24,1.0,30.0,7.284473392864069
+Heuristic + Random,analytic_baseline,2048,25,1.0,80.0,10.246899143606424
+Heuristic + Random,analytic_baseline,2048,26,1.0,271.0,10.073102213689761
+Heuristic + Random,analytic_baseline,2048,27,1.0,164.0,9.866232667936057
+Heuristic + Random,analytic_baseline,2048,28,1.0,133.0,10.64213643441523
+Heuristic + Random,analytic_baseline,2048,29,1.0,35.0,16.839411648682187
+Heuristic + Random,analytic_baseline,2048,30,1.0,30.0,10.200456482172012
+Heuristic + Random,analytic_baseline,2048,31,1.0,66.0,10.329151678265948
+Heuristic + Random,analytic_baseline,2048,32,1.0,197.0,8.89101025537791
+Heuristic + Random,analytic_baseline,2048,33,1.0,149.0,10.346298950630546
+Heuristic + Random,analytic_baseline,2048,34,1.0,75.0,10.576656266053517
+Heuristic + Random,analytic_baseline,2048,35,1.0,177.0,9.135381897290548
+Heuristic + Random,analytic_baseline,2048,36,1.0,241.0,10.677828357427448
+Heuristic + Random,analytic_baseline,2048,37,1.0,5.0,3.1934052109718323
+Heuristic + Random,analytic_baseline,2048,38,1.0,30.0,8.37657077908516
+Heuristic + Random,analytic_baseline,2048,39,1.0,31.0,10.796652647035737
+Heuristic + Random,analytic_baseline,2048,40,1.0,26.0,10.604394245606203
+Heuristic + Random,analytic_baseline,2048,41,1.0,8.0,4.9944936111569405
+Heuristic + Random,analytic_baseline,2048,42,1.0,98.0,11.377487445364194
+Heuristic + Random,analytic_baseline,2048,43,1.0,65.0,8.797835946083069
+Heuristic + Random,analytic_baseline,2048,44,1.0,69.0,11.77140872720359
+Heuristic + Random,analytic_baseline,2048,45,1.0,66.0,8.241169188736063
+Heuristic + Random,analytic_baseline,2048,46,1.0,391.0,9.989730051868712
+Heuristic + Random,analytic_baseline,2048,47,1.0,31.0,7.048925884308353
+Heuristic + Random,analytic_baseline,2048,48,1.0,30.0,8.31933159728845
+Heuristic + Random,analytic_baseline,2048,49,1.0,33.0,11.460613460251778
+Heuristic + Random,analytic_baseline,4096,0,1.0,133.0,9.630673330977448
+Heuristic + Random,analytic_baseline,4096,1,1.0,181.0,7.057831294134836
+Heuristic + Random,analytic_baseline,4096,2,1.0,68.0,13.805128832073773
+Heuristic + Random,analytic_baseline,4096,3,1.0,180.0,8.92314298318492
+Heuristic + Random,analytic_baseline,4096,4,1.0,44.0,11.202052134004505
+Heuristic + Random,analytic_baseline,4096,5,1.0,207.0,9.816953749472392
+Heuristic + Random,analytic_baseline,4096,6,1.0,175.0,8.752038270405361
+Heuristic + Random,analytic_baseline,4096,7,1.0,10.0,6.56743500828743
+Heuristic + Random,analytic_baseline,4096,8,1.0,430.0,7.845181563288667
+Heuristic + Random,analytic_baseline,4096,9,1.0,132.0,11.22553993129369
+Heuristic + Random,analytic_baseline,4096,10,1.0,77.0,8.606632055400254
+Heuristic + Random,analytic_baseline,4096,11,1.0,130.0,11.900417514718496
+Heuristic + Random,analytic_baseline,4096,12,1.0,30.0,8.251535267631214
+Heuristic + Random,analytic_baseline,4096,13,1.0,104.0,9.620726473342915
+Heuristic + Random,analytic_baseline,4096,14,1.0,33.0,11.246508024858706
+Heuristic + Random,analytic_baseline,4096,15,1.0,5.0,3.8537132024765013
+Heuristic + Random,analytic_baseline,4096,16,1.0,6.0,4.337513228257497
+Heuristic + Random,analytic_baseline,4096,17,1.0,7.0,4.206536791154316
+Heuristic + Random,analytic_baseline,4096,18,1.0,100.0,9.316002426147461
+Heuristic + Random,analytic_baseline,4096,19,1.0,67.0,10.875508396483179
+Heuristic + Random,analytic_baseline,4096,20,1.0,65.0,8.130719117247141
+Heuristic + Random,analytic_baseline,4096,21,1.0,65.0,9.609876668453216
+Heuristic + Random,analytic_baseline,4096,22,1.0,5.0,2.6816169023513794
+Heuristic + Random,analytic_baseline,4096,23,1.0,131.0,10.45285096696315
+Heuristic + Random,analytic_baseline,4096,24,1.0,45.0,9.697944409979714
+Heuristic + Random,analytic_baseline,4096,25,1.0,7.0,5.586176770074027
+Heuristic + Random,analytic_baseline,4096,26,1.0,6.0,4.015551348527272
+Heuristic + Random,analytic_baseline,4096,27,1.0,34.0,15.354746704592424
+Heuristic + Random,analytic_baseline,4096,28,1.0,253.0,9.567777890226115
+Heuristic + Random,analytic_baseline,4096,29,1.0,66.0,10.817684539339758
+Heuristic + Random,analytic_baseline,4096,30,1.0,139.0,11.473463538524916
+Heuristic + Random,analytic_baseline,4096,31,1.0,136.0,10.981796514681157
+Heuristic + Random,analytic_baseline,4096,32,1.0,268.0,9.277517154812813
+Heuristic + Random,analytic_baseline,4096,33,1.0,102.0,10.26673863302259
+Heuristic + Random,analytic_baseline,4096,34,1.0,30.0,10.47675863802433
+Heuristic + Random,analytic_baseline,4096,35,1.0,98.0,9.002944900977369
+Heuristic + Random,analytic_baseline,4096,36,1.0,100.0,9.805389806628227
+Heuristic + Random,analytic_baseline,4096,37,1.0,107.0,9.717670843701496
+Heuristic + Random,analytic_baseline,4096,38,1.0,32.0,12.600543204694986
+Heuristic + Random,analytic_baseline,4096,39,1.0,79.0,9.642165930965279
+Heuristic + Random,analytic_baseline,4096,40,1.0,105.0,13.20639697710673
+Heuristic + Random,analytic_baseline,4096,41,1.0,33.0,14.741687301433448
+Heuristic + Random,analytic_baseline,4096,42,1.0,261.0,9.718253798183353
+Heuristic + Random,analytic_baseline,4096,43,1.0,201.0,8.884657733179443
+Heuristic + Random,analytic_baseline,4096,44,1.0,76.0,8.887739247005237
+Heuristic + Random,analytic_baseline,4096,45,1.0,2.0,1.1665982902050018
+Heuristic + Random,analytic_baseline,4096,46,1.0,41.0,8.821017654930673
+Heuristic + Random,analytic_baseline,4096,47,1.0,173.0,11.74719485692206
+Heuristic + Random,analytic_baseline,4096,48,1.0,272.0,11.194115596878177
+Heuristic + Random,analytic_baseline,4096,49,1.0,6.0,3.378996178507805
+Heuristic + Random,analytic_baseline,8192,0,1.0,99.0,8.378841648800204
+Heuristic + Random,analytic_baseline,8192,1,1.0,48.0,9.559841677546501
+Heuristic + Random,analytic_baseline,8192,2,1.0,137.0,9.457037575271007
+Heuristic + Random,analytic_baseline,8192,3,1.0,202.0,9.876307156416448
+Heuristic + Random,analytic_baseline,8192,4,1.0,34.0,8.919564282192903
+Heuristic + Random,analytic_baseline,8192,5,1.0,128.0,9.179460636805743
+Heuristic + Random,analytic_baseline,8192,6,1.0,107.0,9.132621341776625
+Heuristic + Random,analytic_baseline,8192,7,1.0,66.0,10.702942840077661
+Heuristic + Random,analytic_baseline,8192,8,1.0,136.0,10.017125925597023
+Heuristic + Random,analytic_baseline,8192,9,1.0,99.0,9.27366625088634
+Heuristic + Random,analytic_baseline,8192,10,1.0,27.0,10.974340635317343
+Heuristic + Random,analytic_baseline,8192,11,1.0,30.0,14.955521431565284
+Heuristic + Random,analytic_baseline,8192,12,1.0,40.0,7.863611537218094
+Heuristic + Random,analytic_baseline,8192,13,1.0,51.0,10.370195516184264
+Heuristic + Random,analytic_baseline,8192,14,1.0,68.0,11.08024063048994
+Heuristic + Random,analytic_baseline,8192,15,1.0,32.0,7.478462653234601
+Heuristic + Random,analytic_baseline,8192,16,1.0,31.0,13.855851367596657
+Heuristic + Random,analytic_baseline,8192,17,1.0,8.0,5.092289667576551
+Heuristic + Random,analytic_baseline,8192,18,1.0,31.0,9.00682569126929
+Heuristic + Random,analytic_baseline,8192,19,1.0,108.0,9.867963656783104
+Heuristic + Random,analytic_baseline,8192,20,1.0,100.0,11.236148579716682
+Heuristic + Random,analytic_baseline,8192,21,1.0,46.0,9.102543556171915
+Heuristic + Random,analytic_baseline,8192,22,1.0,196.0,8.800318189421478
+Heuristic + Random,analytic_baseline,8192,23,1.0,33.0,14.824598641106576
+Heuristic + Random,analytic_baseline,8192,24,1.0,342.0,9.26111702207062
+Heuristic + Random,analytic_baseline,8192,25,1.0,141.0,9.09545861660166
+Heuristic + Random,analytic_baseline,8192,26,1.0,211.0,9.341651207180385
+Heuristic + Random,analytic_baseline,8192,27,1.0,102.0,10.89341080393277
+Heuristic + Random,analytic_baseline,8192,28,1.0,31.0,12.77807995773131
+Heuristic + Random,analytic_baseline,8192,29,1.0,105.0,9.865466436034158
+Heuristic + Random,analytic_baseline,8192,30,1.0,98.0,10.449913180604273
+Heuristic + Random,analytic_baseline,8192,31,1.0,5.0,3.8169898867607115
+Heuristic + Random,analytic_baseline,8192,32,1.0,7.0,5.368688770702907
+Heuristic + Random,analytic_baseline,8192,33,1.0,95.0,9.917767844074652
+Heuristic + Random,analytic_baseline,8192,34,1.0,30.0,11.476388836900393
+Heuristic + Random,analytic_baseline,8192,35,1.0,31.0,14.07054195288689
+Heuristic + Random,analytic_baseline,8192,36,1.0,4.0,2.424765896052122
+Heuristic + Random,analytic_baseline,8192,37,1.0,510.0,8.235926513695249
+Heuristic + Random,analytic_baseline,8192,38,1.0,4.0,2.0500365681946278
+Heuristic + Random,analytic_baseline,8192,39,1.0,106.0,10.780687889400518
+Heuristic + Random,analytic_baseline,8192,40,1.0,135.0,9.82077956950223
+Heuristic + Random,analytic_baseline,8192,41,1.0,252.0,10.327920942789031
+Heuristic + Random,analytic_baseline,8192,42,1.0,31.0,8.88798939028094
+Heuristic + Random,analytic_baseline,8192,43,1.0,166.0,8.837683590959353
+Heuristic + Random,analytic_baseline,8192,44,1.0,139.0,9.204407116063207
+Heuristic + Random,analytic_baseline,8192,45,1.0,133.0,9.216798968781205
+Heuristic + Random,analytic_baseline,8192,46,1.0,33.0,7.038492517037825
+Heuristic + Random,analytic_baseline,8192,47,1.0,32.0,7.893690572120249
+Heuristic + Random,analytic_baseline,8192,48,1.0,101.0,10.196587368108258
+Heuristic + Random,analytic_baseline,8192,49,1.0,9.0,6.432283699512482
+Heuristic + Random,analytic_baseline,16384,0,1.0,68.0,8.546480190228014
+Heuristic + Random,analytic_baseline,16384,1,1.0,272.0,9.307213899761658
+Heuristic + Random,analytic_baseline,16384,2,1.0,79.0,8.455783530315266
+Heuristic + Random,analytic_baseline,16384,3,1.0,32.0,9.85724501684308
+Heuristic + Random,analytic_baseline,16384,4,1.0,38.0,9.549336467918597
+Heuristic + Random,analytic_baseline,16384,5,1.0,2.0,0.756525069475174
+Heuristic + Random,analytic_baseline,16384,6,1.0,68.0,9.988917444558705
+Heuristic + Random,analytic_baseline,16384,7,1.0,33.0,8.732564290364584
+Heuristic + Random,analytic_baseline,16384,8,1.0,166.0,10.339039223201304
+Heuristic + Random,analytic_baseline,16384,9,1.0,7.0,4.080801938261304
+Heuristic + Random,analytic_baseline,16384,10,1.0,97.0,9.234859916659975
+Heuristic + Random,analytic_baseline,16384,11,1.0,43.0,8.654540104228397
+Heuristic + Random,analytic_baseline,16384,12,1.0,336.0,10.2089074965389
+Heuristic + Random,analytic_baseline,16384,13,1.0,109.0,9.747304311791144
+Heuristic + Random,analytic_baseline,16384,14,1.0,85.0,8.34281357386533
+Heuristic + Random,analytic_baseline,16384,15,1.0,67.0,11.174388859699022
+Heuristic + Random,analytic_baseline,16384,16,1.0,63.0,9.973662175829448
+Heuristic + Random,analytic_baseline,16384,17,1.0,71.0,11.950193136510714
+Heuristic + Random,analytic_baseline,16384,18,1.0,30.0,12.843928251663844
+Heuristic + Random,analytic_baseline,16384,19,1.0,71.0,10.103764861822128
+Heuristic + Random,analytic_baseline,16384,20,1.0,9.0,7.2328558630413475
+Heuristic + Random,analytic_baseline,16384,21,1.0,9.0,6.231402426130241
+Heuristic + Random,analytic_baseline,16384,22,1.0,67.0,8.92610092038539
+Heuristic + Random,analytic_baseline,16384,23,1.0,131.0,9.277725548689602
+Heuristic + Random,analytic_baseline,16384,24,1.0,33.0,16.317048011404097
+Heuristic + Random,analytic_baseline,16384,25,1.0,69.0,10.254977743694747
+Heuristic + Random,analytic_baseline,16384,26,1.0,66.0,9.38383216568918
+Heuristic + Random,analytic_baseline,16384,27,1.0,178.0,9.26789114548919
+Heuristic + Random,analytic_baseline,16384,28,1.0,104.0,9.112606652081013
+Heuristic + Random,analytic_baseline,16384,29,1.0,33.0,7.842987619566195
+Heuristic + Random,analytic_baseline,16384,30,1.0,133.0,8.817012205159754
+Heuristic + Random,analytic_baseline,16384,31,1.0,103.0,9.912428265057722
+Heuristic + Random,analytic_baseline,16384,32,1.0,32.0,13.218719178810716
+Heuristic + Random,analytic_baseline,16384,33,1.0,79.0,9.281502837621712
+Heuristic + Random,analytic_baseline,16384,34,1.0,30.0,8.107224662105242
+Heuristic + Random,analytic_baseline,16384,35,1.0,194.0,9.290542704082027
+Heuristic + Random,analytic_baseline,16384,36,1.0,105.0,9.248654232706343
+Heuristic + Random,analytic_baseline,16384,37,1.0,64.0,9.210285938810557
+Heuristic + Random,analytic_baseline,16384,38,1.0,35.0,12.33066309264728
+Heuristic + Random,analytic_baseline,16384,39,1.0,31.0,9.000259793573811
+Heuristic + Random,analytic_baseline,16384,40,1.0,407.0,9.479566896283949
+Heuristic + Random,analytic_baseline,16384,41,1.0,40.0,8.833755402266979
+Heuristic + Random,analytic_baseline,16384,42,1.0,65.0,9.435830582105197
+Heuristic + Random,analytic_baseline,16384,43,1.0,6.0,3.797819490234057
+Heuristic + Random,analytic_baseline,16384,44,1.0,10.0,6.6124701499938965
+Heuristic + Random,analytic_baseline,16384,45,1.0,31.0,12.431992426995308
+Heuristic + Random,analytic_baseline,16384,46,1.0,12.0,8.58029529824853
+Heuristic + Random,analytic_baseline,16384,47,1.0,103.0,9.497060299498363
+Heuristic + Random,analytic_baseline,16384,48,1.0,98.0,10.275608967609552
+Heuristic + Random,analytic_baseline,16384,49,1.0,4.0,1.2010651379823685
+Curriculum,run_0,0,0,0.0,600.0,19.19568261464437
+Curriculum,run_0,0,1,0.0,600.0,19.717945969899496
+Curriculum,run_0,0,2,0.0,600.0,19.080020910898845
+Curriculum,run_0,0,3,0.0,600.0,19.14064231057962
+Curriculum,run_0,0,4,1.0,4.0,1.0483200550079346
+Curriculum,run_0,0,5,0.0,600.0,19.05852980454763
+Curriculum,run_0,0,6,0.0,600.0,19.451158963839212
+Curriculum,run_0,0,7,0.0,600.0,19.514697211583456
+Curriculum,run_0,0,8,0.0,600.0,19.994936695098875
+Curriculum,run_0,0,9,0.0,600.0,18.91684162457784
+Curriculum,run_0,0,10,0.0,600.0,19.09494395971298
+Curriculum,run_0,0,11,0.0,600.0,19.148326031366985
+Curriculum,run_0,0,12,0.0,600.0,19.838659966786704
+Curriculum,run_0,0,13,0.0,600.0,18.880416819254556
+Curriculum,run_0,0,14,0.0,600.0,19.31503670136134
+Curriculum,run_0,0,15,0.0,600.0,19.177487432161968
+Curriculum,run_0,0,16,0.0,600.0,19.39830876350403
+Curriculum,run_0,0,17,0.0,600.0,19.362461833159127
+Curriculum,run_0,0,18,0.0,600.0,19.75615077654521
+Curriculum,run_0,0,19,0.0,600.0,19.66347764968872
+Curriculum,run_0,0,20,0.0,600.0,19.647200396855673
+Curriculum,run_0,0,21,0.0,600.0,19.116798996925354
+Curriculum,run_0,0,22,0.0,600.0,19.51448580900828
+Curriculum,run_0,0,23,0.0,600.0,19.18119137763977
+Curriculum,run_0,0,24,0.0,600.0,19.56984481970469
+Curriculum,run_0,0,25,0.0,600.0,19.238860801855722
+Curriculum,run_0,0,26,0.0,600.0,19.486328519185385
+Curriculum,run_0,0,27,0.0,600.0,19.285175088246664
+Curriculum,run_0,0,28,0.0,600.0,18.886456960042317
+Curriculum,run_0,0,29,0.0,600.0,19.023017715613047
+Curriculum,run_0,0,30,0.0,600.0,19.57703134536743
+Curriculum,run_0,0,31,0.0,600.0,19.232732220490774
+Curriculum,run_0,0,32,0.0,600.0,19.545435967445375
+Curriculum,run_0,0,33,0.0,600.0,19.510526506106057
+Curriculum,run_0,0,34,0.0,600.0,19.262941060066222
+Curriculum,run_0,0,35,0.0,600.0,19.73939027627309
+Curriculum,run_0,0,36,0.0,600.0,19.231657921473186
+Curriculum,run_0,0,37,0.0,600.0,19.16347989877065
+Curriculum,run_0,0,38,0.0,600.0,19.549858878453573
+Curriculum,run_0,0,39,0.0,600.0,19.473795166015623
+Curriculum,run_0,0,40,0.0,600.0,19.26590067545573
+Curriculum,run_0,0,41,0.0,600.0,19.173248437245686
+Curriculum,run_0,0,42,0.0,600.0,19.215410192807514
+Curriculum,run_0,0,43,0.0,600.0,19.41236218293508
+Curriculum,run_0,0,44,0.0,600.0,19.447066805362702
+Curriculum,run_0,0,45,0.0,600.0,19.172590221563976
+Curriculum,run_0,0,46,0.0,600.0,18.739327851931254
+Curriculum,run_0,0,47,0.0,600.0,19.16260110537211
+Curriculum,run_0,0,48,0.0,600.0,19.5153769493103
+Curriculum,run_0,0,49,0.0,600.0,19.743243565559386
+Curriculum,run_0,42,0,0.0,600.0,19.025871758063634
+Curriculum,run_0,42,1,0.0,600.0,19.195519693692525
+Curriculum,run_0,42,2,0.0,600.0,19.631740159988404
+Curriculum,run_0,42,3,0.0,600.0,19.3441584722201
+Curriculum,run_0,42,4,0.0,600.0,19.543799692789715
+Curriculum,run_0,42,5,0.0,600.0,19.720981141726178
+Curriculum,run_0,42,6,0.0,600.0,19.024463098446528
+Curriculum,run_0,42,7,0.0,600.0,18.883937321503957
+Curriculum,run_0,42,8,0.0,600.0,19.37808264255524
+Curriculum,run_0,42,9,0.0,600.0,19.458517560958864
+Curriculum,run_0,42,10,0.0,600.0,19.507426012357076
+Curriculum,run_0,42,11,0.0,600.0,19.362441306114196
+Curriculum,run_0,42,12,0.0,600.0,19.431446097691854
+Curriculum,run_0,42,13,0.0,600.0,19.30639631430308
+Curriculum,run_0,42,14,0.0,600.0,18.8553444592158
+Curriculum,run_0,42,15,0.0,600.0,19.281400134563444
+Curriculum,run_0,42,16,0.0,600.0,19.528673637708028
+Curriculum,run_0,42,17,0.0,600.0,19.338034636179607
+Curriculum,run_0,42,18,0.0,600.0,19.663297328948975
+Curriculum,run_0,42,19,0.0,600.0,19.281894619464875
+Curriculum,run_0,42,20,0.0,600.0,19.649541867574055
+Curriculum,run_0,42,21,0.0,600.0,19.13078940232595
+Curriculum,run_0,42,22,0.0,600.0,19.343793669541675
+Curriculum,run_0,42,23,0.0,600.0,19.366395653883615
+Curriculum,run_0,42,24,0.0,600.0,18.98960364262263
+Curriculum,run_0,42,25,0.0,600.0,19.35332003990809
+Curriculum,run_0,42,26,0.0,600.0,19.829783708254496
+Curriculum,run_0,42,27,0.0,600.0,19.008306144078574
+Curriculum,run_0,42,28,0.0,600.0,19.54389519850413
+Curriculum,run_0,42,29,0.0,600.0,19.06600383043289
+Curriculum,run_0,42,30,0.0,600.0,19.423899693489076
+Curriculum,run_0,42,31,0.0,600.0,19.327583850224812
+Curriculum,run_0,42,32,0.0,600.0,19.19137797832489
+Curriculum,run_0,42,33,0.0,600.0,19.04283567269643
+Curriculum,run_0,42,34,0.0,600.0,19.329014106591544
+Curriculum,run_0,42,35,0.0,600.0,18.39576340595881
+Curriculum,run_0,42,36,0.0,600.0,19.490008373260498
+Curriculum,run_0,42,37,0.0,600.0,19.35262054125468
+Curriculum,run_0,42,38,0.0,600.0,19.30200472195943
+Curriculum,run_0,42,39,0.0,600.0,19.28979739189148
+Curriculum,run_0,42,40,0.0,600.0,19.519422160784405
+Curriculum,run_0,42,41,0.0,600.0,19.439829671382903
+Curriculum,run_0,42,42,0.0,600.0,19.431159898440043
+Curriculum,run_0,42,43,0.0,600.0,19.34885901451111
+Curriculum,run_0,42,44,0.0,600.0,19.413935106595357
+Curriculum,run_0,42,45,0.0,600.0,18.762550542354585
+Curriculum,run_0,42,46,0.0,600.0,19.494138201077778
+Curriculum,run_0,42,47,0.0,600.0,19.351198681195577
+Curriculum,run_0,42,48,0.0,600.0,19.370502599080403
+Curriculum,run_0,42,49,0.0,600.0,19.494882944424948
+Curriculum,run_0,123,0,0.0,600.0,18.74549972931544
+Curriculum,run_0,123,1,0.0,600.0,19.32304180622101
+Curriculum,run_0,123,2,0.0,600.0,18.648743680318198
+Curriculum,run_0,123,3,0.0,600.0,19.165471585989
+Curriculum,run_0,123,4,0.0,600.0,19.61658243338267
+Curriculum,run_0,123,5,0.0,600.0,19.486622519493103
+Curriculum,run_0,123,6,0.0,600.0,19.17447446902593
+Curriculum,run_0,123,7,0.0,600.0,19.518704268137615
+Curriculum,run_0,123,8,0.0,600.0,19.366510690053303
+Curriculum,run_0,123,9,0.0,600.0,19.460063338279724
+Curriculum,run_0,123,10,0.0,600.0,19.322347100575765
+Curriculum,run_0,123,11,0.0,600.0,19.814623702367147
+Curriculum,run_0,123,12,0.0,600.0,19.101219690640768
+Curriculum,run_0,123,13,0.0,600.0,19.12377413193385
+Curriculum,run_0,123,14,0.0,600.0,19.25499210278193
+Curriculum,run_0,123,15,0.0,600.0,18.93933560768763
+Curriculum,run_0,123,16,0.0,600.0,19.525484886169433
+Curriculum,run_0,123,17,0.0,600.0,19.490087614059448
+Curriculum,run_0,123,18,0.0,600.0,19.545207312901816
+Curriculum,run_0,123,19,0.0,600.0,19.097643823623656
+Curriculum,run_0,123,20,0.0,600.0,19.39990912596385
+Curriculum,run_0,123,21,0.0,600.0,19.068258963425954
+Curriculum,run_0,123,22,0.0,600.0,19.825685855547587
+Curriculum,run_0,123,23,0.0,600.0,19.54067351659139
+Curriculum,run_0,123,24,0.0,600.0,19.662213956514993
+Curriculum,run_0,123,25,0.0,600.0,19.466235696474712
+Curriculum,run_0,123,26,0.0,600.0,19.294133501052855
+Curriculum,run_0,123,27,0.0,600.0,19.408270921707153
+Curriculum,run_0,123,28,0.0,600.0,19.146454524199168
+Curriculum,run_0,123,29,0.0,600.0,19.477678870360055
+Curriculum,run_0,123,30,0.0,600.0,19.062249253590902
+Curriculum,run_0,123,31,0.0,600.0,19.40224293867747
+Curriculum,run_0,123,32,0.0,600.0,19.362712348302207
+Curriculum,run_0,123,33,0.0,600.0,19.523349687258403
+Curriculum,run_0,123,34,0.0,600.0,19.432830538749695
+Curriculum,run_0,123,35,0.0,600.0,18.857622475624083
+Curriculum,run_0,123,36,0.0,600.0,19.39904718875885
+Curriculum,run_0,123,37,0.0,600.0,19.52032572746277
+Curriculum,run_0,123,38,0.0,600.0,19.338136569658914
+Curriculum,run_0,123,39,0.0,600.0,19.24847318649292
+Curriculum,run_0,123,40,0.0,600.0,19.5731559975942
+Curriculum,run_0,123,41,0.0,600.0,19.290045773983003
+Curriculum,run_0,123,42,0.0,600.0,19.865906586647032
+Curriculum,run_0,123,43,0.0,600.0,19.41774624387423
+Curriculum,run_0,123,44,0.0,600.0,19.572886672814686
+Curriculum,run_0,123,45,0.0,600.0,19.32778939565023
+Curriculum,run_0,123,46,0.0,600.0,19.518425998687743
+Curriculum,run_0,123,47,0.0,600.0,19.411916936238608
+Curriculum,run_0,123,48,0.0,600.0,18.99377893527349
+Curriculum,run_0,123,49,0.0,600.0,19.583791287740073
+Curriculum,run_0,456,0,0.0,600.0,19.48575827916463
+Curriculum,run_0,456,1,0.0,600.0,19.497761317888894
+Curriculum,run_0,456,2,0.0,600.0,19.490367799599966
+Curriculum,run_0,456,3,0.0,600.0,19.13638264497121
+Curriculum,run_0,456,4,0.0,600.0,19.473654413223265
+Curriculum,run_0,456,5,0.0,600.0,19.480562860171002
+Curriculum,run_0,456,6,0.0,600.0,19.514360405604045
+Curriculum,run_0,456,7,0.0,600.0,19.490892173449197
+Curriculum,run_0,456,8,0.0,600.0,19.408460995356243
+Curriculum,run_0,456,9,0.0,600.0,19.067293281555177
+Curriculum,run_0,456,10,0.0,600.0,19.21570974667867
+Curriculum,run_0,456,11,0.0,600.0,19.057461246649424
+Curriculum,run_0,456,12,0.0,600.0,19.43087298711141
+Curriculum,run_0,456,13,0.0,600.0,19.707592406272887
+Curriculum,run_0,456,14,0.0,600.0,19.45098406632741
+Curriculum,run_0,456,15,0.0,600.0,19.097225265502928
+Curriculum,run_0,456,16,0.0,600.0,19.466869190533956
+Curriculum,run_0,456,17,0.0,600.0,19.362875016530356
+Curriculum,run_0,456,18,0.0,600.0,19.404960786501565
+Curriculum,run_0,456,19,0.0,600.0,19.33638972759247
+Curriculum,run_0,456,20,0.0,600.0,19.44065653324127
+Curriculum,run_0,456,21,0.0,600.0,19.47699557065964
+Curriculum,run_0,456,22,0.0,600.0,19.348173127174377
+Curriculum,run_0,456,23,0.0,600.0,18.868473896980287
+Curriculum,run_0,456,24,0.0,600.0,19.364916462898254
+Curriculum,run_0,456,25,0.0,600.0,19.50166973431905
+Curriculum,run_0,456,26,0.0,600.0,18.7512619638443
+Curriculum,run_0,456,27,0.0,600.0,19.335678830941518
+Curriculum,run_0,456,28,0.0,600.0,19.39816645940145
+Curriculum,run_0,456,29,0.0,600.0,19.439373238086702
+Curriculum,run_0,456,30,0.0,600.0,19.222765351931255
+Curriculum,run_0,456,31,0.0,600.0,19.243718152046203
+Curriculum,run_0,456,32,0.0,600.0,18.948399936358133
+Curriculum,run_0,456,33,0.0,600.0,19.30712763150533
+Curriculum,run_0,456,34,0.0,600.0,19.23625929117203
+Curriculum,run_0,456,35,0.0,600.0,19.454800810813904
+Curriculum,run_0,456,36,0.0,600.0,19.391263524691265
+Curriculum,run_0,456,37,0.0,600.0,19.574046031634012
+Curriculum,run_0,456,38,0.0,600.0,19.37876325925191
+Curriculum,run_0,456,39,0.0,600.0,19.438010692596436
+Curriculum,run_0,456,40,0.0,600.0,19.187900466918947
+Curriculum,run_0,456,41,0.0,600.0,19.296266241868338
+Curriculum,run_0,456,42,0.0,600.0,19.190497001806897
+Curriculum,run_0,456,43,0.0,600.0,19.3281050435702
+Curriculum,run_0,456,44,0.0,600.0,19.449931139945985
+Curriculum,run_0,456,45,0.0,600.0,19.47026705423991
+Curriculum,run_0,456,46,0.0,600.0,19.512833908398946
+Curriculum,run_0,456,47,0.0,600.0,19.272529760996502
+Curriculum,run_0,456,48,0.0,600.0,19.53401960372925
+Curriculum,run_0,456,49,0.0,600.0,18.991576716105143
+Curriculum,run_0,789,0,0.0,600.0,19.007789510091147
+Curriculum,run_0,789,1,0.0,600.0,19.08638502597809
+Curriculum,run_0,789,2,0.0,600.0,19.459532030423482
+Curriculum,run_0,789,3,0.0,600.0,18.914484345515568
+Curriculum,run_0,789,4,0.0,600.0,19.335170628229776
+Curriculum,run_0,789,5,0.0,600.0,19.798208781878152
+Curriculum,run_0,789,6,0.0,600.0,18.776653362909954
+Curriculum,run_0,789,7,0.0,600.0,19.25135570605596
+Curriculum,run_0,789,8,0.0,600.0,19.361532181104025
+Curriculum,run_0,789,9,0.0,600.0,19.026119892597197
+Curriculum,run_0,789,10,0.0,600.0,19.442953034241995
+Curriculum,run_0,789,11,0.0,600.0,19.462924869855247
+Curriculum,run_0,789,12,0.0,600.0,19.480972708066304
+Curriculum,run_0,789,13,0.0,600.0,19.464434928894043
+Curriculum,run_0,789,14,0.0,600.0,19.16887576878071
+Curriculum,run_0,789,15,0.0,600.0,19.413379691441854
+Curriculum,run_0,789,16,0.0,600.0,19.473396722475687
+Curriculum,run_0,789,17,0.0,600.0,19.621925662358603
+Curriculum,run_0,789,18,0.0,600.0,19.487158654530845
+Curriculum,run_0,789,19,0.0,600.0,19.067302077611288
+Curriculum,run_0,789,20,0.0,600.0,19.376976844469706
+Curriculum,run_0,789,21,0.0,600.0,19.495224545796713
+Curriculum,run_0,789,22,0.0,600.0,19.283048435846965
+Curriculum,run_0,789,23,0.0,600.0,19.48466786543528
+Curriculum,run_0,789,24,0.0,600.0,19.500875657399494
+Curriculum,run_0,789,25,0.0,600.0,19.410619433720907
+Curriculum,run_0,789,26,0.0,600.0,19.4728351577123
+Curriculum,run_0,789,27,0.0,600.0,19.629270509084066
+Curriculum,run_0,789,28,0.0,600.0,19.416642648379007
+Curriculum,run_0,789,29,0.0,600.0,19.344605650901794
+Curriculum,run_0,789,30,0.0,600.0,19.578542331059772
+Curriculum,run_0,789,31,0.0,600.0,19.459256846904754
+Curriculum,run_0,789,32,0.0,600.0,19.88073164621989
+Curriculum,run_0,789,33,0.0,600.0,19.594326248168944
+Curriculum,run_0,789,34,0.0,600.0,19.455398449897768
+Curriculum,run_0,789,35,0.0,600.0,19.152280518213907
+Curriculum,run_0,789,36,0.0,600.0,19.422103985150656
+Curriculum,run_0,789,37,0.0,600.0,19.47551307996114
+Curriculum,run_0,789,38,0.0,600.0,19.523343470891316
+Curriculum,run_0,789,39,0.0,600.0,19.493400206565855
+Curriculum,run_0,789,40,0.0,600.0,19.019242226282756
+Curriculum,run_0,789,41,0.0,600.0,19.437258302370708
+Curriculum,run_0,789,42,0.0,600.0,19.433576334317525
+Curriculum,run_0,789,43,0.0,600.0,19.114947798252107
+Curriculum,run_0,789,44,0.0,600.0,19.893734866778058
+Curriculum,run_0,789,45,0.0,600.0,19.269655305544536
+Curriculum,run_0,789,46,0.0,600.0,19.498370974858602
+Curriculum,run_0,789,47,0.0,600.0,19.246669651667276
+Curriculum,run_0,789,48,0.0,600.0,19.342860567569733
+Curriculum,run_0,789,49,0.0,600.0,19.34488663991292
+Curriculum,run_0,1024,0,0.0,600.0,19.613003560702005
+Curriculum,run_0,1024,1,0.0,600.0,19.496273703575135
+Curriculum,run_0,1024,2,0.0,600.0,19.396609786351522
+Curriculum,run_0,1024,3,0.0,600.0,19.067326329549154
+Curriculum,run_0,1024,4,0.0,600.0,19.48832262992859
+Curriculum,run_0,1024,5,0.0,600.0,19.04290652592977
+Curriculum,run_0,1024,6,0.0,600.0,19.22559344291687
+Curriculum,run_0,1024,7,0.0,600.0,19.23830202182134
+Curriculum,run_0,1024,8,0.0,600.0,19.65082246939341
+Curriculum,run_0,1024,9,0.0,600.0,19.810895007451375
+Curriculum,run_0,1024,10,0.0,600.0,19.613762009938558
+Curriculum,run_0,1024,11,0.0,600.0,19.568794240951537
+Curriculum,run_0,1024,12,0.0,600.0,19.184183333714802
+Curriculum,run_0,1024,13,0.0,600.0,19.09729008436203
+Curriculum,run_0,1024,14,0.0,600.0,19.178783356348674
+Curriculum,run_0,1024,15,0.0,600.0,19.31558648586273
+Curriculum,run_0,1024,16,0.0,600.0,19.50872909069061
+Curriculum,run_0,1024,17,0.0,600.0,19.097642579078673
+Curriculum,run_0,1024,18,0.0,600.0,19.070748602549234
+Curriculum,run_0,1024,19,0.0,600.0,19.55119777361552
+Curriculum,run_0,1024,20,0.0,600.0,19.320979725519816
+Curriculum,run_0,1024,21,1.0,4.0,1.4307180270552635
+Curriculum,run_0,1024,22,0.0,600.0,19.327869901657106
+Curriculum,run_0,1024,23,0.0,600.0,19.54170610745748
+Curriculum,run_0,1024,24,0.0,600.0,19.536877366701763
+Curriculum,run_0,1024,25,0.0,600.0,19.415598519643147
+Curriculum,run_0,1024,26,0.0,600.0,19.85798716545105
+Curriculum,run_0,1024,27,0.0,600.0,19.48743229071299
+Curriculum,run_0,1024,28,0.0,600.0,19.35018913269043
+Curriculum,run_0,1024,29,0.0,600.0,19.50531709432602
+Curriculum,run_0,1024,30,0.0,600.0,19.575706701278687
+Curriculum,run_0,1024,31,0.0,600.0,19.345090352694193
+Curriculum,run_0,1024,32,0.0,600.0,19.512385106086732
+Curriculum,run_0,1024,33,0.0,600.0,19.58740204970042
+Curriculum,run_0,1024,34,0.0,600.0,19.454760824839273
+Curriculum,run_0,1024,35,0.0,600.0,19.41858057339986
+Curriculum,run_0,1024,36,0.0,600.0,19.422318275769552
+Curriculum,run_0,1024,37,0.0,600.0,19.623156973520913
+Curriculum,run_0,1024,38,0.0,600.0,19.03340575615565
+Curriculum,run_0,1024,39,0.0,600.0,19.375375897884368
+Curriculum,run_0,1024,40,0.0,600.0,19.59286377588908
+Curriculum,run_0,1024,41,0.0,600.0,19.860891925493878
+Curriculum,run_0,1024,42,0.0,600.0,18.962685276667276
+Curriculum,run_0,1024,43,0.0,600.0,18.6588822555542
+Curriculum,run_0,1024,44,0.0,600.0,19.550355723698935
+Curriculum,run_0,1024,45,0.0,600.0,19.237108561197918
+Curriculum,run_0,1024,46,0.0,600.0,19.85241098244985
+Curriculum,run_0,1024,47,0.0,600.0,19.50782430966695
+Curriculum,run_0,1024,48,0.0,600.0,19.452951579093934
+Curriculum,run_0,1024,49,0.0,600.0,19.35174236456553
+Curriculum,run_0,2048,0,0.0,600.0,18.832121404806774
+Curriculum,run_0,2048,1,0.0,600.0,19.455925855636597
+Curriculum,run_0,2048,2,0.0,600.0,19.44188512325287
+Curriculum,run_0,2048,3,0.0,600.0,19.240247248013816
+Curriculum,run_0,2048,4,0.0,600.0,19.02129389842351
+Curriculum,run_0,2048,5,0.0,600.0,19.33788149913152
+Curriculum,run_0,2048,6,0.0,600.0,19.376150641441345
+Curriculum,run_0,2048,7,0.0,600.0,19.611898363431294
+Curriculum,run_0,2048,8,0.0,600.0,19.532031860351562
+Curriculum,run_0,2048,9,0.0,600.0,19.33356156349182
+Curriculum,run_0,2048,10,0.0,600.0,19.445691979726156
+Curriculum,run_0,2048,11,0.0,600.0,19.461317849953968
+Curriculum,run_0,2048,12,0.0,600.0,19.648397715886436
+Curriculum,run_0,2048,13,0.0,600.0,19.39972540696462
+Curriculum,run_0,2048,14,0.0,600.0,19.308832354545594
+Curriculum,run_0,2048,15,0.0,600.0,19.440772994359335
+Curriculum,run_0,2048,16,0.0,600.0,19.303609014352162
+Curriculum,run_0,2048,17,0.0,600.0,19.635693408648173
+Curriculum,run_0,2048,18,0.0,600.0,19.59820560693741
+Curriculum,run_0,2048,19,0.0,600.0,19.385617170333862
+Curriculum,run_0,2048,20,0.0,600.0,19.106779154936472
+Curriculum,run_0,2048,21,0.0,600.0,19.201128747463226
+Curriculum,run_0,2048,22,0.0,600.0,19.638323594729105
+Curriculum,run_0,2048,23,0.0,600.0,19.23269583304723
+Curriculum,run_0,2048,24,0.0,600.0,18.99472030321757
+Curriculum,run_0,2048,25,0.0,600.0,19.49339991092682
+Curriculum,run_0,2048,26,0.0,600.0,19.748408325513203
+Curriculum,run_0,2048,27,0.0,600.0,19.622163252830504
+Curriculum,run_0,2048,28,0.0,600.0,19.884724683761597
+Curriculum,run_0,2048,29,0.0,600.0,19.756087420781455
+Curriculum,run_0,2048,30,0.0,600.0,18.969544432957967
+Curriculum,run_0,2048,31,0.0,600.0,18.979967261950176
+Curriculum,run_0,2048,32,0.0,600.0,19.438815212249757
+Curriculum,run_0,2048,33,0.0,600.0,19.59138936360677
+Curriculum,run_0,2048,34,0.0,600.0,19.268339835802713
+Curriculum,run_0,2048,35,0.0,600.0,19.264228033224743
+Curriculum,run_0,2048,36,0.0,600.0,19.555469094912212
+Curriculum,run_0,2048,37,0.0,600.0,19.299657984574637
+Curriculum,run_0,2048,38,0.0,600.0,19.410183657010396
+Curriculum,run_0,2048,39,0.0,600.0,19.313587568600973
+Curriculum,run_0,2048,40,0.0,600.0,19.26838572025299
+Curriculum,run_0,2048,41,0.0,600.0,19.103882945378622
+Curriculum,run_0,2048,42,0.0,600.0,19.483980552355447
+Curriculum,run_0,2048,43,0.0,600.0,19.535243830680848
+Curriculum,run_0,2048,44,0.0,600.0,19.329678610165914
+Curriculum,run_0,2048,45,0.0,600.0,19.36622903982798
+Curriculum,run_0,2048,46,0.0,600.0,19.210811251799267
+Curriculum,run_0,2048,47,0.0,600.0,19.415609715779624
+Curriculum,run_0,2048,48,0.0,600.0,19.44126431941986
+Curriculum,run_0,2048,49,0.0,600.0,19.46129420677821
+Curriculum,run_0,4096,0,0.0,600.0,19.516618027687073
+Curriculum,run_0,4096,1,0.0,600.0,19.35888225078583
+Curriculum,run_0,4096,2,0.0,600.0,19.750499596595763
+Curriculum,run_0,4096,3,0.0,600.0,19.416647919019063
+Curriculum,run_0,4096,4,0.0,600.0,19.70255458990733
+Curriculum,run_0,4096,5,0.0,600.0,19.171973141829174
+Curriculum,run_0,4096,6,0.0,600.0,18.860485854148866
+Curriculum,run_0,4096,7,0.0,600.0,19.452920503616333
+Curriculum,run_0,4096,8,0.0,600.0,19.704930121103924
+Curriculum,run_0,4096,9,0.0,600.0,19.603541131019593
+Curriculum,run_0,4096,10,0.0,600.0,19.346134583155315
+Curriculum,run_0,4096,11,0.0,600.0,18.711405158042908
+Curriculum,run_0,4096,12,0.0,600.0,19.368912812868754
+Curriculum,run_0,4096,13,0.0,600.0,19.429636993408202
+Curriculum,run_0,4096,14,0.0,600.0,18.858214054902394
+Curriculum,run_0,4096,15,0.0,600.0,19.48518144051234
+Curriculum,run_0,4096,16,0.0,600.0,19.426025778452555
+Curriculum,run_0,4096,17,0.0,600.0,19.30374761581421
+Curriculum,run_0,4096,18,0.0,600.0,19.386210815111795
+Curriculum,run_0,4096,19,0.0,600.0,19.38372116645177
+Curriculum,run_0,4096,20,0.0,600.0,19.509299510320027
+Curriculum,run_0,4096,21,0.0,600.0,19.40386375427246
+Curriculum,run_0,4096,22,0.0,600.0,18.639930408000946
+Curriculum,run_0,4096,23,0.0,600.0,19.43853069782257
+Curriculum,run_0,4096,24,0.0,600.0,19.289928418795267
+Curriculum,run_0,4096,25,0.0,600.0,19.720400842030845
+Curriculum,run_0,4096,26,0.0,600.0,18.7661057194074
+Curriculum,run_0,4096,27,0.0,600.0,19.717756838798522
+Curriculum,run_0,4096,28,0.0,600.0,19.062048308054607
+Curriculum,run_0,4096,29,0.0,600.0,19.530859449704487
+Curriculum,run_0,4096,30,0.0,600.0,19.63410143375397
+Curriculum,run_0,4096,31,0.0,600.0,19.61221244176229
+Curriculum,run_0,4096,32,0.0,600.0,19.43172426700592
+Curriculum,run_0,4096,33,0.0,600.0,19.723248105049134
+Curriculum,run_0,4096,34,0.0,600.0,19.454412837028503
+Curriculum,run_0,4096,35,0.0,600.0,19.259550105730693
+Curriculum,run_0,4096,36,0.0,600.0,19.524235116640728
+Curriculum,run_0,4096,37,0.0,600.0,19.37270073413849
+Curriculum,run_0,4096,38,0.0,600.0,18.423432987531026
+Curriculum,run_0,4096,39,0.0,600.0,19.327605126698813
+Curriculum,run_0,4096,40,0.0,600.0,19.6554580895106
+Curriculum,run_0,4096,41,0.0,600.0,19.71885008653005
+Curriculum,run_0,4096,42,0.0,600.0,19.409515742460886
+Curriculum,run_0,4096,43,0.0,600.0,19.42677907148997
+Curriculum,run_0,4096,44,0.0,600.0,19.964696108500164
+Curriculum,run_0,4096,45,0.0,600.0,19.29686521887779
+Curriculum,run_0,4096,46,0.0,600.0,19.337583715120953
+Curriculum,run_0,4096,47,0.0,600.0,19.556586786905925
+Curriculum,run_0,4096,48,0.0,600.0,19.47970184961955
+Curriculum,run_0,4096,49,0.0,600.0,19.13704497655233
+Curriculum,run_0,8192,0,0.0,600.0,19.532507464090983
+Curriculum,run_0,8192,1,0.0,600.0,19.95838046868642
+Curriculum,run_0,8192,2,0.0,600.0,19.46256091117859
+Curriculum,run_0,8192,3,0.0,600.0,19.40063408056895
+Curriculum,run_0,8192,4,0.0,600.0,19.40634377002716
+Curriculum,run_0,8192,5,0.0,600.0,19.072182633082072
+Curriculum,run_0,8192,6,0.0,600.0,19.269982539812723
+Curriculum,run_0,8192,7,0.0,600.0,19.66529589811961
+Curriculum,run_0,8192,8,0.0,600.0,18.7498750547568
+Curriculum,run_0,8192,9,0.0,600.0,18.97589286406835
+Curriculum,run_0,8192,10,0.0,600.0,19.430872204303743
+Curriculum,run_0,8192,11,0.0,600.0,19.615928908983868
+Curriculum,run_0,8192,12,0.0,600.0,19.01623916784922
+Curriculum,run_0,8192,13,0.0,600.0,19.940556012789408
+Curriculum,run_0,8192,14,0.0,600.0,19.436981475353242
+Curriculum,run_0,8192,15,0.0,600.0,19.495832274754843
+Curriculum,run_0,8192,16,0.0,600.0,19.51982215563456
+Curriculum,run_0,8192,17,0.0,600.0,19.754371490478515
+Curriculum,run_0,8192,18,0.0,600.0,19.51148783683777
+Curriculum,run_0,8192,19,0.0,600.0,19.134799747665724
+Curriculum,run_0,8192,20,0.0,600.0,19.473948040008544
+Curriculum,run_0,8192,21,0.0,600.0,19.560185197194418
+Curriculum,run_0,8192,22,0.0,600.0,19.454074498812357
+Curriculum,run_0,8192,23,0.0,600.0,19.61154453754425
+Curriculum,run_0,8192,24,0.0,600.0,19.78252398490906
+Curriculum,run_0,8192,25,0.0,600.0,19.103624830245973
+Curriculum,run_0,8192,26,0.0,600.0,19.08215518951416
+Curriculum,run_0,8192,27,0.0,600.0,19.314823201497397
+Curriculum,run_0,8192,28,0.0,600.0,19.2544291416804
+Curriculum,run_0,8192,29,0.0,600.0,19.353377485076585
+Curriculum,run_0,8192,30,0.0,600.0,19.26249133189519
+Curriculum,run_0,8192,31,0.0,600.0,19.292053939501443
+Curriculum,run_0,8192,32,0.0,600.0,19.478952198028566
+Curriculum,run_0,8192,33,0.0,600.0,19.330591251850127
+Curriculum,run_0,8192,34,0.0,600.0,19.303650106589
+Curriculum,run_0,8192,35,0.0,600.0,19.59716813882192
+Curriculum,run_0,8192,36,0.0,600.0,19.19916452884674
+Curriculum,run_0,8192,37,0.0,600.0,18.863209811846414
+Curriculum,run_0,8192,38,0.0,600.0,18.791659260590873
+Curriculum,run_0,8192,39,0.0,600.0,19.35316525777181
+Curriculum,run_0,8192,40,0.0,600.0,19.389936525026958
+Curriculum,run_0,8192,41,0.0,600.0,19.398896468480427
+Curriculum,run_0,8192,42,0.0,600.0,19.25480852286021
+Curriculum,run_0,8192,43,0.0,600.0,18.973834359645842
+Curriculum,run_0,8192,44,0.0,600.0,19.29445774634679
+Curriculum,run_0,8192,45,0.0,600.0,19.35210946083069
+Curriculum,run_0,8192,46,0.0,600.0,19.40339344183604
+Curriculum,run_0,8192,47,0.0,600.0,19.39211233297984
+Curriculum,run_0,8192,48,0.0,600.0,19.541091949145
+Curriculum,run_0,8192,49,0.0,600.0,19.24953702608744
+Curriculum,run_0,16384,0,0.0,600.0,19.278172715504965
+Curriculum,run_0,16384,1,0.0,600.0,19.432079288164775
+Curriculum,run_0,16384,2,0.0,600.0,19.716291910807293
+Curriculum,run_0,16384,3,0.0,600.0,19.5244367535909
+Curriculum,run_0,16384,4,0.0,600.0,19.048584582010903
+Curriculum,run_0,16384,5,0.0,600.0,19.321493807435036
+Curriculum,run_0,16384,6,0.0,600.0,18.583664179841676
+Curriculum,run_0,16384,7,0.0,600.0,19.22258089542389
+Curriculum,run_0,16384,8,0.0,600.0,19.352960041364035
+Curriculum,run_0,16384,9,0.0,600.0,19.366465559005736
+Curriculum,run_0,16384,10,0.0,600.0,19.39893008550008
+Curriculum,run_0,16384,11,0.0,600.0,19.371173864205677
+Curriculum,run_0,16384,12,0.0,600.0,19.642764638264975
+Curriculum,run_0,16384,13,0.0,600.0,19.932845012346903
+Curriculum,run_0,16384,14,0.0,600.0,19.375821812152864
+Curriculum,run_0,16384,15,0.0,600.0,19.44976054986318
+Curriculum,run_0,16384,16,0.0,600.0,19.5096244653066
+Curriculum,run_0,16384,17,0.0,600.0,19.128942030270895
+Curriculum,run_0,16384,18,0.0,600.0,19.50557117621104
+Curriculum,run_0,16384,19,1.0,5.0,1.3983124136924743
+Curriculum,run_0,16384,20,0.0,600.0,19.299782656033834
+Curriculum,run_0,16384,21,0.0,600.0,19.553333919843038
+Curriculum,run_0,16384,22,0.0,600.0,19.267462827364604
+Curriculum,run_0,16384,23,0.0,600.0,19.309851268132526
+Curriculum,run_0,16384,24,0.0,600.0,19.703780496915183
+Curriculum,run_0,16384,25,0.0,600.0,19.359335652987163
+Curriculum,run_0,16384,26,0.0,600.0,19.38395138422648
+Curriculum,run_0,16384,27,0.0,600.0,19.397878427505493
+Curriculum,run_0,16384,28,0.0,600.0,19.315816783905028
+Curriculum,run_0,16384,29,0.0,600.0,19.01053841590881
+Curriculum,run_0,16384,30,0.0,600.0,19.107779927253723
+Curriculum,run_0,16384,31,0.0,600.0,19.40339775085449
+Curriculum,run_0,16384,32,0.0,600.0,19.51877930164337
+Curriculum,run_0,16384,33,0.0,600.0,19.380218539237976
+Curriculum,run_0,16384,34,0.0,600.0,19.212161696751913
+Curriculum,run_0,16384,35,0.0,600.0,19.02112900575002
+Curriculum,run_0,16384,36,0.0,600.0,19.240668381849925
+Curriculum,run_0,16384,37,0.0,600.0,19.38995912194252
+Curriculum,run_0,16384,38,0.0,600.0,18.96637284676234
+Curriculum,run_0,16384,39,0.0,600.0,19.221877950032553
+Curriculum,run_0,16384,40,0.0,600.0,19.30048082669576
+Curriculum,run_0,16384,41,0.0,600.0,19.152526364326476
+Curriculum,run_0,16384,42,0.0,600.0,18.845731736421584
+Curriculum,run_0,16384,43,0.0,600.0,19.442787171999612
+Curriculum,run_0,16384,44,0.0,600.0,18.991501250267028
+Curriculum,run_0,16384,45,0.0,600.0,19.29779735883077
+Curriculum,run_0,16384,46,0.0,600.0,20.00046631336212
+Curriculum,run_0,16384,47,0.0,600.0,19.396281581719716
+Curriculum,run_0,16384,48,0.0,600.0,19.373453113238018
+Curriculum,run_0,16384,49,0.0,600.0,19.22891845623652

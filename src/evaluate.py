@@ -14,13 +14,14 @@ from __future__ import annotations
 
 import argparse
 import csv
+import math
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
+import mpmath
 import numpy as np
-from scipy import stats
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -122,6 +123,12 @@ def parse_args() -> argparse.Namespace:
         default="results/latex_tables.tex",
         help="LaTeX table path generated from summaries.",
     )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="auto",
+        help="Inference device for learned policies (auto/cpu/cuda).",
+    )
     return parser.parse_args()
 
 
@@ -216,15 +223,16 @@ def evaluate_policy_pair(
     cfg: PhysicsConfig,
     eval_seeds: Sequence[int],
     episodes_per_seed: int,
+    device: str,
 ) -> list[dict]:
     print(f"Evaluating {spec.method} run '{spec.run_id}'...")
     env = EagleTrainingEnv(
         hen_policy_path=str(spec.hen_model_path),
         config=cfg,
         seed=0,
-        device="cpu",
+        device=device,
     )
-    eagle_model = PPO.load(spec.eagle_model_path, device="cpu")
+    eagle_model = PPO.load(spec.eagle_model_path, device=device)
 
     rows: list[dict] = []
     try:
@@ -406,8 +414,26 @@ def paired_ttest(
 
     arr_a = np.asarray([values_a[seed] for seed in common_eval_seeds], dtype=float)
     arr_b = np.asarray([values_b[seed] for seed in common_eval_seeds], dtype=float)
-    t_stat, p_value = stats.ttest_rel(arr_a, arr_b)
-    return float(t_stat), float(p_value)
+    diffs = arr_a - arr_b
+    n = diffs.size
+    diff_mean = float(np.mean(diffs))
+    diff_std = float(np.std(diffs, ddof=1))
+
+    if diff_std == 0.0:
+        if diff_mean == 0.0:
+            return 0.0, 1.0
+        return math.copysign(float("inf"), diff_mean), 0.0
+
+    t_stat = diff_mean / (diff_std / math.sqrt(n))
+    dof = n - 1
+    x = dof / (dof + t_stat * t_stat)
+    ibeta = float(mpmath.betainc(dof / 2.0, 0.5, 0, x, regularized=True))
+    if t_stat >= 0:
+        cdf = 1.0 - 0.5 * ibeta
+    else:
+        cdf = 0.5 * ibeta
+    p_value = 2.0 * min(cdf, 1.0 - cdf)
+    return float(t_stat), float(max(0.0, min(1.0, p_value)))
 
 
 def save_csv(rows: Sequence[dict], fieldnames: Sequence[str], path_str: str) -> None:
@@ -554,7 +580,13 @@ def evaluate_methods(args: argparse.Namespace) -> tuple[list[dict], list[dict], 
                 continue
             for pair in curriculum_pairs:
                 episode_rows.extend(
-                    evaluate_policy_pair(pair, cfg, args.eval_seeds, args.episodes_per_seed)
+                    evaluate_policy_pair(
+                        pair,
+                        cfg,
+                        args.eval_seeds,
+                        args.episodes_per_seed,
+                        args.device,
+                    )
                 )
 
     seed_rows = aggregate_seed_rows(episode_rows)
@@ -564,6 +596,7 @@ def evaluate_methods(args: argparse.Namespace) -> tuple[list[dict], list[dict], 
 
 def main() -> None:
     args = parse_args()
+    print(f"Evaluation device: {args.device}")
     episode_rows, seed_rows, run_rows = evaluate_methods(args)
 
     if not episode_rows:

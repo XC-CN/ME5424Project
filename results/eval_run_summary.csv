@@ -1,0 +1,4 @@
+method,run_id,capture_rate,avg_tail_dist,episode_length,eval_seed_count
+Curriculum,run_0,0.006,19.25158759679655,596.426,10
+Heuristic + Random,analytic_baseline,0.994,9.28381740560542,104.26599999999999,10
+True Random,analytic_baseline,0.186,16.535492786925126,540.77,10

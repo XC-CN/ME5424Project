@@ -1,0 +1,31 @@
+method,run_id,eval_seed,capture_rate,avg_tail_dist,episode_length,episode_count
+Curriculum,run_0,0,0.02,18.97674767614603,588.08,50
+Curriculum,run_0,42,0.0,19.31632487602234,600.0,50
+Curriculum,run_0,123,0.0,19.35424758335749,600.0,50
+Curriculum,run_0,456,0.0,19.338617640956244,600.0,50
+Curriculum,run_0,789,0.0,19.383028435647486,600.0,50
+Curriculum,run_0,1024,0.02,19.047346952631077,588.08,50
+Curriculum,run_0,2048,0.0,19.3839370964845,600.0,50
+Curriculum,run_0,4096,0.0,19.381265446050964,600.0,50
+Curriculum,run_0,8192,0.0,19.36127033449014,600.0,50
+Curriculum,run_0,16384,0.02,18.97308992617925,588.1,50
+Heuristic + Random,analytic_baseline,0,0.96,9.653678063211707,141.6,50
+Heuristic + Random,analytic_baseline,42,1.0,9.183384561400514,115.56,50
+Heuristic + Random,analytic_baseline,123,0.98,9.083484336685848,113.94,50
+Heuristic + Random,analytic_baseline,456,1.0,9.517464585262365,93.76,50
+Heuristic + Random,analytic_baseline,789,1.0,8.904376888405062,106.74,50
+Heuristic + Random,analytic_baseline,1024,1.0,9.395919684773542,94.72,50
+Heuristic + Random,analytic_baseline,2048,1.0,9.521946651910486,100.64,50
+Heuristic + Random,analytic_baseline,4096,1.0,9.158953251914657,101.14,50
+Heuristic + Random,analytic_baseline,8192,1.0,9.333796924140005,94.2,50
+Heuristic + Random,analytic_baseline,16384,1.0,9.085169108350021,80.36,50
+True Random,analytic_baseline,0,0.08,16.922368122344594,576.06,50
+True Random,analytic_baseline,42,0.24,15.852719785318651,514.76,50
+True Random,analytic_baseline,123,0.18,16.167653064556127,527.04,50
+True Random,analytic_baseline,456,0.16,16.67242353108609,563.88,50
+True Random,analytic_baseline,789,0.1,16.367541843644,574.08,50
+True Random,analytic_baseline,1024,0.14,17.326919940881336,553.96,50
+True Random,analytic_baseline,2048,0.26,16.57082961265624,517.1,50
+True Random,analytic_baseline,4096,0.16,16.735243326922287,550.64,50
+True Random,analytic_baseline,8192,0.26,17.300842732974246,522.14,50
+True Random,analytic_baseline,16384,0.28,15.438385908867666,508.04,50
