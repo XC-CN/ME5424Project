@@ -3,140 +3,102 @@ Set-StrictMode -Version Latest
 
 $SEEDS = @(100, 200, 300, 400, 500)
 $TOTAL_STEPS = 1000000
-$CO_ROUNDS = 20
-$CO_STEPS_PER_ROUND = 50000
 $DEVICE = "auto"
+$env:PYTHONUNBUFFERED = "1"
+$PythonExe = "D:\Work\Miniconda\envs\default\python.exe"
 
-# Use a small held-out selection set to choose the best co-training round per seed.
-$MODEL_SELECT_SEEDS = @(9001, 9002)
-$MODEL_SELECT_EPISODES = 10
+function Write-Status {
+    param(
+        [string]$Message,
+        [string]$Color = "Gray"
+    )
+
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    Write-Host "[$timestamp] $Message" -ForegroundColor $Color
+}
+
+function Format-Duration {
+    param(
+        [TimeSpan]$Elapsed
+    )
+
+    return "{0:00}:{1:00}:{2:00}" -f [int]$Elapsed.TotalHours, $Elapsed.Minutes, $Elapsed.Seconds
+}
+
+function Assert-Artifact {
+    param(
+        [string]$Path,
+        [string]$Label
+    )
+
+    if (-not (Test-Path $Path)) {
+        throw "$Label was not created: $Path"
+    }
+
+    Write-Status "Verified $Label -> $Path" "Green"
+}
 
 function Invoke-Python {
     param(
-        [string[]]$ArgsList
+        [string[]]$ArgsList,
+        [string]$Label = "",
+        [string[]]$ExpectedPaths = @()
     )
-    Write-Host ("python " + ($ArgsList -join " "))
-    & python @ArgsList
+
+    $startedAt = Get-Date
+    if ($Label) {
+        Write-Status "$Label started." "Yellow"
+    }
+
+    Write-Host ($PythonExe + " " + ($ArgsList -join " "))
+    & $PythonExe @ArgsList
     if ($LASTEXITCODE -ne 0) {
         throw "Python command failed with exit code $LASTEXITCODE"
     }
-}
 
-function Select-BestCoTrainingPair {
-    param(
-        [string]$CoDir,
-        [int]$Seed,
-        [int]$Rounds
-    )
-
-    $bestPair = $null
-    $bestRound = $null
-    $bestCaptureRate = [double]::PositiveInfinity
-    $bestAvgTailDist = [double]::NegativeInfinity
-    $bestEpisodeLength = [double]::NegativeInfinity
-
-    for ($round = 1; $round -le $Rounds; $round++) {
-        $henRoundPath = Join-Path $CoDir ("hen_round_{0}.zip" -f $round)
-        $eagleRoundPath = Join-Path $CoDir ("eagle_round_{0}.zip" -f $round)
-
-        if (-not (Test-Path $henRoundPath) -or -not (Test-Path $eagleRoundPath)) {
-            throw "Missing co-training checkpoint for seed $Seed round $round"
-        }
-
-        $tmpPrefix = Join-Path "results" ("tmp_select_seed_{0}_round_{1}" -f $Seed, $round)
-        $episodeCsv = "${tmpPrefix}_episode.csv"
-        $seedCsv = "${tmpPrefix}_seed.csv"
-        $runCsv = "${tmpPrefix}_run.csv"
-        $latexTex = "${tmpPrefix}_tables.tex"
-
-        $argsList = @(
-            "src/evaluate.py",
-            "--method", "cotraining",
-            "--eval-seeds"
-        )
-        foreach ($evalSeed in $MODEL_SELECT_SEEDS) {
-            $argsList += [string]$evalSeed
-        }
-        $argsList += @(
-            "--episodes-per-seed", [string]$MODEL_SELECT_EPISODES,
-            "--cotraining-pair", "${henRoundPath}::${eagleRoundPath}",
-            "--episode-output", $episodeCsv,
-            "--seed-output", $seedCsv,
-            "--run-output", $runCsv,
-            "--latex-output", $latexTex
-        )
-        Invoke-Python -ArgsList $argsList
-
-        $runSummary = @(Import-Csv $runCsv)
-        if ($runSummary.Count -ne 1) {
-            throw "Expected exactly one run summary for seed $Seed round $round"
-        }
-
-        $captureRate = [double]$runSummary[0].capture_rate
-        $avgTailDist = [double]$runSummary[0].avg_tail_dist
-        $episodeLength = [double]$runSummary[0].episode_length
-
-        $isBetter = $false
-        if ($captureRate -lt $bestCaptureRate) {
-            $isBetter = $true
-        } elseif ($captureRate -eq $bestCaptureRate -and $avgTailDist -gt $bestAvgTailDist) {
-            $isBetter = $true
-        } elseif (
-            $captureRate -eq $bestCaptureRate `
-            -and $avgTailDist -eq $bestAvgTailDist `
-            -and $episodeLength -gt $bestEpisodeLength
-        ) {
-            $isBetter = $true
-        }
-
-        if ($isBetter) {
-            $bestPair = "${henRoundPath}::${eagleRoundPath}"
-            $bestRound = $round
-            $bestCaptureRate = $captureRate
-            $bestAvgTailDist = $avgTailDist
-            $bestEpisodeLength = $episodeLength
-        }
-
-        Remove-Item $episodeCsv, $seedCsv, $runCsv, $latexTex -ErrorAction SilentlyContinue
+    foreach ($path in $ExpectedPaths) {
+        Assert-Artifact -Path $path -Label $path
     }
 
-    if ($null -eq $bestPair) {
-        throw "Failed to select a best co-training checkpoint for seed $Seed"
+    if ($Label) {
+        $elapsed = (Get-Date) - $startedAt
+        Write-Status "$Label finished in $(Format-Duration $elapsed)." "Green"
     }
-
-    Write-Host (
-        "[Seed {0}] Best co-training round = {1} (capture_rate={2:F4}, avg_tail_dist={3:F3}, episode_length={4:F2})" `
-        -f $Seed, $bestRound, $bestCaptureRate, $bestAvgTailDist, $bestEpisodeLength
-    ) -ForegroundColor Green
-
-    return $bestPair
 }
 
 Write-Host "=========================================================="
-Write-Host "Starting Multi-Seed Training Pipeline (AeroPursuit)"
+Write-Host "Starting Multi-Seed Curriculum Pipeline (AeroPursuit)"
 Write-Host "Hardware target: RTX 5080"
 Write-Host "=========================================================="
+if (-not (Test-Path $PythonExe)) {
+    throw "Conda default python not found: $PythonExe"
+}
+Write-Status "Runtime env: conda default; device: $DEVICE; Python output is unbuffered." "Cyan"
+Write-Status "Stage milestones and artifact checks will be printed below." "Cyan"
 
 $curriculumPairs = New-Object System.Collections.Generic.List[string]
-$cotrainingPairs = New-Object System.Collections.Generic.List[string]
 
-foreach ($seed in $SEEDS) {
-    Write-Host "`n>>> Starting SEED $seed <<<" -ForegroundColor Cyan
+for ($seedIndex = 0; $seedIndex -lt $SEEDS.Count; $seedIndex++) {
+    $seed = $SEEDS[$seedIndex]
+    Write-Host "`n>>> Starting SEED $seed ($($seedIndex + 1)/$($SEEDS.Count)) <<<" -ForegroundColor Cyan
 
     $currDir = "results/curriculum_seed_$seed"
-    $coDir = "results/cotraining_seed_$seed"
 
-    Write-Host "[Seed $seed] Training Curriculum Agent (Hen Stage 1)..." -ForegroundColor Yellow
+    Write-Status "[Seed $seed] Curriculum Stage 1 / 2: training hen." "Yellow"
     Invoke-Python -ArgsList @(
         "src/train_hen.py",
         "--seed", [string]$seed,
         "--total-steps", [string]$TOTAL_STEPS,
         "--save-dir", $currDir,
         "--device", $DEVICE
+    ) -Label "[Seed $seed] train_hen.py" -ExpectedPaths @(
+        (Join-Path $currDir "hen_stage_1.zip"),
+        (Join-Path $currDir "best_hen\best_model.zip")
     )
 
-    Write-Host "[Seed $seed] Training Curriculum Agent (Eagle Stage 2)..." -ForegroundColor Yellow
+    Write-Status "[Seed $seed] Curriculum Stage 2 / 2: training eagle." "Yellow"
     $henModelPath = Join-Path $currDir "best_hen/best_model.zip"
+    $eagleModelPath = Join-Path $currDir "best_eagle/best_model.zip"
     Invoke-Python -ArgsList @(
         "src/train_eagle.py",
         "--seed", [string]$seed,
@@ -144,27 +106,17 @@ foreach ($seed in $SEEDS) {
         "--save-dir", $currDir,
         "--hen-model", $henModelPath,
         "--device", $DEVICE
+    ) -Label "[Seed $seed] train_eagle.py" -ExpectedPaths @(
+        (Join-Path $currDir "eagle_stage_1.zip"),
+        $eagleModelPath
     )
 
-    $curriculumPairs.Add("${henModelPath}::$(Join-Path $currDir 'best_eagle/best_model.zip')")
-
-    Write-Host "[Seed $seed] Training Co-training Baseline (from scratch)..." -ForegroundColor Yellow
-    Invoke-Python -ArgsList @(
-        "src/train_stage3.py",
-        "--init-from-scratch",
-        "--seed", [string]$seed,
-        "--rounds", [string]$CO_ROUNDS,
-        "--steps-per-round", [string]$CO_STEPS_PER_ROUND,
-        "--save-dir", $coDir,
-        "--device", $DEVICE
-    )
-
-    $bestCoPair = Select-BestCoTrainingPair -CoDir $coDir -Seed $seed -Rounds $CO_ROUNDS
-    $cotrainingPairs.Add($bestCoPair)
+    $curriculumPairs.Add("${henModelPath}::${eagleModelPath}")
+    Write-Status "[Seed $seed] Curriculum training completed." "Cyan"
 }
 
 Write-Host "`n=========================================================="
-Write-Host "All training loops completed. Running final multi-seed evaluation..."
+Write-Host "All curriculum runs completed. Running final evaluation..."
 Write-Host "=========================================================="
 
 $finalEvalArgs = @(
@@ -175,11 +127,13 @@ $finalEvalArgs = @(
 foreach ($pair in $curriculumPairs) {
     $finalEvalArgs += @("--curriculum-pair", $pair)
 }
-foreach ($pair in $cotrainingPairs) {
-    $finalEvalArgs += @("--cotraining-pair", $pair)
-}
 
-Invoke-Python -ArgsList $finalEvalArgs
+Invoke-Python -ArgsList $finalEvalArgs -Label "Final evaluation" -ExpectedPaths @(
+    "results/eval_episode.csv",
+    "results/eval_seed_summary.csv",
+    "results/eval_run_summary.csv",
+    "results/latex_tables.tex"
+)
 
 Write-Host "=========================================================="
 Write-Host "Experiments finished."

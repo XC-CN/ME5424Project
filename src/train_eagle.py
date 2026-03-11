@@ -8,7 +8,7 @@ from stable_baselines3.common.callbacks import (
     EvalCallback,
 )
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from tqdm import tqdm
 
 from curriculum_env import EagleTrainingEnv, PhysicsConfig
@@ -37,6 +37,8 @@ class ProgressBarCallback(BaseCallback):
         super().__init__(verbose)
         self.total_timesteps = int(total_timesteps)
         self.description = description
+        self.report_interval = max(self.total_timesteps // 20, 1)
+        self.next_report = self.report_interval
         self._pbar = None
 
     def _on_training_start(self) -> None:
@@ -54,6 +56,14 @@ class ProgressBarCallback(BaseCallback):
             current = min(int(self.model.num_timesteps), self.total_timesteps)
             self._pbar.n = current
             self._pbar.refresh()
+            if current >= self.next_report or current >= self.total_timesteps:
+                percent = 100.0 * current / max(self.total_timesteps, 1)
+                print(
+                    f"{self.description}: {current}/{self.total_timesteps} timesteps "
+                    f"({percent:.1f}%)"
+                )
+                while self.next_report <= current:
+                    self.next_report += self.report_interval
         return True
 
     def _on_training_end(self) -> None:
@@ -84,6 +94,7 @@ def main() -> None:
     args = parse_args()
     save_dir = Path(args.save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
+    effective_eval_freq = max(args.eval_freq // N_ENVS, 1)
 
     cfg = PhysicsConfig()
     
@@ -102,9 +113,9 @@ def main() -> None:
     )
 
     # 评估环境保持单进程即可
-    eval_env = EagleTrainingEnv(
+    eval_env = DummyVecEnv([lambda: EagleTrainingEnv(
         hen_policy_path=args.hen_model, config=cfg, seed=args.seed + 1, device=args.device
-    )
+    )])
 
     # 使用子目录来保存最佳模型，避免覆盖母鸡的模型
     best_model_dir = save_dir / "best_eagle"
@@ -114,9 +125,14 @@ def main() -> None:
         eval_env,
         best_model_save_path=str(best_model_dir),
         log_path=str(save_dir),
-        eval_freq=args.eval_freq,
+        eval_freq=effective_eval_freq,
         deterministic=True,
         render=False,
+    )
+
+    print(
+        f"Eagle evaluation frequency: requested {args.eval_freq} env steps, "
+        f"effective callback interval {effective_eval_freq} with n_envs={N_ENVS}"
     )
 
     progress_cb = ProgressBarCallback(

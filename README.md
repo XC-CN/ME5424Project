@@ -230,7 +230,7 @@ This repository **only provides training scripts for Phases 1 and 2**. Phase 3 i
   - Hen: Protect the chain's tail and block the eagle.
   - Eagle: Capture the tail efficiently.
 
-To implement Phase 3, create `train_stage3.py` reusing the physical environment in `curriculum_env.py`, and alternately call `predict` and `learn` for both PPO policies in a loop.
+A future extension could add a dedicated `train_stage3.py`, reuse the physical environment in `curriculum_env.py`, and alternately call `predict` and `learn` for both PPO policies in a loop.
 
 ---
 
@@ -590,7 +590,7 @@ python src/visualize_eagle_stage2.py --episodes 1 --fps 60
   - 母鸡：保护链条尾端、阻挡老鹰。
   - 老鹰：尽快有效地抓到尾端。
 
-如需要，可以在此基础上实现一个 `train_stage3.py`，复用 `curriculum_env.py` 中的物理环境，并在循环中交替调用两个 PPO 策略的 `predict` 与 `learn`。
+作为未来工作，如需要，可以在此基础上实现一个 `train_stage3.py`，复用 `curriculum_env.py` 中的物理环境，并在循环中交替调用两个 PPO 策略的 `predict` 与 `learn`。
 
 ---
 

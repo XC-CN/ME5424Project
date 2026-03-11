@@ -1,12 +1,13 @@
 """
-Corrected evaluation pipeline for AeroPursuit.
+Evaluation pipeline for AeroPursuit.
 
-Key design choices:
+Design choices:
   1. Compare only task-level metrics: capture rate, average eagle-tail distance,
      and episode length.
-  2. Keep random and heuristic sanity baselines separate.
-  3. Aggregate episodes by evaluation seed, then by independent training run.
-  4. Run significance tests only on per-run summaries, never on raw episodes.
+  2. Keep the true-random baseline and the heuristic-eagle/random-hen baseline
+     separate.
+  3. Aggregate raw rollouts into per-evaluation-seed summaries before running
+     statistical tests.
 """
 
 from __future__ import annotations
@@ -26,12 +27,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from curriculum_env import EagleTrainingEnv, HenTrainingEnv, PhysicsConfig
 from stable_baselines3 import PPO
 
+
 DEFAULT_EVAL_SEEDS = [0, 42, 123, 456, 789]
 DEFAULT_EPISODES_PER_SEED = 100
 DEFAULT_CURRICULUM_HEN = Path("results/curriculum/best_hen/best_model.zip")
 DEFAULT_CURRICULUM_EAGLE = Path("results/curriculum/best_eagle/best_model.zip")
-METHOD_ORDER = ["True Random", "Heuristic + Random", "Co-training", "Curriculum"]
+METHOD_ORDER = ["True Random", "Heuristic + Random", "Curriculum"]
 METRICS = ["capture_rate", "avg_tail_dist", "episode_length"]
+SIGNIFICANCE_BASELINES = ["True Random", "Heuristic + Random"]
 
 
 @dataclass(frozen=True)
@@ -43,7 +46,7 @@ class PolicyPair:
 
 
 class RandomVsRandomEnv(HenTrainingEnv):
-    """Sanity-check environment: both agents act randomly."""
+    """Sanity-check environment where both agents act randomly."""
 
     def step(self, action: np.ndarray):
         self._apply_action(self.hen, action, self.cfg.hen_max_speed, self.cfg.max_force)
@@ -69,10 +72,10 @@ class RandomVsRandomEnv(HenTrainingEnv):
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Evaluate AeroPursuit methods with corrected task metrics.")
+    parser = argparse.ArgumentParser(description="Evaluate AeroPursuit task-level metrics.")
     parser.add_argument(
         "--method",
-        choices=["all", "curriculum", "cotraining", "heuristic", "random"],
+        choices=["all", "curriculum", "heuristic", "random"],
         default="all",
         help="Subset of methods to evaluate.",
     )
@@ -96,12 +99,6 @@ def parse_args() -> argparse.Namespace:
         help="Model pair for a curriculum run. Repeat the flag for multiple training runs.",
     )
     parser.add_argument(
-        "--cotraining-pair",
-        action="append",
-        metavar="HEN::EAGLE",
-        help="Model pair for a from-scratch co-training run. Repeat the flag for multiple training runs.",
-    )
-    parser.add_argument(
         "--episode-output",
         type=str,
         default="results/eval_episode.csv",
@@ -123,7 +120,7 @@ def parse_args() -> argparse.Namespace:
         "--latex-output",
         type=str,
         default="results/latex_tables.tex",
-        help="LaTeX table path generated from run summaries.",
+        help="LaTeX table path generated from summaries.",
     )
     return parser.parse_args()
 
@@ -194,7 +191,7 @@ def run_policy_episode(env: EagleTrainingEnv, eagle_model: PPO, reset_seed: int)
 
 
 def run_random_hen_episode(env: HenTrainingEnv, reset_seed: int) -> dict:
-    obs, _ = env.reset(seed=reset_seed)
+    _, _ = env.reset(seed=reset_seed)
     hen_rng = np.random.default_rng(reset_seed)
     total_dist = 0.0
     steps = 0
@@ -203,7 +200,7 @@ def run_random_hen_episode(env: HenTrainingEnv, reset_seed: int) -> dict:
 
     while not (terminated or truncated):
         hen_action = hen_rng.uniform(-1.0, 1.0, size=(2,)).astype(np.float32)
-        obs, _, terminated, truncated, info = env.step(hen_action)
+        _, _, terminated, truncated, info = env.step(hen_action)
         total_dist += info.get("dist_to_tail", 0.0)
         steps += 1
 
@@ -350,9 +347,30 @@ def aggregate_run_rows(seed_rows: Sequence[dict]) -> list[dict]:
     return run_rows
 
 
-def summarize_methods(run_rows: Sequence[dict]) -> dict[str, dict[str, tuple[float, float]]]:
+def aggregate_method_seed_rows(seed_rows: Sequence[dict]) -> list[dict]:
+    grouped: dict[tuple[str, int], list[dict]] = {}
+    for row in seed_rows:
+        key = (row["method"], int(row["eval_seed"]))
+        grouped.setdefault(key, []).append(row)
+
+    method_seed_rows: list[dict] = []
+    for (method, eval_seed), rows in sorted(grouped.items()):
+        method_seed_rows.append(
+            {
+                "method": method,
+                "eval_seed": eval_seed,
+                "capture_rate": float(np.mean([float(row["capture_rate"]) for row in rows])),
+                "episode_length": float(np.mean([float(row["episode_length"]) for row in rows])),
+                "avg_tail_dist": float(np.mean([float(row["avg_tail_dist"]) for row in rows])),
+                "source_runs": len(rows),
+            }
+        )
+    return method_seed_rows
+
+
+def summarize_methods(method_seed_rows: Sequence[dict]) -> dict[str, dict[str, tuple[float, float]]]:
     grouped: dict[str, dict[str, list[float]]] = {}
-    for row in run_rows:
+    for row in method_seed_rows:
         method = row["method"]
         grouped.setdefault(method, {metric: [] for metric in METRICS})
         for metric in METRICS:
@@ -366,12 +384,29 @@ def summarize_methods(run_rows: Sequence[dict]) -> dict[str, dict[str, tuple[flo
     return summary
 
 
-def welch_ttest(run_rows: Sequence[dict], method_a: str, method_b: str, metric: str) -> tuple[float, float] | None:
-    values_a = [float(row[metric]) for row in run_rows if row["method"] == method_a]
-    values_b = [float(row[metric]) for row in run_rows if row["method"] == method_b]
-    if len(values_a) < 2 or len(values_b) < 2:
+def paired_ttest(
+    method_seed_rows: Sequence[dict],
+    method_a: str,
+    method_b: str,
+    metric: str,
+) -> tuple[float, float] | None:
+    values_a = {
+        int(row["eval_seed"]): float(row[metric])
+        for row in method_seed_rows
+        if row["method"] == method_a
+    }
+    values_b = {
+        int(row["eval_seed"]): float(row[metric])
+        for row in method_seed_rows
+        if row["method"] == method_b
+    }
+    common_eval_seeds = sorted(set(values_a).intersection(values_b))
+    if len(common_eval_seeds) < 2:
         return None
-    t_stat, p_value = stats.ttest_ind(values_a, values_b, equal_var=False)
+
+    arr_a = np.asarray([values_a[seed] for seed in common_eval_seeds], dtype=float)
+    arr_b = np.asarray([values_b[seed] for seed in common_eval_seeds], dtype=float)
+    t_stat, p_value = stats.ttest_rel(arr_a, arr_b)
     return float(t_stat), float(p_value)
 
 
@@ -385,13 +420,13 @@ def save_csv(rows: Sequence[dict], fieldnames: Sequence[str], path_str: str) -> 
     print(f"Saved {path}")
 
 
-def print_method_summary(run_rows: Sequence[dict]) -> None:
-    if not run_rows:
-        print("No run summaries available.")
+def print_method_summary(method_seed_rows: Sequence[dict]) -> None:
+    if not method_seed_rows:
+        print("No seed summaries available.")
         return
 
-    summary = summarize_methods(run_rows)
-    print("\nMethod-level summary (mean +/- std over independent runs)")
+    summary = summarize_methods(method_seed_rows)
+    print("\nMethod-level summary (mean +/- std over evaluation-seed summaries)")
     print("-" * 96)
     print(f"{'Method':<24} {'Capture Rate (%)':>18} {'Avg Tail Dist (m)':>20} {'Episode Length':>18}")
     print("-" * 96)
@@ -410,44 +445,39 @@ def print_method_summary(run_rows: Sequence[dict]) -> None:
     print("-" * 96)
 
 
-def print_significance(run_rows: Sequence[dict]) -> None:
-    result_rows = []
-    for metric in METRICS:
-        test_result = welch_ttest(run_rows, "Curriculum", "Co-training", metric)
-        if test_result is None:
-            result_rows.append((metric, None, None))
-        else:
-            result_rows.append((metric, test_result[0], test_result[1]))
-
-    print("\nCurriculum vs Co-training significance")
-    print("-" * 72)
-    print(f"{'Metric':<18} {'t-stat':>12} {'p-value':>14} {'Status':>18}")
-    print("-" * 72)
-    for metric, t_stat, p_value in result_rows:
-        if t_stat is None or p_value is None:
-            print(f"{metric:<18} {'N/A':>12} {'N/A':>14} {'need >=2 runs':>18}")
-            continue
-        status = "p < 0.05" if p_value < 0.05 else "not significant"
-        print(f"{metric:<18} {t_stat:>12.3f} {p_value:>14.3e} {status:>18}")
-    print("-" * 72)
+def print_significance(method_seed_rows: Sequence[dict]) -> None:
+    print("\nCurriculum vs baseline significance")
+    print("-" * 86)
+    print(f"{'Baseline':<22} {'Metric':<18} {'t-stat':>12} {'p-value':>14} {'Status':>14}")
+    print("-" * 86)
+    for baseline in SIGNIFICANCE_BASELINES:
+        for metric in METRICS:
+            test_result = paired_ttest(method_seed_rows, "Curriculum", baseline, metric)
+            if test_result is None:
+                print(f"{baseline:<22} {metric:<18} {'N/A':>12} {'N/A':>14} {'need >=2 seeds':>14}")
+                continue
+            t_stat, p_value = test_result
+            status = "p < 0.05" if p_value < 0.05 else "not significant"
+            print(f"{baseline:<22} {metric:<18} {t_stat:>12.3f} {p_value:>14.3e} {status:>14}")
+    print("-" * 86)
 
 
-def save_latex_tables(run_rows: Sequence[dict], output_path: str) -> None:
-    summary = summarize_methods(run_rows)
+def save_latex_tables(method_seed_rows: Sequence[dict], output_path: str) -> None:
+    summary = summarize_methods(method_seed_rows)
     lines: list[str] = []
 
     lines.append("% Generated by src/evaluate.py")
     lines.append("\\begin{table}[t]")
     lines.append("\\centering")
     lines.append(
-        "\\caption{Quantitative comparison across sanity baselines and trained methods. Metrics are reported as mean $\\pm$ std over independent training runs; when only one run is available, no significance claim is made.}"
+        "\\caption{Quantitative comparison across the proposed curriculum method and non-learning baselines. Metrics are reported as mean $\\pm$ std over evaluation-seed summaries.}"
     )
     lines.append("\\label{tab:baseline_comparison}")
     lines.append("\\resizebox{\\linewidth}{!}{")
     lines.append("\\begin{tabular}{lccc}")
     lines.append("\\toprule")
     lines.append(
-        "\\textbf{Method} & \\textbf{Capture Rate (\\%)} $\\downarrow$ & \\textbf{Avg Tail Dist (m)} $\\uparrow$ & \\textbf{Episode Length} $\\uparrow$ \\\\" 
+        "\\textbf{Method} & \\textbf{Capture Rate (\\%)} $\\downarrow$ & \\textbf{Avg Tail Dist (m)} $\\uparrow$ & \\textbf{Episode Length} $\\uparrow$ \\\\"
     )
     lines.append("\\midrule")
     for method in METHOD_ORDER:
@@ -461,7 +491,7 @@ def save_latex_tables(run_rows: Sequence[dict], output_path: str) -> None:
         lines.append(
             f"{method} & ${bold_open}{capture_mean * 100:.2f} \\pm {capture_std * 100:.2f}{bold_close}$ & "
             f"${bold_open}{dist_mean:.2f} \\pm {dist_std:.2f}{bold_close}$ & "
-            f"${bold_open}{length_mean:.2f} \\pm {length_std:.2f}{bold_close}$ \\\\" 
+            f"${bold_open}{length_mean:.2f} \\pm {length_std:.2f}{bold_close}$ \\\\"
         )
     lines.append("\\bottomrule")
     lines.append("\\end{tabular}")
@@ -472,21 +502,22 @@ def save_latex_tables(run_rows: Sequence[dict], output_path: str) -> None:
     lines.append("\\begin{table}[t]")
     lines.append("\\centering")
     lines.append(
-        "\\caption{Welch's t-test on per-run summaries for Curriculum vs from-scratch Co-training. Statistical claims are reported only when both methods contain at least two independent runs.}"
+        "\\caption{Paired t-tests on per-evaluation-seed summaries for the curriculum method against non-learning baselines.}"
     )
     lines.append("\\label{tab:significance}")
-    lines.append("\\begin{tabular}{lcc}")
+    lines.append("\\begin{tabular}{lccc}")
     lines.append("\\toprule")
-    lines.append("\\textbf{Metric} & \\textbf{p-value} & \\textbf{Status} \\\\" )
+    lines.append("\\textbf{Baseline} & \\textbf{Metric} & \\textbf{p-value} & \\textbf{Status} \\\\")
     lines.append("\\midrule")
-    for metric in METRICS:
-        test_result = welch_ttest(run_rows, "Curriculum", "Co-training", metric)
-        if test_result is None:
-            lines.append(f"{metric.replace('_', ' ')} & N/A & need at least 2 runs/method \\\\" )
-            continue
-        _, p_value = test_result
-        status = "significant" if p_value < 0.05 else "not significant"
-        lines.append(f"{metric.replace('_', ' ')} & ${p_value:.3e}$ & {status} \\\\" )
+    for baseline in SIGNIFICANCE_BASELINES:
+        for metric in METRICS:
+            test_result = paired_ttest(method_seed_rows, "Curriculum", baseline, metric)
+            if test_result is None:
+                lines.append(f"{baseline} & {metric.replace('_', ' ')} & N/A & need at least 2 eval seeds \\\\")
+                continue
+            _, p_value = test_result
+            status = "significant" if p_value < 0.05 else "not significant"
+            lines.append(f"{baseline} & {metric.replace('_', ' ')} & ${p_value:.3e}$ & {status} \\\\")
     lines.append("\\bottomrule")
     lines.append("\\end{tabular}")
     lines.append("\\end{table}")
@@ -500,18 +531,12 @@ def save_latex_tables(run_rows: Sequence[dict], output_path: str) -> None:
 def evaluate_methods(args: argparse.Namespace) -> tuple[list[dict], list[dict], list[dict]]:
     cfg = PhysicsConfig()
     episode_rows: list[dict] = []
-
-    methods_to_run = [args.method] if args.method != "all" else ["random", "heuristic", "cotraining", "curriculum"]
+    methods_to_run = [args.method] if args.method != "all" else ["random", "heuristic", "curriculum"]
 
     curriculum_pairs = parse_pair_specs(
         args.curriculum_pair,
         (DEFAULT_CURRICULUM_HEN, DEFAULT_CURRICULUM_EAGLE),
         "Curriculum",
-    )
-    cotraining_pairs = parse_pair_specs(
-        args.cotraining_pair,
-        None,
-        "Co-training",
     )
 
     for method in methods_to_run:
@@ -531,14 +556,6 @@ def evaluate_methods(args: argparse.Namespace) -> tuple[list[dict], list[dict], 
                 episode_rows.extend(
                     evaluate_policy_pair(pair, cfg, args.eval_seeds, args.episodes_per_seed)
                 )
-        elif method == "cotraining":
-            if not cotraining_pairs:
-                print("Skipping Co-training: no valid model pair available.")
-                continue
-            for pair in cotraining_pairs:
-                episode_rows.extend(
-                    evaluate_policy_pair(pair, cfg, args.eval_seeds, args.episodes_per_seed)
-                )
 
     seed_rows = aggregate_seed_rows(episode_rows)
     run_rows = aggregate_run_rows(seed_rows)
@@ -553,8 +570,9 @@ def main() -> None:
         print("No evaluation records were produced.")
         return
 
-    print_method_summary(run_rows)
-    print_significance(run_rows)
+    method_seed_rows = aggregate_method_seed_rows(seed_rows)
+    print_method_summary(method_seed_rows)
+    print_significance(method_seed_rows)
 
     save_csv(
         episode_rows,
@@ -571,7 +589,7 @@ def main() -> None:
         ["method", "run_id", "capture_rate", "avg_tail_dist", "episode_length", "eval_seed_count"],
         args.run_output,
     )
-    save_latex_tables(run_rows, args.latex_output)
+    save_latex_tables(method_seed_rows, args.latex_output)
 
     print("\nDone.")
 
