@@ -61,7 +61,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fps", type=float, default=20.0, help="可视化帧率")
     parser.add_argument("--save-gif", action="store_true", help="是否保存为 GIF")
     parser.add_argument("--output", type=str, default="stage3.gif", help="GIF 输出路径")
-    parser.add_argument("--duration", type=int, default=30, help="GIF 每帧持续时间 (ms)")
+    parser.add_argument("--duration", type=int, default=50, help="GIF 每帧持续时间 (ms)")
     return parser.parse_args()
 
 
@@ -76,10 +76,10 @@ def _init_figure(world_size: float) -> Tuple[plt.Figure, plt.Axes, dict]:
     # ax.set_xlabel("X Position")
     # ax.set_ylabel("Y Position")
 
-    hen_scatter = ax.scatter([], [], s=100, c="tab:orange", label="母鸡 (Hen)")
-    eagle_scatter = ax.scatter([], [], s=100, c="tab:blue", label="老鹰 (Eagle)")
-    chicks_scatter = ax.scatter([], [], s=50, c="tab:green", label="小鸡 (Chicks)")
-    hen_wing_line, = ax.plot([], [], color="red", linewidth=2.0, alpha=0.7, label="阻挡带")
+    hen_scatter = ax.scatter([], [], s=100, c="tab:orange", label="Protector")
+    eagle_scatter = ax.scatter([], [], s=100, c="tab:blue", label="Predator")
+    chicks_scatter = ax.scatter([], [], s=50, c="tab:green", label="Prey")
+    hen_wing_line, = ax.plot([], [], color="red", linewidth=2.0, alpha=0.7, label="Blocker")
 
     ax.legend(loc="upper right")
     handles = {
