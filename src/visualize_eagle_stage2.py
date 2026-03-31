@@ -8,6 +8,7 @@ from matplotlib import font_manager as fm
 import math
 import numpy as np
 from stable_baselines3 import PPO
+from PIL import Image
 
 from curriculum_env import EagleTrainingEnv, PhysicsConfig
 
@@ -77,6 +78,9 @@ def parse_args() -> argparse.Namespace:
         default=15.0,
         help="可视化帧率（每秒刷新次数，默认 15）。",
     )
+    parser.add_argument("--save-gif", action="store_true", help="是否保存为 GIF")
+    parser.add_argument("--output", type=str, default="eagle_stage2.gif", help="GIF 输出路径")
+    parser.add_argument("--duration", type=int, default=30, help="GIF 每帧持续时间 (ms)")
     return parser.parse_args()
 
 
@@ -90,9 +94,9 @@ def _init_figure(world_size: float) -> Tuple[plt.Figure, plt.Axes, dict]:
     ax.set_xlim(-world_size, world_size)
     ax.set_ylim(-world_size, world_size)
     ax.set_aspect("equal")
-    ax.set_title("阶段二：老鹰进攻可视化（冻结母鸡 + 小鸡链条）")
-    ax.set_xlabel("X 位置")
-    ax.set_ylabel("Y 位置")
+    # ax.set_title("阶段二：老鹰进攻可视化（冻结母鸡 + 小鸡链条）")
+    # ax.set_xlabel("X 位置")
+    # ax.set_ylabel("Y 位置")
 
     hen_scatter = ax.scatter([], [], s=80, c="tab:orange", label="母鸡")
     eagle_scatter = ax.scatter([], [], s=80, c="tab:blue", label="老鹰")
@@ -165,7 +169,7 @@ def _update_scatter(env: EagleTrainingEnv, handles: dict, ax: plt.Axes, step_idx
         handles["chicks"].set_offsets(np.empty((0, 2), dtype=float))
         handles["hen_wing"].set_data([], [])
 
-    ax.set_xlabel(f"当前步数：{step_idx}")
+    # ax.set_xlabel(f"当前步数：{step_idx}")
 
 
 def main() -> None:
@@ -195,6 +199,7 @@ def main() -> None:
     pause = 1.0 / max(float(args.fps), 1.0)
 
     # 注册关闭事件回调
+    frames = []
     is_running = True
 
     def on_close(event):
@@ -224,8 +229,14 @@ def main() -> None:
                 _update_scatter(env, handles, ax, step_idx=step + 1)
 
                 fig.canvas.draw()
+                
+                if args.save_gif:
+                    rgba_buf = fig.canvas.buffer_rgba()
+                    frame = Image.fromarray(np.frombuffer(rgba_buf, dtype=np.uint8).reshape(fig.canvas.get_width_height()[::-1] + (4,)))
+                    frames.append(frame.convert("RGB"))
+
                 fig.canvas.flush_events()
-                if pause > 0:
+                if pause > 0 and not args.save_gif:
                     plt.pause(pause)
 
                 if terminated or truncated:
@@ -234,11 +245,22 @@ def main() -> None:
                     )
                     break
 
-        if is_running:
+        if args.save_gif and frames:
+            print(f"正在保存 GIF 到 {args.output}...")
+            frames[0].save(
+                args.output,
+                save_all=True,
+                append_images=frames[1:],
+                duration=args.duration,
+                loop=0
+            )
+            print("GIF 已保存。")
+
+        if is_running and not args.save_gif:
             print("阶段二可视化结束，关闭窗口即可退出程序。")
             plt.ioff()
             plt.show()
-        else:
+        elif not is_running:
             print("可视化已中断。")
     finally:
         env.close()

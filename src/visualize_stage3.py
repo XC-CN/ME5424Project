@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib import font_manager as fm
 import numpy as np
 from stable_baselines3 import PPO
+from PIL import Image
 
 # 确保能导入 src 下的模块
 sys.path.append(str(Path(__file__).parent))
@@ -58,6 +59,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--episodes", type=int, default=3, help="可视化回合数")
     parser.add_argument("--seed", type=int, default=42, help="随机种子")
     parser.add_argument("--fps", type=float, default=20.0, help="可视化帧率")
+    parser.add_argument("--save-gif", action="store_true", help="是否保存为 GIF")
+    parser.add_argument("--output", type=str, default="stage3.gif", help="GIF 输出路径")
+    parser.add_argument("--duration", type=int, default=30, help="GIF 每帧持续时间 (ms)")
     return parser.parse_args()
 
 
@@ -68,9 +72,9 @@ def _init_figure(world_size: float) -> Tuple[plt.Figure, plt.Axes, dict]:
     ax.set_xlim(-world_size, world_size)
     ax.set_ylim(-world_size, world_size)
     ax.set_aspect("equal")
-    ax.set_title("阶段三：母鸡(Orange) vs 老鹰(Blue) 联合对抗")
-    ax.set_xlabel("X Position")
-    ax.set_ylabel("Y Position")
+    # ax.set_title("阶段三：母鸡(Orange) vs 老鹰(Blue) 联合对抗")
+    # ax.set_xlabel("X Position")
+    # ax.set_ylabel("Y Position")
 
     hen_scatter = ax.scatter([], [], s=100, c="tab:orange", label="母鸡 (Hen)")
     eagle_scatter = ax.scatter([], [], s=100, c="tab:blue", label="老鹰 (Eagle)")
@@ -126,7 +130,7 @@ def _update_scatter(env: EagleTrainingEnv, handles: dict, ax: plt.Axes, step_idx
             x2, y2 = hen_pos.x + nx * arm_span, hen_pos.y + ny * arm_span
             handles["hen_wing"].set_data([x1, x2], [y1, y2])
     
-    ax.set_xlabel(f"Step: {step_idx}")
+    # ax.set_xlabel(f"Step: {step_idx}")
 
 
 def main():
@@ -163,6 +167,7 @@ def main():
     fig, ax, handles = _init_figure(cfg.world_size)
     pause_time = 1.0 / max(args.fps, 1.0)
     
+    frames = []
     is_running = True
     def on_close(event):
         nonlocal is_running
@@ -191,21 +196,40 @@ def main():
                 # Render
                 _update_scatter(env, handles, ax, step+1)
                 fig.canvas.draw()
+                
+                if args.save_gif:
+                    # Capture frame
+                    rgba_buf = fig.canvas.buffer_rgba()
+                    frame = Image.fromarray(np.frombuffer(rgba_buf, dtype=np.uint8).reshape(fig.canvas.get_width_height()[::-1] + (4,)))
+                    frames.append(frame.convert("RGB"))
+                
                 fig.canvas.flush_events()
-                plt.pause(pause_time)
+                if not args.save_gif:
+                    plt.pause(pause_time)
                 
                 if terminated or truncated:
                     res = "Caught!" if terminated else "Time out"
                     print(f"Episode finished at step {step+1}. Result: {res}, Reward: {total_reward:.2f}")
                     break
             
-            if is_running:
+            if is_running and not args.save_gif:
                 plt.pause(1.0)
 
     finally:
         env.close()
+        if args.save_gif and frames:
+            print(f"Saving GIF to {args.output}...")
+            frames[0].save(
+                args.output,
+                save_all=True,
+                append_images=frames[1:],
+                duration=args.duration,
+                loop=0
+            )
+            print("GIF saved.")
+            
         print("Visualization finished.")
-        if is_running:
+        if is_running and not args.save_gif:
             plt.ioff()
             plt.show()
 
